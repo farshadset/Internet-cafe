@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت بنر</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>مدیریت بنر</h1>
+        </header>
+        <main>
+            <div class="form-card" id="bannerForm">
+                <div class="banner-preview">
+                    <p>پیش‌نمایش بنر</p>
+                    <img id="previewImg" src="https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین" alt="بنر">
+                </div>
+                <div class="form-group">
+                    <label for="bannerUpload">آپلود بنر جدید</label>
+                    <input type="file" id="bannerUpload" accept="image/*">
+                </div>
+                <button class="btn-confirm" id="saveBannerBtn">ذخیره بنر</button>
+                <a href="admin.html" class="btn-next">بازگشت</a>
+            </div>
+        </main>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // بارگذاری بنر فعلی از localStorage
+            var savedBanner = localStorage.getItem('currentBanner');
+            if (savedBanner) {
+                document.getElementById('previewImg').src = savedBanner;
+            }
+            
+            var bannerUpload = document.getElementById('bannerUpload');
+            var previewImg = document.getElementById('previewImg');
+            
+            if (bannerUpload) {
+                bannerUpload.addEventListener('change', function(e) {
+                    var file = e.target.files[0];
+                    if (file) {
+                        var reader = new FileReader();
+                        reader.onload = function(event) {
+                            previewImg.src = event.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+            
+            var saveBannerBtn = document.getElementById('saveBannerBtn');
+            if (saveBannerBtn) {
+                saveBannerBtn.addEventListener('click', function() {
+                    var bannerSrc = previewImg.src;
+                    // فقط آخرین بنر را ذخیره می‌کنیم (فضای کمتری اشغال می‌کند)
+                    localStorage.setItem('currentBanner', bannerSrc);
+                    
+                    var toast = document.createElement('div');
+                    toast.className = 'toast';
+                    toast.textContent = 'بنر با موفقیت ذخیره شد!';
+                    document.body.appendChild(toast);
+                    toast.classList.add('show');
+                    setTimeout(function() {
+                        toast.classList.remove('show');
+                        setTimeout(function() { toast.remove(); }, 300);
+                        window.location.href = 'index.html';
+                    }, 3000);
+                });
+            }
+        });
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</body>
+</html>

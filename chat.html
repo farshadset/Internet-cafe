@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>چت با پشتیبانی</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>چت با پشتیبانی</h1>
+        </header>
+        <main>
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message support">پشتیبانی: سلام! چطور می‌توانم کمکتان کنم؟</div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="پیام خود را اینجا بنویسید...">
+                    <button id="sendBtn">ارسال</button>
+                </div>
+            </div>
+        </main>
+    </div>
+    <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn">
+        <i class="fas fa-headset"></i>
+    </a>
+    <div class="modal" id="supportModal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2>پشتیبانی</h2>
+            <div class="support-options">
+                <a href="faq.html" class="support-option">
+                    <i class="fas fa-question-circle"></i>
+                    سوالات متداق
+                </a>
+                <a href="chat.html" class="support-option">
+                    <i class="fas fa-comments"></i>
+                    چت با پشتیبانی
+                </a>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var chatMessages = document.getElementById('chatMessages');
+            var messageInput = document.getElementById('messageInput');
+            var sendBtn = document.getElementById('sendBtn');
+            
+            var messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+            messages.forEach(function(msg) {
+                var div = document.createElement('div');
+                div.className = 'message ' + (msg.role === 'user' ? 'user' : 'support');
+                div.textContent = (msg.role === 'user' ? 'شما: ' : 'پشتیبانی: ') + msg.text;
+                chatMessages.appendChild(div);
+            });
+            
+            sendBtn.addEventListener('click', function() {
+                var text = messageInput.value.trim();
+                if (text) {
+                    var div = document.createElement('div');
+                    div.className = 'message user';
+                    div.textContent = 'شما: ' + text;
+                    chatMessages.appendChild(div);
+                    messages.push({role: 'user', text: text, date: new Date().toISOString()});
+                    localStorage.setItem('chatMessages', JSON.stringify(messages));
+                    messageInput.value = '';
+                }
+            });
+            
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendBtn.click();
+                }
+            });
+        });
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</body>
+</html>

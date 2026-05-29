@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت نام</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>ثبت نام</h1>
+        </header>
+        <main>
+            <form id="authForm" class="form-card">
+                <div class="form-group">
+                    <label for="username">نام کاربری</label>
+                    <input type="text" id="username" name="username" placeholder="نام کاربری را وارد کنید" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">رمز عبور</label>
+                    <div class="password-field">
+                        <input type="password" id="password" name="password" placeholder="رمز عبور" required>
+                        <span class="toggle-password" id="togglePassword">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">تکرار رمز عبور</label>
+                    <div class="password-field">
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="رمز عبور را دوباره وارد کنید" required>
+                        <span class="toggle-password" id="toggleConfirmPassword">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-next">ثبت نام</button>
+            </form>
+            <p style="margin-top: 1rem;">
+                <a href="login.html">ورود</a>
+                | قبلاً ثبت نام کرده‌اید؟
+            </p>
+        </main>
+    </div>
+    <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn">
+        <i class="fas fa-headset"></i>
+    </a>
+    
+    <div class="modal" id="supportModal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2>پشتیبانی</h2>
+            <div class="support-options">
+                <a href="faq.html" class="support-option">
+                    <i class="fas fa-question-circle"></i>
+                    سوالات متداق
+                </a>
+                <a href="chat.html" class="support-option">
+                    <i class="fas fa-comments"></i>
+                    چت با پشتیبانی
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="app.js"></script>
+</body>
+</html>

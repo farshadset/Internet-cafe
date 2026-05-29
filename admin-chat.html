@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>چت با مشتری</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>چت با مشتری</h1>
+        </header>
+        <main>
+            <div class="chat-container">
+                <div class="chat-messages" id="adminChatMessages"></div>
+                <div class="chat-input">
+                    <input type="text" id="adminMessageInput" placeholder="پاسخ خود را اینجا بنویسید...">
+                    <button id="adminSendBtn">ارسال</button>
+                </div>
+            </div>
+            <a href="admin.html" class="btn-next">بازگشت</a>
+        </main>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var messages = JSON.parse(localStorage.getItem('adminChat') || '[]');
+            var chatMessages = document.getElementById('adminChatMessages');
+            messages.forEach(function(msg) {
+                var div = document.createElement('div');
+                div.className = 'message ' + (msg.role === 'admin' ? 'user' : 'support');
+                div.textContent = (msg.role === 'admin' ? 'شما: ' : 'مشتری: ') + msg.text;
+                chatMessages.appendChild(div);
+            });
+            
+            if (messages.length === 0) {
+                var welcomeDiv = document.createElement('div');
+                welcomeDiv.className = 'message support';
+                welcomeDiv.textContent = 'مشتری: سوالی دارید؟';
+                chatMessages.appendChild(welcomeDiv);
+                messages.push({role: 'customer', text: 'سوالی دارید؟'});
+                localStorage.setItem('adminChat', JSON.stringify(messages));
+            }
+            
+            var adminMessageInput = document.getElementById('adminMessageInput');
+            var adminSendBtn = document.getElementById('adminSendBtn');
+            
+            adminSendBtn.addEventListener('click', function() {
+                var text = adminMessageInput.value.trim();
+                if (text) {
+                    var div = document.createElement('div');
+                    div.className = 'message user';
+                    div.textContent = 'شما: ' + text;
+                    chatMessages.appendChild(div);
+                    messages.push({role: 'admin', text: text, date: new Date().toISOString()});
+                    localStorage.setItem('adminChat', JSON.stringify(messages));
+                    adminMessageInput.value = '';
+                }
+            });
+        });
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</body>
+</html>

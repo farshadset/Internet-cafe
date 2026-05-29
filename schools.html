@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پیش ثبت نام مدارس</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>پیش ثبت نام مدارس</h1>
+        </header>
+        <main>
+            <form id="registrationForm" class="form-card">
+                <div class="form-group">
+                    <label for="parentPhone">شماره تلفن همراه</label>
+                    <input type="tel" id="parentPhone" name="parentPhone" placeholder="09xx-xxx-xxxx" required>
+                    <small><span class="warning-text">حتماً به نام خود والدین باشد.</span> <span class="success-text">لطفا برای دریافت پیامک دسترس باشید.</span></small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="parentNationalId">کد ملی والدین</label>
+                    <input type="text" id="parentNationalId" name="parentNationalId" maxlength="10" required>
+                    <small>برای احراز هویت در مرحله «دولت من»</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>تاریخ تولد والدین</label>
+                    <div class="date-fields">
+                        <input type="number" id="birthYear" name="birthYear" placeholder="سال" min="1300" max="1500" required>
+                        <input type="number" id="birthMonth" name="birthMonth" placeholder="ماه" min="1" max="12" required>
+                        <input type="number" id="birthDay" name="birthDay" placeholder="روز" min="1" max="31" required>
+                    </div>
+                    <small>دقیقاً مطابق با شناسنامه</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="postalCode">کد پستی ۱۰ رقمی</label>
+                    <input type="text" id="postalCode" name="postalCode" maxlength="10" required>
+                    <small>برای تأیید نشانی محل سکونت</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="studentNationalId">کد ملی دانش‌آموز</label>
+                    <input type="text" id="studentNationalId" name="studentNationalId" maxlength="10" required>
+                    <small>برای ورود به بخش دانش‌آموزی در صورت نیاز</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <textarea id="additionalNotes" name="additionalNotes" rows="3" placeholder="توضیحات خود را اینجا بنویسید..."></textarea>
+                </div>
+                
+<button type="submit" class="btn-next">مرحله بعد</button>
+            </form>
+        </main>
+    </div>
+    <script src="app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</body>
+</html>

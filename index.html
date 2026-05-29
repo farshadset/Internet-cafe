@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>کافینت آنلاین</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var savedBanner = localStorage.getItem('currentBanner');
+            if (savedBanner) {
+                var bannerImg = document.getElementById('bannerImg');
+                if (bannerImg) bannerImg.src = savedBanner;
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>کافینت آنلاین</h1>
+        </header>
+        <main>
+            <div class="banner">
+                <img id="bannerImg" src="https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین" alt="بنر کافینت">
+            </div>
+            <a href="schools.html" class="card">
+                <h2>پیش ثبت نام مدارس</h2>
+            </a>
+        </main>
+    </div>
+    <a href="#" class="profile-icon" title="پروفایل" id="profileBtn">
+        <i class="fas fa-user"></i>
+    </a>
+    <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn">
+        <i class="fas fa-headset"></i>
+    </a>
+    
+    <div class="modal" id="supportModal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2>پشتیبانی</h2>
+            <div class="support-options">
+                <a href="faq.html" class="support-option" id="faqOption">
+                    <i class="fas fa-question-circle"></i>
+                    سوالات متداق
+                </a>
+                <a href="chat.html" class="support-option" id="chatOption">
+                    <i class="fas fa-comments"></i>
+                    چت با پشتیبانی
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</body>
+</html>
