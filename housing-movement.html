@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت‌نام نهضت ملی مسکن</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>ثبت‌نام نهضت ملی مسکن</h1>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="housing">
+                <div class="form-group">
+                    <label for="applicantPhone">شماره تلفن همراه</label>
+                    <input type="tel" id="applicantPhone" name="applicantPhone" placeholder="09xx-xxx-xxxx" required>
+                    <small><span class="warning-text">حتماً به نام سرپرست خانوار باشد.</span></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="applicantNationalId">کد ملی سرپرست خانوار</label>
+                    <input type="text" id="applicantNationalId" name="applicantNationalId" maxlength="10" required>
+                    <small>۱۰ رقم، بدون فاصله</small>
+                </div>
+
+                <div class="form-group">
+                    <label>تاریخ تولد</label>
+                    <div class="date-fields">
+                        <input type="number" id="birthYear" name="birthYear" placeholder="سال" min="1300" max="1500" required>
+                        <input type="number" id="birthMonth" name="birthMonth" placeholder="ماه" min="1" max="12" required>
+                        <input type="number" id="birthDay" name="birthDay" placeholder="روز" min="1" max="31" required>
+                    </div>
+                    <small>دقیقاً مطابق با شناسنامه</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="postalCode">کد پستی ۱۰ رقمی</label>
+                    <input type="text" id="postalCode" name="postalCode" maxlength="10" required>
+                    <small>کد پستی محل سکونت فعلی</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="familyCount">تعداد اعضای خانوار</label>
+                    <input type="number" id="familyCount" name="familyCount" min="1" max="20" required>
+                    <small>شامل خود سرپرست و افراد تحت تکفل</small>
+                </div>
+
+                <div class="form-group">
+                    <label>وضعیت مالکیت فعلی</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="ownershipStatus" value="renter" required> مستأجر
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="ownershipStatus" value="loan"> ساکن منزل وام‌دار
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="ownershipStatus" value="personal"> ساکن منزل شخصی
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <textarea id="additionalNotes" name="additionalNotes" rows="3" placeholder="در صورت داشتن هرگونه سهمیه (ایثارگری، مددجویی و...) بنویسید."></textarea>
+                </div>
+
+                <button type="submit" class="btn-next">مرحله بعد</button>
+            </form>
+        </main>
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="app.js"></script>
+</body>
+</html>

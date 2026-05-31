@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>کارت سوخت</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>کارت سوخت</h1>
+        </header>
+        <main>
+            <form id="fuelCardForm" class="form-card">
+                <div class="form-group">
+                    <label for="ownerPhone">شماره تلفن همراه</label>
+                    <input type="tel" id="ownerPhone" name="ownerPhone" placeholder="09xx-xxx-xxxx" required>
+                    <small><span class="warning-text">حتماً به نام مالک خودرو باشد.</span> <span class="success-text">لطفاً برای دریافت پیامک دسترس باشید.</span></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="ownerNationalId">کد ملی مالک خودرو</label>
+                    <input type="text" id="ownerNationalId" name="ownerNationalId" maxlength="10" required>
+                    <small>شماره ۱۰ رقمی صحیح وارد شود.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>شماره پلاک خودرو</label>
+                    <div class="date-fields">
+                        <input type="text" id="plateLetters" name="plateLetters" placeholder="الف ب" maxlength="3" required>
+                        <input type="text" id="plateNumbers" name="plateNumbers" placeholder="۱۲۳۴۵" maxlength="5" required>
+                    </div>
+                    <small>دو حرف سمت راست پلاک را به حروف فارسی وارد کنید.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="vin">شماره VIN یا شماره شاسی</label>
+                    <input type="text" id="vin" name="vin" maxlength="17" placeholder="۱۷ رقمی" required>
+                    <small>این شماره روی کارت خودرو یا زیر شیشه جلو درج شده است.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>نوع درخواست</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="requestType" value="new" checked> صدور کارت جدید (خودرو نو)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="requestType" value="duplicate"> المثنی (گم شدگی / خرابی)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <textarea id="additionalNotes" name="additionalNotes" rows="3" placeholder="توضیحات خود را اینجا بنویسید..."></textarea>
+                </div>
+
+                <button type="submit" class="btn-next">مرحله بعد</button>
+            </form>
+        </main>
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('fuelCardForm');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const data = Object.fromEntries(new FormData(form));
+                    localStorage.setItem('registrationData', JSON.stringify(data));
+                    window.location.href = 'review.html';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

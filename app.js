@@ -11,29 +11,130 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(() => {});
 
-    const form = document.getElementById('registrationForm');
-    if (form) {
-        form.addEventListener('submit', e => {
+    const SERVICE_CONFIGS = {
+        schools: {
+            title: 'پیش ثبت نام مدارس',
+            cost: '۵۰,۰۰۰ تومان',
+            fields: ['parentPhone', 'parentNationalId', 'birthYear', 'birthMonth', 'birthDay',
+                     'postalCode', 'studentNationalId', 'additionalNotes'],
+            transform: (data) => ({
+                parentPhone: data.parentPhone,
+                parentNationalId: data.parentNationalId,
+                birthYear: data.birthYear,
+                birthMonth: data.birthMonth,
+                birthDay: data.birthDay,
+                postalCode: data.postalCode,
+                studentNationalId: data.studentNationalId,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        fuel: {
+            title: 'کارت سوخت',
+            cost: '۱۵۰,۰۰۰ تومان',
+            fields: ['ownerPhone', 'ownerNationalId', 'plateLetters', 'plateNumbersFirst',
+                     'plateNumbersSecond', 'vin', 'requestType', 'additionalNotes'],
+            transform: (data) => {
+                const plateFull = [data.plateLetters, data.plateNumbersFirst, data.plateNumbersSecond].filter(Boolean).join(' - ');
+                const requestTypeLabels = { new: 'صدور کارت جدید', duplicate: 'المثنی (گم شدگی/خرابی)' };
+                return {
+                    ownerPhone: data.ownerPhone,
+                    ownerNationalId: data.ownerNationalId,
+                    plate: plateFull,
+                    vin: data.vin,
+                    requestType: requestTypeLabels[data.requestType] || data.requestType,
+                    additionalNotes: data.additionalNotes,
+                };
+            }
+        },
+        marriage: {
+            title: 'وام ازدواج',
+            cost: '۲۵۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay',
+                     'marriageYear', 'marriageMonth', 'marriageDay', 'idNumber', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                marriageDate: [data.marriageYear, data.marriageMonth, data.marriageDay].filter(Boolean).join('/'),
+                idNumber: data.idNumber,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        konkor: {
+            title: 'ثبت‌نام کنکور سراسری',
+            cost: '۲۰۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay',
+                     'regionCode', 'educationLevel', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                regionCode: data.regionCode,
+                educationLevel: data.educationLevel,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        subsidy: {
+            title: 'ثبت‌نام یارانه معیشتی',
+            cost: '۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'postalCode', 'familyCount', 'iban', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                postalCode: data.postalCode,
+                familyCount: data.familyCount,
+                iban: data.iban,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        rental: {
+            title: 'ثبت‌نام ودیعه مسکن اجاره',
+            cost: '۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'postalCode', 'contractNumber', 'iban', 'depositAmount', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                postalCode: data.postalCode,
+                contractNumber: data.contractNumber,
+                iban: data.iban,
+                depositAmount: data.depositAmount,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        housing: {
+            title: 'ثبت‌نام نهضت ملی مسکن',
+            cost: '۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'postalCode', 'familyCount', 'ownershipStatus', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                postalCode: data.postalCode,
+                familyCount: data.familyCount,
+                ownershipStatus: data.ownershipStatus === 'renter' ? 'مستأجر' : data.ownershipStatus === 'loan' ? 'ساکن منزل وام‌دار' : data.ownershipStatus === 'personal' ? 'ساکن منزل شخصی' : data.ownershipStatus,
+                additionalNotes: data.additionalNotes,
+            })
+        }
+    };
+
+    function setupServiceForm(formElement, serviceKey) {
+        const config = SERVICE_CONFIGS[serviceKey];
+        if (!config) return;
+        formElement.addEventListener('submit', e => {
             e.preventDefault();
-            const data = Object.fromEntries(new FormData(form));
-            localStorage.setItem('registrationData', JSON.stringify(data));
+            const raw = Object.fromEntries(new FormData(formElement));
+            localStorage.setItem('registrationData', JSON.stringify(raw));
+            const body = {
+                title: config.title,
+                cost: config.cost,
+                ...config.transform(raw),
+                status: 'pending',
+                username: currentUserData ? currentUserData.username : null
+            };
             fetch('/api/order', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    title: 'پیش ثبت نام مدارس',
-                    cost: '۵۰,۰۰۰ تومان',
-                    parentPhone: data.parentPhone,
-                    parentNationalId: data.parentNationalId,
-                    birthYear: data.birthYear,
-                    birthMonth: data.birthMonth,
-                    birthDay: data.birthDay,
-                    postalCode: data.postalCode,
-                    studentNationalId: data.studentNationalId,
-                    additionalNotes: data.additionalNotes,
-                    status: 'pending',
-                    username: currentUserData ? currentUserData.username : null
-                })
+                body: JSON.stringify(body)
             })
             .then(r => r.json())
             .then(result => {
@@ -45,6 +146,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    document.querySelectorAll('#registrationForm, #fuelCardForm, #marriageLoanForm, #serviceForm').forEach(form => {
+        const key = form.id === 'registrationForm' ? 'schools'
+                  : form.id === 'fuelCardForm' ? 'fuel'
+                  : form.id === 'marriageLoanForm' ? 'marriage'
+                  : form.dataset.service;
+        if (key) setupServiceForm(form, key);
+    });
 
     const authForm = document.getElementById('authForm');
     if (authForm) {

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت‌نام یارانه معیشتی</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>ثبت‌نام یارانه معیشتی</h1>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="subsidy">
+                <div class="form-group">
+                    <label for="applicantPhone">شماره تلفن همراه</label>
+                    <input type="tel" id="applicantPhone" name="applicantPhone" placeholder="09xx-xxx-xxxx" required>
+                    <small><span class="warning-text">حتماً به نام سرپرست خانوار باشد.</span></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="applicantNationalId">کد ملی سرپرست خانوار</label>
+                    <input type="text" id="applicantNationalId" name="applicantNationalId" maxlength="10" required>
+                    <small>کد ملی ۱۰ رقمی</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="postalCode">کد پستی ۱۰ رقمی</label>
+                    <input type="text" id="postalCode" name="postalCode" maxlength="10" required>
+                    <small>کد پستی محل سکونت فعلی</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="familyCount">تعداد اعضای خانوار</label>
+                    <input type="number" id="familyCount" name="familyCount" min="1" max="20" required>
+                    <small>شامل خود سرپرست</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="iban">شماره حساب شبا (IBAN)</label>
+                    <input type="text" id="iban" name="iban" placeholder="IRxxxxxxxxxxxxxxxxxxxxxxxxxx" maxlength="26" required>
+                    <small>۲۴ رقم، با IR شروع می‌شود — برای واریز یارانه استفاده می‌شود.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <textarea id="additionalNotes" name="additionalNotes" rows="3" placeholder="مثل: فوت، تولد، ازدواج و..."></textarea>
+                </div>
+
+                <button type="submit" class="btn-next">مرحله بعد</button>
+            </form>
+        </main>
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="app.js"></script>
+</body>
+</html>

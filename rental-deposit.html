@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت‌نام ودیعه مسکن اجاره</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>ثبت‌نام ودیعه مسکن اجاره</h1>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="rental">
+                <div class="form-group">
+                    <label for="applicantPhone">شماره تلفن همراه</label>
+                    <input type="tel" id="applicantPhone" name="applicantPhone" placeholder="09xx-xxx-xxxx" required>
+                    <small><span class="warning-text">حتماً به نام مستأجر باشد.</span> <span class="success-text">برای دریافت پیامک بانک فعال باشد.</span></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="applicantNationalId">کد ملی مستأجر</label>
+                    <input type="text" id="applicantNationalId" name="applicantNationalId" maxlength="10" required>
+                    <small>سرپرست خانوار متقاضی</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="postalCode">کد پستی ۱۰ رقمی</label>
+                    <input type="text" id="postalCode" name="postalCode" maxlength="10" required>
+                    <small>کد پستی ملک مورد اجاره</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="contractNumber">شماره قرارداد اجاره</label>
+                    <input type="text" id="contractNumber" name="contractNumber" required>
+                    <small>مندرج در سربرگ قرارداد رسمی</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="iban">شماره شبا (IBAN)</label>
+                    <input type="text" id="iban" name="iban" placeholder="IRxxxxxxxxxxxxxxxxxxxxxxxxxx" maxlength="26" required>
+                    <small>برای واریز تسهیلات</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="depositAmount">مبلغ ودیعه (تومان)</label>
+                    <input type="text" id="depositAmount" name="depositAmount" placeholder="مثلاً ۵۰,۰۰۰,۰۰۰" required>
+                    <small>مبلغ مندرج در قرارداد</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <textarea id="additionalNotes" name="additionalNotes" rows="3" placeholder="تاریخ شروع و پایان اجاره را بنویسید."></textarea>
+                </div>
+
+                <button type="submit" class="btn-next">مرحله بعد</button>
+            </form>
+        </main>
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="app.js"></script>
+</body>
+</html>
