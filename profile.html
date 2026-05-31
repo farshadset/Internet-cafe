@@ -21,18 +21,21 @@
                 <div class="order-icons">
                     <div class="order-item">
                         <a href="orders-pending.html" class="order-icon">
+                            <span class="order-count" id="countPending">0</span>
                             <i class="fas fa-hourglass-half"></i>
                         </a>
                         <small>در صف انتظار</small>
                     </div>
                     <div class="order-item">
                         <a href="orders-processing.html" class="order-icon">
+                            <span class="order-count" id="countProcessing">0</span>
                             <i class="fas fa-spinner"></i>
                         </a>
                         <small>در حال انجام</small>
                     </div>
                     <div class="order-item">
                         <a href="orders-completed.html" class="order-icon">
+                            <span class="order-count" id="countCompleted">0</span>
                             <i class="fas fa-check-circle"></i>
                         </a>
                         <small>انجام شده</small>
@@ -56,5 +59,34 @@
     </div>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+            var username = userData ? userData.username : null;
+
+            function updateCounts() {
+                fetch('/api/orders/user?username=' + encodeURIComponent(username))
+                    .then(function(r) { return r.json(); })
+                    .then(function(orders) {
+                        var counts = { pending: 0, processing: 0, completed: 0 };
+                        orders.forEach(function(o) {
+                            if (o.status === 'pending') counts.pending++;
+                            else if (o.status === 'processing') counts.processing++;
+                            else if (o.status === 'completed') counts.completed++;
+                        });
+                        var elPending = document.getElementById('countPending');
+                        var elProcessing = document.getElementById('countProcessing');
+                        var elCompleted = document.getElementById('countCompleted');
+                        if (elPending) elPending.textContent = counts.pending;
+                        if (elProcessing) elProcessing.textContent = counts.processing;
+                        if (elCompleted) elCompleted.textContent = counts.completed;
+                    })
+                    .catch(function() {});
+            }
+
+            updateCounts();
+            setInterval(updateCounts, 3000);
+        });
+    </script>
 </body>
 </html>

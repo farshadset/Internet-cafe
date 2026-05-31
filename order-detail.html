@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جزئیات سفارش</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>جزئیات سفارش</h1>
+        </header>
+        <main>
+            <div class="order-detail-card" id="orderDetail">
+                <p>بارگذاری...</p>
+            </div>
+            <a href="orders-pending.html" class="btn-next" style="margin-top:1rem;display:inline-block;">بازگشت</a>
+        </main>
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var params = new URLSearchParams(window.location.search);
+            var code = params.get('code');
+            var container = document.getElementById('orderDetail');
+            if (!code) {
+                container.innerHTML = '<p style="text-align:center;color:red;">کد سفارش نامعتبر است.</p>';
+                return;
+            }
+            fetch('/api/orders')
+                .then(function(r) { return r.json(); })
+                .then(function(orders) {
+                    var order = orders.find(function(o) { return o.trackingCode === code; });
+                    if (!order) {
+                        container.innerHTML = '<p style="text-align:center;color:red;">سفارش پیدا نشد.</p>';
+                        return;
+                    }
+                    var paymentLabel = order.status === 'pending' ? 'پرداخت شده' : order.status;
+                    var paymentClass = order.status === 'pending' ? 'paid-badge' : 'order-status status-' + order.status;
+                    var birthDate = [order.birthYear, order.birthMonth, order.birthDay].filter(Boolean).join('/');
+                    container.innerHTML = '<h2 style="text-align:center;margin-bottom:1rem;">' + (order.username || 'کاربر') + '</h2>' +
+                        '<div class="detail-row"><span class="detail-label">کد سفارش:</span><span class="detail-value">' + order.trackingCode + '</span></div>' +
+                        '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + (order.parentPhone || '-') + '</span></div>' +
+                        '<div class="detail-row"><span class="detail-label">کد ملی والدین:</span><span class="detail-value">' + (order.parentNationalId || '-') + '</span></div>' +
+                        '<div class="detail-row"><span class="detail-label">تاریخ تولد:</span><span class="detail-value">' + (birthDate || '-') + '</span></div>' +
+                        '<div class="detail-row"><span class="detail-label">کد پستی:</span><span class="detail-value">' + (order.postalCode || '-') + '</span></div>' +
+                        '<div class="detail-row"><span class="detail-label">کد ملی دانش‌آموز:</span><span class="detail-value">' + (order.studentNationalId || '-') + '</span></div>' +
+                        '<div class="detail-row"><span class="detail-label">هزینه:</span><span class="detail-value cost-value">' + (order.cost || '-') + '</span></div>' +
+                        '<div class="detail-row"><span class="detail-label">وضعیت پرداخت:</span><span class="detail-value"><span class="' + paymentClass + '">' + paymentLabel + '</span></span></div>' +
+                        '<div class="detail-row"><span class="detail-label">توضیحات:</span><span class="detail-value">' + (order.additionalNotes || 'ندارد') + '</span></div>';
+                })
+                .catch(function() {
+                    container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری جزئیات.</p>';
+                });
+        });
+    </script>
+</body>
+</html>

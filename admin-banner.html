@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مدیریت بنر</title>
+    <title>مدیریت بنرها</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
 </head>
@@ -13,66 +13,175 @@
             <i class="fas fa-mug-hot"></i>
         </a>
         <header>
-            <h1>مدیریت بنر</h1>
+            <h1>مدیریت بنرها</h1>
         </header>
         <main>
-            <div class="form-card" id="bannerForm">
-                <div class="banner-preview">
-                    <p>پیش‌نمایش بنر</p>
-                    <img id="previewImg" src="https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین" alt="بنر">
-                </div>
-                <div class="form-group">
-                    <label for="bannerUpload">آپلود بنر جدید</label>
-                    <input type="file" id="bannerUpload" accept="image/*">
-                </div>
-                <button class="btn-confirm" id="saveBannerBtn">ذخیره بنر</button>
+            <div class="form-card">
+                <button class="btn-confirm" id="addBannerBtn" style="margin-bottom: 20px;">
+                    <i class="fas fa-plus"></i> افزودن بنر جدید
+                </button>
+                <div id="bannersList"></div>
                 <a href="admin.html" class="btn-next">بازگشت</a>
             </div>
         </main>
     </div>
+
+    <div class="popup-overlay" id="bannerPopup" style="display: none;">
+        <div class="popup-content">
+            <h3 id="popupTitle">افزودن بنر جدید</h3>
+            <div class="banner-preview" style="margin: 15px 0;">
+                <p>پیش‌نمایش بنر</p>
+                <img id="popupPreviewImg" src="https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین" alt="بنر" style="max-width: 100%;">
+            </div>
+            <div class="banner-info">
+                <small>ابعاد پیشنهادی: 800×200 پیکسل - حداکثر حجم: 200KB - قالب: JPG یا PNG</small>
+            </div>
+            <div class="form-group">
+                <label for="popupBannerUpload">آپلود بنر</label>
+                <input type="file" id="popupBannerUpload" accept="image/*">
+            </div>
+            <div class="form-group">
+                <label for="popupBannerLink">لینک بنر (اختیاری)</label>
+                <input type="text" id="popupBannerLink" placeholder="https://example.com">
+            </div>
+            <div class="form-actions">
+                <button class="btn-confirm" id="saveBannerPopupBtn">ذخیره</button>
+                <button class="btn-next" id="cancelBannerPopupBtn">لغو</button>
+            </div>
+        </div>
+    </div>
     <script>
+        var bannersData = [];
+        
+        function compressImage(file, maxWidth = 800, maxHeight = 200, quality = 0.7) {
+            return new Promise((resolve) => {
+                var canvas = document.createElement('canvas');
+                var ctx = canvas.getContext('2d');
+                var img = new Image();
+                img.onload = function() {
+                    var { width, height } = img;
+                    if (width > maxWidth || height > maxHeight) {
+                        var ratio = Math.min(maxWidth / width, maxHeight / height);
+                        width = Math.round(width * ratio);
+                        height = Math.round(height * ratio);
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob(resolve, 'image/jpeg', quality);
+                };
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        function loadBanners() {
+            fetch('/api/banner')
+                .then(r => r.json())
+                .then(banners => {
+                    bannersData = banners;
+                    var list = document.getElementById('bannersList');
+                    if (banners.length === 0) {
+                        list.innerHTML = '<p style="text-align: center; color: #666;">هیچ بنری ثبت نشده است</p>';
+                        return;
+                    }
+                    list.innerHTML = banners.map(function(banner) {
+                        var date = new Date(banner.date).toLocaleDateString('fa-IR');
+                        return '<div class="banner-item" data-id="' + banner.id + '" style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 8px;">' +
+                            '<img src="' + banner.src + '" style="width: 120px; height: 30px; object-fit: cover; margin-left: 10px; border-radius: 4px;">' +
+                            '<span style="flex: 1; font-size: 14px;">تاریخ: ' + date + '</span>' +
+                            '<button class="edit-banner-btn" data-id="' + banner.id + '" style="background: none; border: none; color: #667eea; margin-left: 10px; cursor: pointer;"><i class="fas fa-edit"></i></button>' +
+                            '<button class="delete-banner-btn" data-id="' + banner.id + '" style="background: none; border: none; color: #e74c3c; cursor: pointer;"><i class="fas fa-trash"></i></button>' +
+                        '</div>';
+                    }).join('');
+                    
+                    document.querySelectorAll('.edit-banner-btn').forEach(function(btn) {
+                        btn.addEventListener('click', function() {
+                            var id = this.getAttribute('data-id');
+                            var banner = bannersData.find(b => b.id == id);
+                            openEditBanner(banner.id, banner.src, banner.link);
+                        });
+                    });
+                    document.querySelectorAll('.delete-banner-btn').forEach(function(btn) {
+                        btn.addEventListener('click', function() {
+                            var id = this.getAttribute('data-id');
+                            if (confirm('آیا از حذف این بنر اطمینان دارید؟')) {
+                                fetch('/api/banner/' + id, { method: 'DELETE' })
+                                    .then(() => loadBanners());
+                            }
+                        });
+                    });
+                })
+                .catch(() => {});
+        }
+
+        var editingBannerId = null;
+
+        function openPopup() {
+            document.getElementById('bannerPopup').style.display = 'flex';
+            document.getElementById('popupTitle').textContent = 'افزودن بنر جدید';
+            document.getElementById('popupPreviewImg').src = 'https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین';
+            document.getElementById('popupBannerUpload').value = '';
+            document.getElementById('popupBannerLink').value = '';
+            editingBannerId = null;
+        }
+
+        function openEditBanner(id, src, link) {
+            document.getElementById('bannerPopup').style.display = 'flex';
+            document.getElementById('popupTitle').textContent = 'ویرایش بنر';
+            document.getElementById('popupPreviewImg').src = src;
+            document.getElementById('popupBannerUpload').value = '';
+            document.getElementById('popupBannerLink').value = link || '';
+            editingBannerId = id;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
-            // بارگذاری بنر فعلی از localStorage
-            var savedBanner = localStorage.getItem('currentBanner');
-            if (savedBanner) {
-                document.getElementById('previewImg').src = savedBanner;
-            }
-            
-            var bannerUpload = document.getElementById('bannerUpload');
-            var previewImg = document.getElementById('previewImg');
-            
-            if (bannerUpload) {
-                bannerUpload.addEventListener('change', function(e) {
-                    var file = e.target.files[0];
-                    if (file) {
+            loadBanners();
+
+            document.getElementById('addBannerBtn').addEventListener('click', openPopup);
+            document.getElementById('cancelBannerPopupBtn').addEventListener('click', function() {
+                document.getElementById('bannerPopup').style.display = 'none';
+            });
+
+            document.getElementById('popupBannerUpload').addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (file) {
+                    compressImage(file).then(blob => {
                         var reader = new FileReader();
                         reader.onload = function(event) {
-                            previewImg.src = event.target.result;
+                            document.getElementById('popupPreviewImg').src = event.target.result;
                         };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
-            
-            var saveBannerBtn = document.getElementById('saveBannerBtn');
-            if (saveBannerBtn) {
-                saveBannerBtn.addEventListener('click', function() {
-                    var bannerSrc = previewImg.src;
-                    // فقط آخرین بنر را ذخیره می‌کنیم (فضای کمتری اشغال می‌کند)
-                    localStorage.setItem('currentBanner', bannerSrc);
-                    
-                    var toast = document.createElement('div');
-                    toast.className = 'toast';
-                    toast.textContent = 'بنر با موفقیت ذخیره شد!';
-                    document.body.appendChild(toast);
-                    toast.classList.add('show');
-                    setTimeout(function() {
-                        toast.classList.remove('show');
-                        setTimeout(function() { toast.remove(); }, 300);
-                        window.location.href = 'index.html';
-                    }, 3000);
-                });
-            }
+                        reader.readAsDataURL(blob);
+                    });
+                }
+            });
+
+            document.getElementById('saveBannerPopupBtn').addEventListener('click', function() {
+                var bannerSrc = document.getElementById('popupPreviewImg').src;
+                var bannerLink = document.getElementById('popupBannerLink').value;
+                
+                if (editingBannerId) {
+                    fetch('/api/banner/' + editingBannerId, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ src: bannerSrc, link: bannerLink })
+                    }).then(() => {
+                        document.getElementById('bannerPopup').style.display = 'none';
+                        loadBanners();
+                    }).catch(err => alert('خطا: ' + err.message));
+                } else {
+                    fetch('/api/banner', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ src: bannerSrc, link: bannerLink })
+                    })
+                    .then(r => r.json())
+                    .then(() => {
+                        document.getElementById('bannerPopup').style.display = 'none';
+                        loadBanners();
+                    })
+                    .catch(err => alert('خطا در ذخیره بنر: ' + err.message));
+                }
+            });
         });
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">

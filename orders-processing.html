@@ -16,13 +16,46 @@
             <h1>سفارش‌های در حال انجام</h1>
         </header>
         <main>
-            <div class="form-card">
-                <p>سفارشی در حال انجام نیست.</p>
+            <div class="form-card" id="processingOrders">
+                <p>بارگذاری...</p>
             </div>
             <a href="profile.html" class="btn-next">بازگشت</a>
         </main>
     </div>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var container = document.getElementById('processingOrders');
+            var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+            var username = userData ? userData.username : null;
+            fetch('/api/orders/user?username=' + encodeURIComponent(username) + '&status=processing')
+                .then(function(r) { return r.json(); })
+                .then(function(orders) {
+                    container.innerHTML = '';
+                    if (orders.length === 0) {
+                        container.innerHTML = '<p style="text-align:center;color:#999;">سفارشی در حال انجام نیست.</p>';
+                        return;
+                    }
+                    orders.forEach(function(order) {
+                        var div = document.createElement('div');
+                        div.className = 'order-card';
+                        var dateStr = new Date(order.id).toLocaleDateString('fa-IR');
+                        div.innerHTML = '<div class="order-title">' + (order.username || 'کاربر') + '</div>' +
+                            '<div style="text-align:center;margin-bottom:0.25rem;">' +
+                            '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
+                            '<small style="color:#666;margin-right:0.75rem;">' + dateStr + '</small>' +
+                            '</div>' +
+                            '<div class="order-actions">' +
+                            '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">' +
+                            '<i class="fas fa-eye"></i> مشاهده جزئیات</a></div>';
+                        container.appendChild(div);
+                    });
+                })
+                .catch(function() {
+                    container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری سفارشات.</p>';
+                });
+        });
+    </script>
 </body>
 </html>

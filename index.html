@@ -8,11 +8,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var savedBanner = localStorage.getItem('currentBanner');
-            if (savedBanner) {
-                var bannerImg = document.getElementById('bannerImg');
-                if (bannerImg) bannerImg.src = savedBanner;
-            }
+            fetch('/api/banner')
+                .then(r => r.json())
+                .then(banners => {
+                    var bannerContainer = document.getElementById('bannersContainer');
+                    if (banners.length > 0) {
+                        var banner = banners[banners.length - 1];
+                        var html = '<a href="' + (banner.link || 'index.html') + '" class="banner">';
+                        html += '<img src="' + banner.src + '" alt="بنر کافینت"></a>';
+                        bannerContainer.innerHTML = html;
+                    }
+                })
+                .catch(() => {});
         });
     </script>
 </head>
@@ -25,8 +32,10 @@
             <h1>کافینت آنلاین</h1>
         </header>
         <main>
-            <div class="banner">
-                <img id="bannerImg" src="https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین" alt="بنر کافینت">
+            <div id="bannersContainer">
+                <a href="index.html" class="banner">
+                    <img src="https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین" alt="بنر کافینت">
+                </a>
             </div>
             <a href="schools.html" class="card">
                 <h2>پیش ثبت نام مدارس</h2>
@@ -36,27 +45,38 @@
     <a href="#" class="profile-icon" title="پروفایل" id="profileBtn">
         <i class="fas fa-user"></i>
     </a>
-    <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn">
-        <i class="fas fa-headset"></i>
-    </a>
+    <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn"><i class="fas fa-headset"></i></a>
     
     <div class="modal" id="supportModal">
-        <div class="modal-content">
-            <span class="close-btn" id="closeModal">&times;</span>
-            <h2>پشتیبانی</h2>
-            <div class="support-options">
-                <a href="faq.html" class="support-option" id="faqOption">
-                    <i class="fas fa-question-circle"></i>
-                    سوالات متداق
-                </a>
-                <a href="chat.html" class="support-option" id="chatOption">
-                    <i class="fas fa-comments"></i>
-                    چت با پشتیبانی
-                </a>
+    <div class="modal-content">
+        <span class="close-btn" id="closeModal">&times;</span>
+        <h2>پشتیبانی</h2>
+        <div class="support-tabs">
+            <button class="support-tab active" id="faqTab">
+                <i class="fas fa-question-circle"></i> سوالات متداول
+            </button>
+            <button class="support-tab" id="chatTab">
+                <i class="fas fa-comments"></i> چت با پشتیبانی
+            </button>
+        </div>
+        <div class="support-panel" id="faqPanel">
+            <div class="faq-list">
+                <div class="faq-item"><strong>چگونه می‌توانم ثبت نام کنم؟</strong><p>از صفحه اصلی روی گزینه «پیش ثبت نام مدارس» کلیک کنید.</p></div>
+                <div class="faq-item"><strong>هزینه ثبت نام چقدر است؟</strong><p>هزینه ثبت نام ۵۰,۰۰۰ تومان می‌باشد.</p></div>
+                <div class="faq-item"><strong>زمان تحویل چه زمانی است؟</strong><p>پس از ثبت نام، اطلاعات کامل در ۲۲ روز کاری ارسال می‌شود.</p></div>
+            </div>
+        </div>
+        <div class="support-panel" id="chatPanel" style="display:none;">
+            <div class="inline-chat">
+                <div class="chat-messages" id="inlineChatMessages"></div>
+                <div class="chat-input">
+                    <input type="text" id="inlineMessageInput" placeholder="پیام خود را اینجا بنویسید...">
+                    <button id="inlineSendBtn">ارسال</button>
+                </div>
             </div>
         </div>
     </div>
-    
+</div>
     <script src="app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </body>

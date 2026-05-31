@@ -21,12 +21,21 @@
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <h2>پرداخت با موفقیت انجام شد!</h2>
-                <p class="tracking-code">کد پیگیری: <strong id="trackingCode"></strong></p>
-                <a href="index.html" class="btn-next">بازگشت به صفحه اصلی</a>
+                <p class="tracking-code">کد سفارش: <strong id="trackingCode"></strong></p>
+                <a href="orders-pending.html" class="btn-next">پیگیری سفارش</a>
+                <a href="index.html" class="btn-next" style="background:#999;margin-top:0.5rem;">بازگشت به صفحه اصلی</a>
             </div>
         </main>
     </div>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var tc = localStorage.getItem('lastTrackingCode');
+            if (tc && document.getElementById('trackingCode')) {
+                document.getElementById('trackingCode').textContent = tc;
+            }
+        });
+    </script>
 </body>
 </html>

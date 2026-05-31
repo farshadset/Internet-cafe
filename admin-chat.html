@@ -28,38 +28,81 @@
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var messages = JSON.parse(localStorage.getItem('adminChat') || '[]');
             var chatMessages = document.getElementById('adminChatMessages');
-            messages.forEach(function(msg) {
-                var div = document.createElement('div');
-                div.className = 'message ' + (msg.role === 'admin' ? 'user' : 'support');
-                div.textContent = (msg.role === 'admin' ? 'شما: ' : 'مشتری: ') + msg.text;
-                chatMessages.appendChild(div);
-            });
-            
-            if (messages.length === 0) {
-                var welcomeDiv = document.createElement('div');
-                welcomeDiv.className = 'message support';
-                welcomeDiv.textContent = 'مشتری: سوالی دارید؟';
-                chatMessages.appendChild(welcomeDiv);
-                messages.push({role: 'customer', text: 'سوالی دارید؟'});
-                localStorage.setItem('adminChat', JSON.stringify(messages));
-            }
-            
             var adminMessageInput = document.getElementById('adminMessageInput');
             var adminSendBtn = document.getElementById('adminSendBtn');
+            
+            var lastTimestamp = null;
+            var pollingInterval = null;
+            
+            function loadMessages() {
+                fetch('/api/admin/chat')
+                    .then(function(r) { return r.json(); })
+                    .then(function(messages) {
+                        var hadMessages = messages.length > 0;
+                        chatMessages.innerHTML = '';
+                        
+                        if (!hadMessages) {
+                            var welcomeDiv = document.createElement('div');
+                            welcomeDiv.className = 'message support';
+                            welcomeDiv.textContent = 'مشتری: سوالی دارید؟';
+                            chatMessages.appendChild(welcomeDiv);
+                        } else {
+                            messages.forEach(function(msg) {
+                                var div = document.createElement('div');
+                                div.className = 'message ' + (msg.role === 'admin' ? 'user' : 'support');
+                                if (msg.role === 'admin') {
+                                    div.textContent = 'شما: ' + msg.text;
+                                    div.setAttribute('data-role', 'admin');
+                                } else {
+                                    div.setAttribute('data-role', 'customer');
+                                    var usernameSpan = document.createElement('span');
+                                    usernameSpan.className = 'customer-username';
+                                    usernameSpan.textContent = msg.username + ': ';
+                                    div.appendChild(usernameSpan);
+                                    var textNode = document.createTextNode(msg.text);
+                                    div.appendChild(textNode);
+                                }
+                                chatMessages.appendChild(div);
+                                if (msg.timestamp && (!lastTimestamp || msg.timestamp > lastTimestamp)) {
+                                    lastTimestamp = msg.timestamp;
+                                }
+                            });
+                        }
+                        if (chatMessages.scrollHeight > chatMessages.parentElement.clientHeight) {
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                    })
+                    .catch(function() {});
+            }
             
             adminSendBtn.addEventListener('click', function() {
                 var text = adminMessageInput.value.trim();
                 if (text) {
-                    var div = document.createElement('div');
-                    div.className = 'message user';
-                    div.textContent = 'شما: ' + text;
-                    chatMessages.appendChild(div);
-                    messages.push({role: 'admin', text: text, date: new Date().toISOString()});
-                    localStorage.setItem('adminChat', JSON.stringify(messages));
-                    adminMessageInput.value = '';
+                    fetch('/api/admin/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: text })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(msg) {
+                        var div = document.createElement('div');
+                        div.className = 'message user';
+                        div.textContent = 'شما: ' + msg.text;
+                        div.setAttribute('data-role', 'admin');
+                        chatMessages.appendChild(div);
+                        adminMessageInput.value = '';
+                        lastTimestamp = msg.timestamp;
+                    })
+                    .catch(function() {});
                 }
+            });
+            
+            loadMessages();
+            pollingInterval = setInterval(loadMessages, 2000);
+            
+            window.addEventListener('beforeunload', function() {
+                if (pollingInterval) clearInterval(pollingInterval);
             });
         });
     </script>

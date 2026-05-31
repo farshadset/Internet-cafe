@@ -1,10 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const currentUserData = JSON.parse(localStorage.getItem('userData') || 'null');
+
     // بارگذاری بنر از دیتابیس
-    fetch('/api/banners')
+    fetch('/api/banner')
         .then(r => r.json())
         .then(banners => {
             if (banners.length > 0 && document.getElementById('bannerImg')) {
-                document.getElementById('bannerImg').src = banners[banners.length - 1].src;
+                document.getElementById('bannerImg').src = banners[0].src;
             }
         })
         .catch(() => {});
@@ -19,12 +21,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
+                    title: 'پیش ثبت نام مدارس',
+                    cost: '۵۰,۰۰۰ تومان',
                     parentPhone: data.parentPhone,
+                    parentNationalId: data.parentNationalId,
+                    birthYear: data.birthYear,
+                    birthMonth: data.birthMonth,
+                    birthDay: data.birthDay,
+                    postalCode: data.postalCode,
                     studentNationalId: data.studentNationalId,
-                    status: 'pending'
+                    additionalNotes: data.additionalNotes,
+                    status: 'pending',
+                    username: currentUserData ? currentUserData.username : null
                 })
-            }).catch(() => {});
-            window.location.href = 'review.html';
+            })
+            .then(r => r.json())
+            .then(result => {
+                localStorage.setItem('lastTrackingCode', result.trackingCode);
+                window.location.href = 'review.html';
+            })
+            .catch(() => {
+                window.location.href = 'review.html';
+            });
         });
     }
 
@@ -83,7 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert('نام کاربری یا رمز عبور اشتباه است!');
                 }
             });
+
         });
+
     }
 
     // Eye icons
@@ -128,6 +148,155 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
+    if (confirmPaymentBtn) {
+        confirmPaymentBtn.addEventListener('click', function() {
+            const trackingCode = localStorage.getItem('lastTrackingCode');
+            if (!trackingCode) {
+                alert('کد سفارش پیدا نشد. لطفاً دوباره ثبت نام کنید.');
+                window.location.href = 'index.html';
+                return;
+            }
+            confirmPaymentBtn.disabled = true;
+            confirmPaymentBtn.textContent = 'در حال پردازش...';
+            fetch('/api/order/confirm', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ trackingCode })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = 'success.html';
+                }
+            })
+            .catch(() => {
+                alert('خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.');
+                confirmPaymentBtn.disabled = false;
+                confirmPaymentBtn.textContent = 'تایید و پرداخت';
+            });
+        });
+    }
+
+    const supportBtn = document.getElementById('supportBtn');
+    const supportModal = document.getElementById('supportModal');
+    const faqTab = document.getElementById('faqTab');
+    const chatTab = document.getElementById('chatTab');
+    const faqPanel = document.getElementById('faqPanel');
+    const chatPanel = document.getElementById('chatPanel');
+    const inlineChatMessages = document.getElementById('inlineChatMessages');
+    const inlineMessageInput = document.getElementById('inlineMessageInput');
+    const inlineSendBtn = document.getElementById('inlineSendBtn');
+    let inlinePolling = null;
+
+    function switchTab(tab) {
+        if (tab === 'faq') {
+            faqTab.classList.add('active');
+            chatTab.classList.remove('active');
+            faqPanel.style.display = '';
+            chatPanel.style.display = 'none';
+        } else {
+            chatTab.classList.add('active');
+            faqTab.classList.remove('active');
+            chatPanel.style.display = '';
+            faqPanel.style.display = 'none';
+            loadInlineMessages();
+        }
+    }
+
+    function loadInlineMessages() {
+        if (!inlineChatMessages) return;
+        const userData = JSON.parse(localStorage.getItem('userData') || 'null');
+        const username = userData ? userData.username : 'مهمان';
+        fetch('/api/chat?username=' + encodeURIComponent(username))
+            .then(function(r) { return r.json(); })
+            .then(function(messages) {
+                inlineChatMessages.innerHTML = '';
+                messages.forEach(function(msg) {
+                    var div = document.createElement('div');
+                    div.className = 'message ' + (msg.role === 'admin' ? 'support' : 'user');
+                    var sender = msg.role === 'admin' ? 'پشتیبانی' : msg.username;
+                    div.textContent = sender + ': ' + msg.text;
+                    inlineChatMessages.appendChild(div);
+                });
+                inlineChatMessages.scrollTop = inlineChatMessages.scrollHeight;
+            })
+            .catch(function() {});
+    }
+
+    function sendInlineMessage() {
+        if (!inlineMessageInput) return;
+        var text = inlineMessageInput.value.trim();
+        if (!text) return;
+        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+        var username = userData ? userData.username : 'مهمان';
+        fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, text: text })
+        }).then(function(r) { return r.json(); })
+          .then(function() {
+              inlineMessageInput.value = '';
+              loadInlineMessages();
+          })
+          .catch(function() {});
+    }
+
+    if (supportBtn && supportModal) {
+        supportBtn.addEventListener('click', e => {
+            e.preventDefault();
+            supportModal.classList.add('active');
+            switchTab('faq');
+        });
+
+        if (faqTab && chatTab) {
+            faqTab.addEventListener('click', function() { switchTab('faq'); });
+            chatTab.addEventListener('click', function() { switchTab('chat'); });
+        }
+
+        if (inlineSendBtn) {
+            inlineSendBtn.addEventListener('click', sendInlineMessage);
+        }
+        if (inlineMessageInput) {
+            inlineMessageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') sendInlineMessage();
+            });
+        }
+
+        const closeBtn = supportModal.querySelector('.close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                supportModal.classList.remove('active');
+                if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
+            });
+        }
+
+        supportModal.addEventListener('click', e => {
+            if (e.target === supportModal) {
+                supportModal.classList.remove('active');
+                if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
+            }
+        });
+
+        supportModal.addEventListener('transitionend', function() {
+            if (!supportModal.classList.contains('active')) {
+                if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
+            } else {
+                if (chatPanel && chatPanel.style.display !== 'none' && !inlinePolling) {
+                    inlinePolling = setInterval(loadInlineMessages, 2000);
+                }
+            }
+        });
+
+        if (chatPanel && !inlinePolling) {
+            chatPanel.addEventListener('transitionend', function() {
+                if (chatPanel.style.display !== 'none' && !inlinePolling) {
+                    inlinePolling = setInterval(loadInlineMessages, 2000);
+                }
+            });
+        }
+    }
+
     const profileBtn = document.getElementById('profileBtn');
     if (profileBtn) {
         profileBtn.addEventListener('click', e => {
@@ -142,15 +311,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewImg = document.getElementById('previewImg');
     const saveBannerBtn = document.getElementById('saveBannerBtn');
 
+    function compressImage(file, maxWidth = 800, maxHeight = 200, quality = 0.7) {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                }
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob(resolve, 'image/jpeg', quality);
+            };
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
     if (bannerUpload && previewImg) {
         bannerUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    previewImg.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
+                compressImage(file).then(blob => {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        previewImg.src = event.target.result;
+                    };
+                    reader.readAsDataURL(blob);
+                });
             }
         });
     }
@@ -158,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saveBannerBtn && previewImg) {
         saveBannerBtn.addEventListener('click', function() {
             const bannerSrc = previewImg.src;
-            fetch('/api/banners', {
+            fetch('/api/banner', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ src: bannerSrc })
@@ -184,49 +376,5 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-
-    // Chat handlers
-    const sendBtn = document.getElementById('sendBtn');
-    const messageInput = document.getElementById('messageInput');
-    const chatMessages = document.getElementById('chatMessages');
-    
-    if (sendBtn && messageInput && chatMessages) {
-        sendBtn.addEventListener('click', () => {
-            const text = messageInput.value.trim();
-            if (text) {
-                const div = document.createElement('div');
-                div.className = 'message user';
-                div.textContent = 'شما: ' + text;
-                chatMessages.appendChild(div);
-                fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ role: 'user', text })
-                }).catch(() => {});
-                messageInput.value = '';
-            }
-        });
-    }
-
-    const adminSendBtn = document.getElementById('adminSendBtn');
-    const adminMessageInput = document.getElementById('adminMessageInput');
-    const adminChatMessages = document.getElementById('adminChatMessages');
-    
-    if (adminSendBtn && adminMessageInput && adminChatMessages) {
-        adminSendBtn.addEventListener('click', () => {
-            const text = adminMessageInput.value.trim();
-            if (text) {
-                const div = document.createElement('div');
-                div.className = 'message user';
-                div.textContent = 'شما: ' + text;
-                adminChatMessages.appendChild(div);
-                fetch('/api/admin/chat', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ text })
-                }).catch(() => {});
-                adminMessageInput.value = '';
-            }
-        });
-    }
 });
+

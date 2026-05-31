@@ -16,6 +16,11 @@
             <h1>لیست سفارش‌ها</h1>
         </header>
         <main>
+            <div class="status-btns" style="justify-content:center;margin-bottom:1rem;" id="adminFilterTabs">
+                <button class="status-btn status-btn-pending active" data-filter="pending" title="در صف انتظار"><i class="fas fa-clock"></i></button>
+                <button class="status-btn status-btn-processing" data-filter="processing" title="در حال انجام"><i class="fas fa-spinner"></i></button>
+                <button class="status-btn status-btn-completed" data-filter="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>
+            </div>
             <div class="form-card" id="adminOrdersList">
                 <p>بارگذاری...</p>
             </div>
@@ -24,5 +29,93 @@
     </div>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var container = document.getElementById('adminOrdersList');
+            var filterBtns = document.querySelectorAll('#adminFilterTabs .status-btn');
+            var allOrders = [];
+            var currentFilter = 'pending';
+
+            function renderOrders(orders) {
+                container.innerHTML = '';
+                var filtered = orders.filter(function(o) { return o.status === currentFilter; });
+                if (filtered.length === 0) {
+                    container.innerHTML = '<p style="text-align:center;color:#999;">سفارشی یافت نشد.</p>';
+                    return;
+                }
+                filtered.forEach(function(order) {
+                    var div = document.createElement('div');
+                    div.className = 'order-card';
+                    var dateStr = new Date(order.id).toLocaleDateString('fa-IR');
+                    var statusLabel = order.status === 'pending' ? 'در صف انتظار' : (order.status === 'processing' ? 'در حال انجام' : 'انجام شده');
+                    div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
+                        '<div class="order-title">' + (order.username || 'کاربر') + '</div>' +
+                        '<small style="color:#666;">' + dateStr + '</small>' +
+                        '</div>' +
+                        '<div style="text-align:center;margin-bottom:0.25rem;">' +
+                        '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
+                        '</div>' +
+                        '<div style="text-align:center;margin-bottom:0.75rem;">' +
+                        '<span class="order-status status-' + order.status + '">' + statusLabel + '</span>' +
+                        '</div>' +
+                        '<div class="status-btns" title="تغییر وضعیت سفارش">' +
+                        '<button class="status-btn status-btn-pending' + (order.status === 'pending' ? ' active' : '') + '" data-code="' + order.trackingCode + '" data-status="pending" title="در صف انتظار"><i class="fas fa-clock"></i></button>' +
+                        '<button class="status-btn status-btn-processing' + (order.status === 'processing' ? ' active' : '') + '" data-code="' + order.trackingCode + '" data-status="processing" title="در حال انجام"><i class="fas fa-spinner"></i></button>' +
+                        '<button class="status-btn status-btn-completed' + (order.status === 'completed' ? ' active' : '') + '" data-code="' + order.trackingCode + '" data-status="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>' +
+                        '</div>';
+                    container.appendChild(div);
+                });
+
+                document.querySelectorAll('.status-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var code = this.getAttribute('data-code');
+                        var status = this.getAttribute('data-status');
+                        var card = this.closest('.order-card');
+                        fetch('/api/order/status', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ trackingCode: code, status: status })
+                        })
+                        .then(function(r) { return r.json(); })
+                        .then(function(res) {
+                            if (res.success) {
+                                card.querySelectorAll('.status-btn').forEach(function(b) { b.classList.remove('active'); });
+                                this.classList.add('active');
+                                var badge = card.querySelector('.order-status');
+                                var labels = { pending: 'در صف انتظار', processing: 'در حال انجام', completed: 'انجام شده' };
+                                badge.className = 'order-status status-' + status;
+                                badge.textContent = labels[status];
+                                allOrders.forEach(function(o) {
+                                    if (o.trackingCode === code) o.status = status;
+                                });
+                            }
+                        }.bind(this))
+                        .catch(function() {
+                            alert('خطا در تغییر وضعیت.');
+                        });
+                    });
+                });
+            }
+
+            fetch('/api/orders')
+                .then(function(r) { return r.json(); })
+                .then(function(orders) {
+                    allOrders = orders;
+                    renderOrders(allOrders);
+                })
+                .catch(function() {
+                    container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری سفارشات.</p>';
+                });
+
+            filterBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    filterBtns.forEach(function(b) { b.classList.remove('active'); });
+                    this.classList.add('active');
+                    currentFilter = this.getAttribute('data-filter');
+                    renderOrders(allOrders);
+                });
+            });
+        });
+    </script>
 </body>
 </html>
