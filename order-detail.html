@@ -41,19 +41,47 @@
                         container.innerHTML = '<p style="text-align:center;color:red;">سفارش پیدا نشد.</p>';
                         return;
                     }
+                    
+                    var serviceTitle = order.title || '-';
+                    if (!order.title) {
+                        var isFuelCard = order.ownerPhone || order.ownerNationalId || order.vin;
+                        var isMarriageLoan = order.applicantPhone || order.applicantNationalId || order.idNumber;
+                        var isKonkor = order.regionCode || order.educationLevel || order.applicantNationalId;
+                        var isRental = order.contractNumber || order.depositAmount || order.iban;
+                        var isHousing = order.ownershipStatus || order.familyCount;
+                        var isIeltsToefl = order.passportNumber || order.examType;
+                        var isInternet = order.address || order.operator;
+                        var isCriminalRecord = order.birthplace;
+                        var isSmartCard = order.serialNumber;
+                        var isHealthInsurance = order.familyMembers;
+                        
+                        if (isFuelCard) serviceTitle = 'کارت سوخت';
+                        else if (isMarriageLoan) serviceTitle = 'وام ازدواج';
+                        else if (isKonkor) serviceTitle = 'کنکور سراسری';
+                        else if (isRental) serviceTitle = 'ودیعه مسکن اجاره';
+                        else if (isHousing) serviceTitle = 'نهضت ملی مسکن';
+                        else if (isIeltsToefl) serviceTitle = 'ثبت‌نام تافل و آیلتس';
+                        else if (isInternet) serviceTitle = 'ثبت‌نام اینترنت پرسرعت';
+                        else if (isCriminalRecord) serviceTitle = 'گواهی عدم سوء پیشینه';
+                        else if (isSmartCard) serviceTitle = 'کارت ملی هوشمند';
+                        else if (isHealthInsurance) serviceTitle = 'بیمه سلامت';
+                        else serviceTitle = 'پیش ثبت نام مدارس';
+                    }
+                    
                     var paymentLabel = order.status === 'pending' ? 'پرداخت شده' : order.status;
                     var paymentClass = order.status === 'pending' ? 'paid-badge' : 'order-status status-' + order.status;
                     var birthDate = [order.birthYear, order.birthMonth, order.birthDay].filter(Boolean).join('/');
-                    container.innerHTML = '<h2 style="text-align:center;margin-bottom:1rem;">' + (order.username || 'کاربر') + '</h2>' +
-                        '<div class="detail-row"><span class="detail-label">کد سفارش:</span><span class="detail-value">' + order.trackingCode + '</span></div>' +
-                        '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + (order.parentPhone || '-') + '</span></div>' +
-                        '<div class="detail-row"><span class="detail-label">کد ملی والدین:</span><span class="detail-value">' + (order.parentNationalId || '-') + '</span></div>' +
-                        '<div class="detail-row"><span class="detail-label">تاریخ تولد:</span><span class="detail-value">' + (birthDate || '-') + '</span></div>' +
-                        '<div class="detail-row"><span class="detail-label">کد پستی:</span><span class="detail-value">' + (order.postalCode || '-') + '</span></div>' +
-                        '<div class="detail-row"><span class="detail-label">کد ملی دانش‌آموز:</span><span class="detail-value">' + (order.studentNationalId || '-') + '</span></div>' +
-                        '<div class="detail-row"><span class="detail-label">هزینه:</span><span class="detail-value cost-value">' + (order.cost || '-') + '</span></div>' +
-                        '<div class="detail-row"><span class="detail-label">وضعیت پرداخت:</span><span class="detail-value"><span class="' + paymentClass + '">' + paymentLabel + '</span></span></div>' +
-                        '<div class="detail-row"><span class="detail-label">توضیحات:</span><span class="detail-value">' + (order.additionalNotes || 'ندارد') + '</span></div>';
+container.innerHTML = '<h2 style="text-align:center;margin-bottom:1rem;">' + (order.username || 'کاربر') + '</h2>' +
+                         '<div class="detail-row"><span class="detail-label">نوع سرویس:</span><span class="detail-value">' + serviceTitle + '</span></div>' +
+                         '<div class="detail-row"><span class="detail-label">کد سفارش:</span><span class="detail-value">' + order.trackingCode + '</span></div>' +
+                         '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + (order.parentPhone || order.applicantPhone || '-') + '</span></div>' +
+                         '<div class="detail-row"><span class="detail-label">کد ملی والدین:</span><span class="detail-value">' + (order.parentNationalId || order.applicantNationalId || '-') + '</span></div>' +
+                         '<div class="detail-row"><span class="detail-label">تاریخ تولد:</span><span class="detail-value">' + (birthDate || '-') + '</span></div>' +
+                         '<div class="detail-row"><span class="detail-label">کد پستی:</span><span class="detail-value">' + (order.postalCode || '-') + '</span></div>' +
+                         '<div class="detail-row"><span class="detail-label">کد ملی دانش‌آموز:</span><span class="detail-value">' + (order.studentNationalId || '-') + '</span></div>' +
+                         '<div class="detail-row"><span class="detail-label">هزینه:</span><span class="detail-value cost-value">' + (order.cost || '-') + '</span></div>' +
+                         '<div class="detail-row"><span class="detail-label">وضعیت پرداخت:</span><span class="detail-value"><span class="' + paymentClass + '">' + paymentLabel + '</span></span></div>' +
+                         '<div class="detail-row"><span class="detail-label">توضیحات:</span><span class="detail-value">' + (order.additionalNotes || 'ندارد') + '</span></div>';
                 })
                 .catch(function() {
                     container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری جزئیات.</p>';

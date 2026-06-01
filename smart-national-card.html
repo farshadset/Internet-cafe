@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت نام کارت ملی هوشمند</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>ثبت نام کارت ملی هوشمند</h1>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="smart-card">
+                <div class="form-group">
+                    <label for="applicantPhone">شماره تلفن همراه</label>
+                    <input type="tel" id="applicantPhone" name="applicantPhone" placeholder="09xx-xxx-xxxx" required>
+                    <small>به نام خود متقاضی، فعال برای دریافت پیامک.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="applicantNationalId">کد ملی متقاضی</label>
+                    <input type="text" id="applicantNationalId" name="applicantNationalId" maxlength="10" required>
+                    <small>۱۰ رقم</small>
+                </div>
+
+                <div class="form-group">
+                    <label>تاریخ تولد</label>
+                    <div class="date-fields">
+                        <input type="number" id="birthYear" name="birthYear" placeholder="سال" min="1300" max="1500" required>
+                        <input type="number" id="birthMonth" name="birthMonth" placeholder="ماه" min="1" max="12" required>
+                        <input type="number" id="birthDay" name="birthDay" placeholder="روز" min="1" max="31" required>
+                    </div>
+                    <small>دقیقاً مطابق با شناسنامه</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="serialNumber">سریال شناسنامه (۶ رقم)</label>
+                    <input type="text" id="serialNumber" name="serialNumber" maxlength="6" required>
+                    <small>شش رقم پشت جلد را ببینید.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="motherName">نام مادر (به فارسی)</label>
+                    <input type="text" id="motherName" name="motherName" required>
+                    <small>نام مادر خود را دقیقاً مطابق با شناسنامه وارد کنید.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <textarea id="additionalNotes" name="additionalNotes" rows="3" placeholder="(اختیاری) توضیحات اضافی خود را اینجا بنویسید."></textarea>
+                    <small>نکته: متقاضیان باید بالای ۱۵ سال باشند و شناسنامه معتبر عکس‌دار داشته باشند. این سرویس یک پیش‌ثبت‌نام است و پس از آن، باید برای گرفتن اثر انگشت به یکی از دفاتر ثبت‌نام مراجعه کنند.</small>
+                </div>
+
+                <button type="submit" class="btn-next">مرحبه بعد</button>
+            </form>
+        </main>
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="app.js"></script>
+</body>
+</html>

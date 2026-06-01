@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت‌نام اینترنت پرسرعت (ADSL/فیبر نوری)</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>ثبت‌نام اینترنت پرسرعت (ADSL/فیبر نوری)</h1>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="internet">
+                <div class="form-group">
+                    <label for="applicantPhone">شماره تلفن همراه</label>
+                    <input type="tel" id="applicantPhone" name="applicantPhone" placeholder="09xx-xxx-xxxx" required>
+                    <small>برای دریافت پیامک فعال باشد.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="applicantNationalId">کد ملی متقاضی</label>
+                    <input type="text" id="applicantNationalId" name="applicantNationalId" maxlength="10" required>
+                    <small>صاحب خط یا ساکن ملک</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="postalCode">کد پستی ۱۰ رقمی</label>
+                    <input type="text" id="postalCode" name="postalCode" maxlength="10" required>
+                    <small>کد پستی محل نصب</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">آدرس دقیق</label>
+                    <textarea id="address" name="address" rows="3" placeholder="استان / شهر / خیابان / پلاک" required></textarea>
+                    <small>برای بازدید و نصب توسط تکنسین</small>
+                </div>
+
+                <div class="form-group">
+                    <label>اپراتور مورد نظر</label>
+                    <div class="checkbox-group">
+                        <label><input type="radio" name="operator" value="mci" required> همراه اول</label>
+                        <label><input type="radio" name="operator" value="irancell"> ایرانسل</label>
+                        <label><input type="radio" name="operator" value="mokhbarat"> مخابرات</label>
+                        <label><input type="radio" name="operator" value="rightel"> رایتل</label>
+                    </div>
+                    <small>اپراتور دلخواه خود را انتخاب کنید.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>نوع اینترنت</label>
+                    <div class="checkbox-group">
+                        <label><input type="radio" name="internetType" value="adsl" required> ADSL</label>
+                        <label><input type="radio" name="internetType" value="vdsl"> VDSL</label>
+                        <label><input type="radio" name="internetType" value="fiber"> فیبر نوری (FTTH)</label>
+                    </div>
+                    <small>بر اساس پوشش منطقه</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <textarea id="additionalNotes" name="additionalNotes" rows="3" placeholder="سرعت مورد نظر (مثلاً ۳۰ مگابیت) را بنویسید."></textarea>
+                </div>
+
+                <button type="submit" class="btn-next">مرحه بعد</button>
+            </form>
+        </main>
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="app.js"></script>
+</body>
+</html>

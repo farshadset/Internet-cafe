@@ -39,16 +39,43 @@
                     }
                     orders.forEach(function(order) {
                         var div = document.createElement('div');
+                        var serviceTitle = order.title || '-';
+                        if (!order.title) {
+                            var isFuelCard = order.ownerPhone || order.ownerNationalId || order.vin;
+                            var isMarriageLoan = order.applicantPhone || order.applicantNationalId || order.idNumber;
+                            var isKonkor = order.regionCode || order.educationLevel || order.applicantNationalId;
+                            var isRental = order.contractNumber || order.depositAmount || order.iban;
+                            var isHousing = order.ownershipStatus || order.familyCount;
+                            var isIeltsToefl = order.passportNumber || order.examType;
+                            var isInternet = order.address || order.operator;
+                            var isCriminalRecord = order.birthplace;
+                            var isSmartCard = order.serialNumber;
+                            var isHealthInsurance = order.familyMembers;
+                            
+                            if (isFuelCard) serviceTitle = 'کارت سوخت';
+                            else if (isMarriageLoan) serviceTitle = 'وام ازدواج';
+                            else if (isKonkor) serviceTitle = 'کنکور سراسری';
+                            else if (isRental) serviceTitle = 'ودیعه مسکن اجاره';
+                            else if (isHousing) serviceTitle = 'نهضت ملی مسکن';
+                            else if (isIeltsToefl) serviceTitle = 'ثبت‌نام تافل و آیلتس';
+                            else if (isInternet) serviceTitle = 'ثبت‌نام اینترنت پرسرعت';
+                            else if (isCriminalRecord) serviceTitle = 'گواهی عدم سوء پیشینه';
+                            else if (isSmartCard) serviceTitle = 'کارت ملی هوشمند';
+                            else if (isHealthInsurance) serviceTitle = 'بیمه سلامت';
+                            else serviceTitle = 'پیش ثبت نام مدارس';
+                        }
                         div.className = 'order-card';
                         var dateStr = new Date(order.id).toLocaleDateString('fa-IR');
-                        div.innerHTML = '<div class="order-title">' + (order.username || 'کاربر') + '</div>' +
-                            '<div style="text-align:center;margin-bottom:0.25rem;">' +
-                            '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
-                            '<small style="color:#666;margin-right:0.75rem;">' + dateStr + '</small>' +
+                        div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
+                            '<div class="order-title">' + serviceTitle + '</div>' +
+                            '<small style="color:#666;">' + dateStr + '</small>' +
                             '</div>' +
+                            '<div style="margin-bottom:0.25rem;text-align:center;">' +
+                            '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
+                            '</div>' +
+                            (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + order.result + '</span></div>' : '') +
                             '<div class="order-actions">' +
-                            '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">' +
-                            '<i class="fas fa-eye"></i> مشاهده جزئیات</a></div>';
+                            '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">جزئیات سفارش</a></div>';
                         container.appendChild(div);
                     });
                 })

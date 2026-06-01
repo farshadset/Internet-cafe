@@ -114,6 +114,74 @@ document.addEventListener('DOMContentLoaded', () => {
                 ownershipStatus: data.ownershipStatus === 'renter' ? 'مستأجر' : data.ownershipStatus === 'loan' ? 'ساکن منزل وام‌دار' : data.ownershipStatus === 'personal' ? 'ساکن منزل شخصی' : data.ownershipStatus,
                 additionalNotes: data.additionalNotes,
             })
+        },
+        ieltsToefl: {
+            title: 'ثبت‌نام تافل و آیلتس',
+            cost: '۱۵۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'passportNumber', 'birthYear', 'birthMonth', 'birthDay', 'examType', 'city', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId || undefined,
+                passportNumber: data.passportNumber,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                examType: data.examType === 'toefl' ? 'تافل iBT' : data.examType === 'ielts-academic' ? 'آیلتس آکادمیک' : data.examType === 'ielts-general' ? 'آیلتس جنرال' : data.examType,
+                city: data.city,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        internet: {
+            title: 'ثبت‌نام اینترنت پرسرعت (ADSL/فیبر نوری)',
+            cost: '۱۰۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'postalCode', 'address', 'operator', 'internetType', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                postalCode: data.postalCode,
+                address: data.address,
+                operator: data.operator === 'mci' ? 'همراه اول' : data.operator === 'irancell' ? 'ایرانسل' : data.operator === 'mokhbarat' ? 'مخابرات' : data.operator === 'rightel' ? 'رایتل' : data.operator,
+                internetType: data.internetType === 'adsl' ? 'ADSL' : data.internetType === 'vdsl' ? 'VDSL' : data.internetType === 'fiber' ? 'فیبر نوری (FTTH)' : data.internetType,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        criminalRecord: {
+            title: 'صدور گواهی عدم سوء پیشینه (اینترنتی)',
+            cost: '۱۸۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'idNumber', 'birthplace', 'deliveryMethod', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                idNumber: data.idNumber,
+                birthplace: data.birthplace,
+                deliveryMethod: data.deliveryMethod === 'postal' ? 'ارسال به آدرس پستی' : data.deliveryMethod === 'inperson' ? 'تحویل حضوری در دفاتر پیشخوان' : data.deliveryMethod,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        smartCard: {
+            title: 'ثبت نام کارت ملی هوشمند',
+            cost: '۸۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'serialNumber', 'motherName', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                serialNumber: data.serialNumber,
+                motherName: data.motherName,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        healthInsurance: {
+            title: 'ثبت نام و درخواست اینترنتی بیمه سلامت',
+            cost: '۱۲۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'postalCode', 'familyMembers', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                postalCode: data.postalCode,
+                familyMembers: data.familyMembers,
+                additionalNotes: data.additionalNotes,
+            })
         }
     };
 

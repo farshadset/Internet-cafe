@@ -15,26 +15,42 @@
         <header>
             <h1>لیست سفارش‌ها</h1>
         </header>
-        <main>
-            <div class="status-btns" style="justify-content:center;margin-bottom:1rem;" id="adminFilterTabs">
-                <button class="status-btn status-btn-pending active" data-filter="pending" title="در صف انتظار"><i class="fas fa-clock"></i></button>
-                <button class="status-btn status-btn-processing" data-filter="processing" title="در حال انجام"><i class="fas fa-spinner"></i></button>
-                <button class="status-btn status-btn-completed" data-filter="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>
-            </div>
-            <div class="form-card" id="adminOrdersList">
-                <p>بارگذاری...</p>
-            </div>
-            <a href="admin.html" class="btn-next">بازگشت</a>
-        </main>
-    </div>
+<main>
+             <div class="status-btns" style="justify-content:center;margin-bottom:1rem;" id="adminFilterTabs">
+                 <button class="status-btn status-btn-pending active" data-filter="pending" title="در صف انتظار"><i class="fas fa-clock"></i></button>
+                 <button class="status-btn status-btn-processing" data-filter="processing" title="در حال انجام"><i class="fas fa-spinner"></i></button>
+                 <button class="status-btn status-btn-completed" data-filter="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>
+             </div>
+             <div class="form-card" id="adminOrdersList">
+                 <p>بارگذاری...</p>
+             </div>
+             <a href="admin.html" class="btn-next">بازگشت</a>
+         </main>
+     </div>
+
+     <div class="popup-overlay" id="resultPopup">
+         <div class="popup-content">
+             <h3>ثبت نتیجه سفارش</h3>
+             <textarea id="resultText" rows="4" placeholder="نتیجه سفارش مشتری را اینجا بنویسید..." style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:8px;font-family:inherit;"></textarea>
+             <div class="form-actions">
+                 <button class="btn-next" id="saveResultBtn">ذخیره</button>
+                 <button class="btn-next" id="closeResultPopup" style="background:#999;">انصراف</button>
+             </div>
+         </div>
+     </div>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="app.js"></script>
+<script src="app.js"></script>
     <script>
+        var currentTrackingCode = null;
         document.addEventListener('DOMContentLoaded', function() {
             var container = document.getElementById('adminOrdersList');
             var filterBtns = document.querySelectorAll('#adminFilterTabs .status-btn');
             var allOrders = [];
             var currentFilter = 'pending';
+            var resultPopup = document.getElementById('resultPopup');
+            var resultText = document.getElementById('resultText');
+            var saveResultBtn = document.getElementById('saveResultBtn');
+            var closeResultPopup = document.getElementById('closeResultPopup');
 
             function renderOrders(orders) {
                 container.innerHTML = '';
@@ -47,16 +63,17 @@
                     var div = document.createElement('div');
                     div.className = 'order-card';
                     var dateStr = new Date(order.id).toLocaleDateString('fa-IR');
-                    var statusLabel = order.status === 'pending' ? 'در صف انتظار' : (order.status === 'processing' ? 'در حال انجام' : 'انجام شده');
                     div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
-                        '<div class="order-title">' + (order.username || 'کاربر') + '</div>' +
+                        '<div class="order-title">' + (order.title || 'سرویس ناشناس') + '</div>' +
                         '<small style="color:#666;">' + dateStr + '</small>' +
                         '</div>' +
-                        '<div style="text-align:center;margin-bottom:0.25rem;">' +
+                        '<div style="margin-bottom:0.25rem;">' +
                         '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
                         '</div>' +
-                        '<div style="text-align:center;margin-bottom:0.75rem;">' +
-                        '<span class="order-status status-' + order.status + '">' + statusLabel + '</span>' +
+                        (order.result ? '<div style="margin-bottom:0.25rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + order.result + '</span></div>' : '') +
+                        '<div style="margin-bottom:0.25rem;text-align:center;">' +
+                        '<a href="order-detail.html?code=' + order.trackingCode + '" title="جزئیات سفارش" style="color:#667eea;font-size:1rem;text-decoration:none;margin-left:0.5rem;"><i class="fas fa-eye"></i></a>' +
+                        '<button class="edit-result-btn" data-code="' + order.trackingCode + '" title="ثبت نتیجه" style="color:#667eea;font-size:1rem;background:none;border:none;cursor:pointer;"><i class="fas fa-edit"></i></button>' +
                         '</div>' +
                         '<div class="status-btns" title="تغییر وضعیت سفارش">' +
                         '<button class="status-btn status-btn-pending' + (order.status === 'pending' ? ' active' : '') + '" data-code="' + order.trackingCode + '" data-status="pending" title="در صف انتظار"><i class="fas fa-clock"></i></button>' +
@@ -66,7 +83,7 @@
                     container.appendChild(div);
                 });
 
-                document.querySelectorAll('.status-btn').forEach(function(btn) {
+                document.querySelectorAll('.status-btn[data-code]').forEach(function(btn) {
                     btn.addEventListener('click', function() {
                         var code = this.getAttribute('data-code');
                         var status = this.getAttribute('data-status');
@@ -81,10 +98,6 @@
                             if (res.success) {
                                 card.querySelectorAll('.status-btn').forEach(function(b) { b.classList.remove('active'); });
                                 this.classList.add('active');
-                                var badge = card.querySelector('.order-status');
-                                var labels = { pending: 'در صف انتظار', processing: 'در حال انجام', completed: 'انجام شده' };
-                                badge.className = 'order-status status-' + status;
-                                badge.textContent = labels[status];
                                 allOrders.forEach(function(o) {
                                     if (o.trackingCode === code) o.status = status;
                                 });
@@ -95,7 +108,55 @@
                         });
                     });
                 });
+
+                document.querySelectorAll('.edit-result-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        currentTrackingCode = this.getAttribute('data-code');
+                        var order = allOrders.find(function(o) { return o.trackingCode === currentTrackingCode; });
+                        resultText.value = order && order.result ? order.result : '';
+                        resultPopup.classList.add('active');
+                    });
+                });
             }
+
+            saveResultBtn.addEventListener('click', function() {
+                var result = resultText.value.trim();
+                fetch('/api/order/result', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trackingCode: currentTrackingCode, result: result })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res.success) {
+                        resultPopup.classList.remove('active');
+                        allOrders.forEach(function(o) {
+                            if (o.trackingCode === currentTrackingCode) o.result = result || '';
+                        });
+                        renderOrders(allOrders);
+                        var toast = document.createElement('div');
+                        toast.className = 'toast';
+                        toast.textContent = 'نتیجه با موفقیت ذخیره شد!';
+                        document.body.appendChild(toast);
+                        toast.classList.add('show');
+                        setTimeout(function() {
+                            toast.classList.remove('show');
+                            setTimeout(function() { toast.remove(); }, 300);
+                        }, 3000);
+                    }
+                })
+                .catch(function() {
+                    alert('خطا در ذخیره نتیجه.');
+                });
+            });
+
+            closeResultPopup.addEventListener('click', function() {
+                resultPopup.classList.remove('active');
+            });
+
+            resultPopup.addEventListener('click', function(e) {
+                if (e.target === resultPopup) resultPopup.classList.remove('active');
+            });
 
             fetch('/api/orders')
                 .then(function(r) { return r.json(); })

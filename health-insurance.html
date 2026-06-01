@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت نام و درخواست اینترنتی بیمه سلامت</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>ثبت نام و درخواست اینترنتی بیمه سلامت</h1>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="health-insurance">
+                <div class="form-group">
+                    <label for="applicantPhone">شماره تلفن همراه</label>
+                    <input type="tel" id="applicantPhone" name="applicantPhone" placeholder="09xx-xxx-xxxx" required>
+                    <small>به نام سرپرست خانوار باشد.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="applicantNationalId">کد ملی سرپرست خانوار</label>
+                    <input type="text" id="applicantNationalId" name="applicantNationalId" maxlength="10" required>
+                    <small>۱۰ رقم</small>
+                </div>
+
+                <div class="form-group">
+                    <label>تاریخ تولد سرپرست</label>
+                    <div class="date-fields">
+                        <input type="number" id="birthYear" name="birthYear" placeholder="سال" min="1300" max="1500" required>
+                        <input type="number" id="birthMonth" name="birthMonth" placeholder="ماه" min="1" max="12" required>
+                        <input type="number" id="birthDay" name="birthDay" placeholder="روز" min="1" max="31" required>
+                    </div>
+                    <small>مطابق با شناسنامه</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="postalCode">کد پستی (۱۰ رقمی)</label>
+                    <input type="text" id="postalCode" name="postalCode" maxlength="10" required>
+                    <small>کد پستی محل سکونت</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="familyMembers">نام و کد ملی سایر اعضای خانواده</label>
+                    <textarea id="familyMembers" name="familyMembers" rows="3" placeholder="در صورت نیاز به پوشش بیمه‌ای همسر و فرزندان، نام و کد ملی آن‌ها را اینجا وارد کنید."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <textarea id="additionalNotes" name="additionalNotes" rows="3" placeholder="توضیحات خود را اینجا بنویسید. (مثلاً: درخواست بیمه رایگان برای دهک‌های ۱ تا ۳)"></textarea>
+                </div>
+
+                <button type="submit" class="btn-next">مرحبه بعد</button>
+            </form>
+        </main>
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="app.js"></script>
+</body>
+</html>

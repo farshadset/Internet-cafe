@@ -63,6 +63,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const data = JSON.parse(localStorage.getItem('registrationData') || '{}');
+            const trackingCode = localStorage.getItem('lastTrackingCode') || '-';
             if (Object.keys(data).length === 0) {
                 window.location.href = 'index.html';
                 return;
@@ -74,17 +75,22 @@
             const isKonkor = data.regionCode || data.educationLevel || data.applicantNationalId;
             const isRental = data.contractNumber || data.depositAmount || data.iban;
             const isHousing = data.ownershipStatus || data.familyCount;
+            const isIeltsToefl = data.passportNumber || data.examType;
+            const isInternet = data.address || data.operator;
+            const isCriminalRecord = data.birthplace;
+            const isSmartCard = data.serialNumber;
+            const isHealthInsurance = data.familyMembers;
 
             if (isFuelCard) {
-                reviewData.innerHTML = '<h2>اطلاعات ثبت‌نام کارت سوخت</h2>' +
+                reviewData.innerHTML = '<h2>اطلاعات ثبت‌نام کارت سوخت<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
                     '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone">' + (data.ownerPhone || '-') + '</span></div>' +
                     '<div class="info-item"><strong>کد ملی مالک:</strong> <span id="displayOwnerNationalId">' + (data.ownerNationalId || '-') + '</span></div>' +
                     '<div class="info-item"><strong>شماره پلاک:</strong> <span id="displayPlate">' + (data.plateLetters && data.plateNumbersFirst ? data.plateLetters + ' - ' + data.plateNumbersFirst + (data.plateNumbersSecond ? ' - ' + data.plateNumbersSecond : '') : '-') + '</span></div>' +
                     '<div class="info-item"><strong>شماره VIN/شاسی:</strong> <span id="displayVin">' + (data.vin || '-') + '</span></div>' +
-                    '<div class="info-item"><strong>نوع درخواست:</strong> <span id="displayRequestType">' + (data.requestType === 'duplicate' ? 'المثنی (گم شدگی/خرابی)' : data.requestType === 'new' ? 'صدور کارت جدید' : (data.requestType || '-')) + '</span></div>' +
+                    '<div class="info-item"><strong>نوع درخواست:</strong> <span id="displayRequestType">' + (data.requestType === 'duplicate' ? 'المثلی (گم شدگی/خرابی)' : data.requestType === 'new' ? 'صدور کارت جدید' : (data.requestType || '-')) + '</span></div>' +
                     '<div class="info-item"><strong>توضیحات:</strong> <span id="displayNotes">' + (data.additionalNotes || 'ندارد') + '</span></div>';
             } else if (isMarriageLoan) {
-                reviewData.innerHTML = '<h2>اطلاعات ثبت‌نام وام ازدواج</h2>' +
+                reviewData.innerHTML = '<h2>اطلاعات ثبت‌نام وام ازدواج<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
                     '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone">' + (data.applicantPhone || '-') + '</span></div>' +
                     '<div class="info-item"><strong>کد ملی:</strong> <span id="displayNationalId">' + (data.applicantNationalId || '-') + '</span></div>' +
                     '<div class="info-item"><strong>تاریخ تولد:</strong> <span id="displayBirthDate">' + (data.birthYear ? [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/') : '-') + '</span></div>' +
@@ -92,7 +98,7 @@
                     '<div class="info-item"><strong>شماره شناسنامه:</strong> <span id="displayIdNumber">' + (data.idNumber || '-') + '</span></div>' +
                     '<div class="info-item"><strong>توضیحات:</strong> <span id="displayNotes">' + (data.additionalNotes || 'ندارد') + '</span></div>';
             } else if (isKonkor) {
-                reviewData.innerHTML = '<h2>اطلاعات ثبت‌نام کنکور سراسری</h2>' +
+                reviewData.innerHTML = '<h2>اطلاعات ثبت‌نام کنکور سراسری<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
                     '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone">' + (data.applicantPhone || '-') + '</span></div>' +
                     '<div class="info-item"><strong>کد ملی:</strong> <span id="displayNationalId">' + (data.applicantNationalId || '-') + '</span></div>' +
                     '<div class="info-item"><strong>تاریخ تولد:</strong> <span id="displayBirthDate">' + (data.birthYear ? [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/') : '-') + '</span></div>' +
@@ -100,7 +106,7 @@
                     '<div class="info-item"><strong>مدرک تحصیلی:</strong> <span id="displayEducation">' + (data.educationLevel || '-') + '</span></div>' +
                     '<div class="info-item"><strong>توضیحات:</strong> <span id="displayNotes">' + (data.additionalNotes || 'ندارد') + '</span></div>';
             } else if (isRental) {
-                reviewData.innerHTML = '<h2>اطلاعات ودیعه مسکن اجاره</h2>' +
+                reviewData.innerHTML = '<h2>اطلاعات ودیعه مسکن اجاره<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
                     '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone">' + (data.applicantPhone || '-') + '</span></div>' +
                     '<div class="info-item"><strong>کد ملی:</strong> <span id="displayNationalId">' + (data.applicantNationalId || '-') + '</span></div>' +
                     '<div class="info-item"><strong>کد پستی:</strong> <span id="displayPostalCode">' + (data.postalCode || '-') + '</span></div>' +
@@ -109,7 +115,7 @@
                     '<div class="info-item"><strong>مبلغ ودیعه:</strong> <span id="displayDeposit">' + (data.depositAmount || '-') + '</span></div>' +
                     '<div class="info-item"><strong>توضیحات:</strong> <span id="displayNotes">' + (data.additionalNotes || 'ندارد') + '</span></div>';
             } else if (isHousing) {
-                reviewData.innerHTML = '<h2>اطلاعات ثبت‌نام نهضت ملی مسکن</h2>' +
+                reviewData.innerHTML = '<h2>اطلاعات ثبت‌نام نهضت ملی مسکن<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
                     '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone">' + (data.applicantPhone || '-') + '</span></div>' +
                     '<div class="info-item"><strong>کد ملی:</strong> <span id="displayNationalId">' + (data.applicantNationalId || '-') + '</span></div>' +
                     '<div class="info-item"><strong>تاریخ تولد:</strong> <span id="displayBirthDate">' + (data.birthYear ? [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/') : '-') + '</span></div>' +
@@ -117,8 +123,51 @@
                     '<div class="info-item"><strong>تعداد اعضای خانوار:</strong> <span id="displayFamilyCount">' + (data.familyCount || '-') + '</span></div>' +
                     '<div class="info-item"><strong>وضعیت مالکیت:</strong> <span id="displayOwnership">' + (data.ownershipStatus === 'renter' ? 'مستأجر' : data.ownershipStatus === 'loan' ? 'ساکن منزل وام‌دار' : data.ownershipStatus === 'personal' ? 'ساکن منزل شخصی' : (data.ownershipStatus || '-')) + '</span></div>' +
                     '<div class="info-item"><strong>توضیحات:</strong> <span id="displayNotes">' + (data.additionalNotes || 'ندارد') + '</span></div>';
+            } else if (isIeltsToefl) {
+                reviewData.innerHTML = '<h2>اطلاعات ثبت‌نام تافل و آیلتس<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
+                    '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone">' + (data.applicantPhone || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>کد ملی:</strong> <span id="displayNationalId">' + (data.applicantNationalId || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>شماره پاسپورت:</strong> <span id="displayPassport">' + (data.passportNumber || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>تاریخ تولد:</strong> <span id="displayBirthDate">' + (data.birthYear ? [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/') : '-') + '</span></div>' +
+                    '<div class="info-item"><strong>نوع آزمون:</strong> <span id="displayExamType">' + (data.examType === 'toefl' ? 'تافل iBT' : data.examType === 'ielts-academic' ? 'آیلتس آکادمیک' : data.examType === 'ielts-general' ? 'آیلتس جنرال' : (data.examType || '-')) + '</span></div>' +
+                    '<div class="info-item"><strong>شهر برگزاری:</strong> <span id="displayCity">' + (data.city || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>توضیحات:</strong> <span id="displayNotes">' + (data.additionalNotes || 'ندارد') + '</span></div>';
+            } else if (isInternet) {
+                reviewData.innerHTML = '<h2>اطلاعات ثبت‌نام اینترنت پرسرعت<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
+                    '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone">' + (data.applicantPhone || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>کد ملی:</strong> <span id="displayNationalId">' + (data.applicantNationalId || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>کد پستی:</strong> <span id="displayPostalCode">' + (data.postalCode || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>آدرس:</strong> <span id="displayAddress">' + (data.address || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>اپراتور:</strong> <span id="displayOperator">' + (data.operator === 'mci' ? 'همراه اول' : data.operator === 'irancell' ? 'ایرانسل' : data.operator === 'mokhbarat' ? 'مخابرات' : data.operator === 'rightel' ? 'رایتل' : (data.operator || '-')) + '</span></div>' +
+                    '<div class="info-item"><strong>نوع اینترنت:</strong> <span id="displayInternetType">' + (data.internetType === 'adsl' ? 'ADSL' : data.internetType === 'vdsl' ? 'VDSL' : data.internetType === 'fiber' ? 'فیبر نوری (FTTH)' : (data.internetType || '-')) + '</span></div>' +
+                    '<div class="info-item"><strong>توضیحات:</strong> <span id="displayNotes">' + (data.additionalNotes || 'ندارد') + '</span></div>';
+            } else if (isCriminalRecord) {
+                reviewData.innerHTML = '<h2>اطلاعات گواهی عدم سوء پیشینه<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
+                    '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone">' + (data.applicantPhone || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>کد ملی:</strong> <span id="displayNationalId">' + (data.applicantNationalId || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>تاریخ تولد:</strong> <span id="displayBirthDate">' + (data.birthYear ? [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/') : '-') + '</span></div>' +
+                    '<div class="info-item"><strong>شماره شناسنامه:</strong> <span id="displayIdNumber">' + (data.idNumber || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>محل صدور:</strong> <span id="displayBirthplace">' + (data.birthplace || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>نحوه دریافت:</strong> <span id="displayDelivery">' + (data.deliveryMethod === 'postal' ? 'ارسال به آدرس پستی' : data.deliveryMethod === 'inperson' ? 'تحویل حضوری' : (data.deliveryMethod || '-')) + '</span></div>' +
+                    '<div class="info-item"><strong>توضیحات:</strong> <span id="displayNotes">' + (data.additionalNotes || 'ندارد') + '</span></div>';
+            } else if (isSmartCard) {
+                reviewData.innerHTML = '<h2>اطلاعات کارت ملی هوشمند<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
+                    '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone">' + (data.applicantPhone || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>کد ملی:</strong> <span id="displayNationalId">' + (data.applicantNationalId || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>تاریخ تولد:</strong> <span id="displayBirthDate">' + (data.birthYear ? [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/') : '-') + '</span></div>' +
+                    '<div class="info-item"><strong>سریال شناسنامه:</strong> <span id="displaySerial">' + (data.serialNumber || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>نام مادر:</strong> <span id="displayMother">' + (data.motherName || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>توضیحات:</strong> <span id="displayNotes">' + (data.additionalNotes || 'ندارد') + '</span></div>';
+            } else if (isHealthInsurance) {
+                reviewData.innerHTML = '<h2>اطلاعات بیمه سلامت<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
+                    '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone">' + (data.applicantPhone || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>کد ملی سرپرست:</strong> <span id="displayNationalId">' + (data.applicantNationalId || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>تاریخ تولد:</strong> <span id="displayBirthDate">' + (data.birthYear ? [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/') : '-') + '</span></div>' +
+                    '<div class="info-item"><strong>کد پستی:</strong> <span id="displayPostalCode">' + (data.postalCode || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>اعضای خانواده:</strong> <span id="displayFamily">' + (data.familyMembers || '-') + '</span></div>' +
+                    '<div class="info-item"><strong>توضیحات:</strong> <span id="displayNotes">' + (data.additionalNotes || 'ندارد') + '</span></div>';
             } else {
-                reviewData.innerHTML = '<h2>اطلاعات وارد شده</h2>' +
+                reviewData.innerHTML = '<h2>اطلاعات وارد شده<br><strong style="font-size:0.9rem;color:#667eea;">کد سفارش: ' + trackingCode + '</strong></h2>' +
                     '<div class="info-item"><strong>شماره تلفن:</strong> <span id="displayPhone"></span></div>' +
                     '<div class="info-item"><strong>کد ملی والدین:</strong> <span id="displayParentNationalId"></span></div>' +
                     '<div class="info-item"><strong>تاریخ تولد والدین:</strong> <span id="displayBirthDate"></span></div>' +

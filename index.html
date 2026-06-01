@@ -31,6 +31,9 @@
         <header>
             <h1>کافینت آنلاین</h1>
         </header>
+        <div class="search-container" style="margin-bottom:1.5rem;">
+            <input type="text" id="searchInput" placeholder="جستجو در خدمات..." class="search-input" style="width:100%;padding:0.75rem 1rem;border:1px solid #ddd;border-radius:8px;font-size:1rem;font-family:inherit;direction:rtl;">
+        </div>
         <main>
             <div id="bannersContainer">
                 <a href="index.html" class="banner">
@@ -57,6 +60,21 @@
             </a>
             <a href="housing-movement.html" class="card">
                 <h2>ثبت‌نام نهضت ملی مسکن</h2>
+            </a>
+            <a href="ielts-toefl.html" class="card">
+                <h2>ثبت‌نام تافل و آیلتس</h2>
+            </a>
+            <a href="internet-registration.html" class="card">
+                <h2>ثبت‌نام اینترنت پرسرعت (ADSL/فیبر نوری)</h2>
+            </a>
+            <a href="criminal-record.html" class="card">
+                <h2>صدور گواهی عدم سوء پیشینه (اینترنتی)</h2>
+            </a>
+            <a href="smart-national-card.html" class="card">
+                <h2>ثبت نام کارت ملی هوشمند</h2>
+            </a>
+            <a href="health-insurance.html" class="card">
+                <h2>ثبت نام و درخواست اینترنتی بیمه سلامت</h2>
             </a>
         </main>
     </div>
@@ -96,6 +114,24 @@
     </div>
 </div>
     <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var searchInput = document.getElementById('searchInput');
+            var cards = document.querySelectorAll('.card');
+            
+            searchInput.addEventListener('input', function() {
+                var searchTerm = this.value.toLowerCase();
+                cards.forEach(function(card) {
+                    var title = card.querySelector('h2').textContent.toLowerCase();
+                    if (title.includes(searchTerm)) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </body>
 </html>

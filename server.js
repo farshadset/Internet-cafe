@@ -4,6 +4,7 @@ const app = express();
 const PORT = 3003;
 
 app.use(express.static('.'));
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -89,6 +90,23 @@ app.post('/api/order/status', (req, res) => {
     }
     order.status = status;
     order.updatedAt = new Date().toISOString();
+    writeDB(db);
+    res.json({ success: true });
+});
+
+app.post('/api/order/result', (req, res) => {
+    const { trackingCode, result } = req.body;
+    const db = readDB();
+    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    if (!order) {
+        return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    if (result && result.trim()) {
+        order.result = result.trim();
+    } else {
+        delete order.result;
+    }
+    order.resultAt = new Date().toISOString();
     writeDB(db);
     res.json({ success: true });
 });
