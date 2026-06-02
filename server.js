@@ -1,18 +1,18 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+
 const app = express();
-
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-const DB_FILE = path.join(__dirname, '..', 'database.json');
+const rootDir = path.resolve(__dirname);
+const DB_FILE = process.env.VERCEL
+    ? path.join('/tmp', 'database.json')
+    : path.join(rootDir, 'database.json');
 
 function readDB() {
     try {
         return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
     } catch {
-        return { users: [], orders: [], banner: null };
+        return { users: [], orders: [], banners: [], chat: [] };
     }
 }
 
@@ -22,6 +22,7 @@ function writeDB(data) {
 
 function ensureChat(db) {
     if (!db.chat) db.chat = [];
+    if (!db.banners) db.banners = [];
     return db;
 }
 
@@ -63,6 +64,7 @@ app.post('/api/order', (req, res) => {
         ...req.body
     };
     const db = readDB();
+    db.orders = db.orders || [];
     db.orders.push(order);
     writeDB(db);
     res.json({ success: true, trackingCode: order.trackingCode });
@@ -83,13 +85,13 @@ app.post('/api/order/confirm', (req, res) => {
 
 app.post('/api/order/status', (req, res) => {
     const { trackingCode, status } = req.body;
-    if (!['pending', 'processing', 'completed'].includes(status)) {
-        return res.status(400).json({ error: 'وضعیت نامعتبر' });
-    }
     const db = readDB();
     const order = db.orders.find(o => o.trackingCode === trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    if (!['pending', 'processing', 'completed'].includes(status)) {
+        return res.status(400).json({ error: 'وضعیت نامعتبر' });
     }
     order.status = status;
     order.updatedAt = new Date().toISOString();
@@ -122,7 +124,7 @@ app.post('/api/change-password', (req, res) => {
         return res.status(404).json({ error: 'کاربر پیدا نشد' });
     }
     if (user.password !== currentPassword) {
-        return res.status(400).json({ error: 'رمز عبور فعلی اشتباه है' });
+        return res.status(400).json({ error: 'رمز عبور فعلی اشتباه است' });
     }
     user.password = newPassword;
     writeDB(db);
@@ -132,7 +134,7 @@ app.post('/api/change-password', (req, res) => {
 app.get('/api/orders', (req, res) => {
     const db = readDB();
     const status = req.query.status;
-    let orders = db.orders;
+    let orders = db.orders || [];
     if (status) {
         orders = orders.filter(o => o.status === status);
     }
@@ -146,7 +148,7 @@ app.get('/api/orders/user', (req, res) => {
     if (!username) {
         return res.status(400).json({ error: 'نام کاربری الزامی است' });
     }
-    let userOrders = db.orders.filter(o => o.username === username);
+    let userOrders = (db.orders || []).filter(o => o.username === username);
     if (status) {
         userOrders = userOrders.filter(o => o.status === status);
     }
@@ -154,33 +156,32 @@ app.get('/api/orders/user', (req, res) => {
 });
 
 app.post('/api/banner', (req, res) => {
-    const db = readDB();
-    const newBanner = { 
-        id: Date.now(), 
-        src: req.body.src, 
+    const db = ensureChat(readDB());
+    const newBanner = {
+        id: Date.now(),
+        src: req.body.src,
         link: req.body.link || '',
-        date: new Date().toISOString() 
+        date: new Date().toISOString()
     };
-    db.banners = db.banners || [];
     db.banners.push(newBanner);
     writeDB(db);
     res.json({ success: true });
 });
 
 app.get('/api/banner', (req, res) => {
-    const db = readDB();
-    res.json(db.banners || []);
+    const db = ensureChat(readDB());
+    res.json(db.banners);
 });
 
 app.delete('/api/banner/:id', (req, res) => {
-    const db = readDB();
+    const db = ensureChat(readDB());
     db.banners = (db.banners || []).filter(b => b.id != req.params.id);
     writeDB(db);
     res.json({ success: true });
 });
 
 app.put('/api/banner/:id', (req, res) => {
-    const db = readDB();
+    const db = ensureChat(readDB());
     const banner = (db.banners || []).find(b => b.id == req.params.id);
     if (banner) {
         banner.src = req.body.src;
@@ -203,8 +204,7 @@ app.get('/api/chat', (req, res) => {
         );
         res.json(messages);
     } else {
-        const messages = db.chat.filter(m => m.role === 'customer');
-        res.json(messages);
+        res.json(db.chat.filter(m => m.role === 'customer'));
     }
 });
 
@@ -250,3 +250,10 @@ app.post('/api/admin/chat', (req, res) => {
 });
 
 module.exports = app;
+
+const PORT = process.env.PORT || 3003;
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log('Server running on http://localhost:' + PORT);
+    });
+}
