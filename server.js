@@ -351,6 +351,8 @@ app.get('/api/orders/user', async (req, res) => {
 
 // Banner routes
 app.post('/api/banner', async (req, res) => {
+    console.log('POST /api/banner body:', JSON.stringify(req.body));
+    console.log('USE_MONGODB:', USE_MONGODB, 'VERCEL:', !!process.env.VERCEL);
     const { src, link } = req.body;
     const banner = {
         id: Date.now(),
@@ -364,14 +366,21 @@ app.post('/api/banner', async (req, res) => {
             await getCollections().banners.insertOne(banner);
             res.json({ success: true });
         } catch (e) {
+            console.error('MongoDB banner insert error:', e);
             res.status(500).json({ error: 'خطا در ذخیره بنر' });
         }
     } else {
-        const db = readDB();
-        db.banners = db.banners || [];
-        db.banners.push(banner);
-        writeDB(db);
-        res.json({ success: true });
+        try {
+            const db = readDB();
+            db.banners = db.banners || [];
+            db.banners.push(banner);
+            writeDB(db);
+            console.log('Banner saved successfully, total banners:', db.banners.length);
+            res.json({ success: true });
+        } catch (e) {
+            console.error('JSON banner save error:', e);
+            res.status(500).json({ error: 'خطا در ذخیره بنر' });
+        }
     }
 });
 
