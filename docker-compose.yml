@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./database.json:/app/database.json
+      - ./cafe.db:/app/cafe.db
+    restart: unless-stopped
