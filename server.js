@@ -51,7 +51,10 @@ function getCollections() {
     };
 }
 
-const DB_PATH = path.join(rootDir, 'database.json');
+const isVercel = !!process.env.VERCEL;
+const DB_PATH = isVercel
+    ? path.join('/tmp', 'database.json')
+    : path.join(rootDir, 'database.json');
 
 function readDB() {
     try {
@@ -62,7 +65,9 @@ function readDB() {
 }
 
 function writeDB(data) {
-    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+    if (!isVercel) {
+        fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+    }
 }
 
 async function withDB(handler) {
