@@ -6,6 +6,31 @@
     <title>کافینت آنلاین</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+    .search-results {
+        position: absolute;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        margin-top: 4px;
+        width: 100%;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .search-results div {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+    .search-results div:last-child {
+        border-bottom: none;
+    }
+    .search-results div:hover {
+        background: #f5f5f5;
+    }
+    </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             fetch('/api/banner')
@@ -31,9 +56,10 @@
         <header>
             <h1>کافینت آنلاین</h1>
         </header>
-        <div class="search-container" style="margin-bottom:1.5rem;">
-            <input type="text" id="searchInput" placeholder="جستجو در خدمات..." class="search-input" style="width:100%;padding:0.75rem 1rem;border:1px solid #ddd;border-radius:8px;font-size:1rem;font-family:inherit;direction:rtl;">
-        </div>
+<div class="search-container" style="margin-bottom:1.5rem; position:relative;">
+        <input type="text" id="searchInput" placeholder="جستجو در خدمات..." class="search-input" style="width:100%;padding:0.75rem 1rem;border:1px solid #ddd;border-radius:8px;font-size:1rem;font-family:inherit;direction:rtl;">
+        <div id="searchResults" class="search-results"></div>
+</div>
         <main>
             <div id="bannersContainer">
                 <a href="index.html" class="banner">
@@ -117,18 +143,65 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var searchInput = document.getElementById('searchInput');
+            var searchResults = document.getElementById('searchResults');
             var cards = document.querySelectorAll('.card');
-            
+
+            // Function to create the results dropdown
+            function showResults(matches) {
+                // Clear previous results
+                searchResults.innerHTML = '';
+                if (matches.length === 0 || searchInput.value.trim() === '') {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+
+                // Limit to 6 results
+                var limitedMatches = matches.slice(0, 6);
+
+                limitedMatches.forEach(function(match) {
+                    var div = document.createElement('div');
+                    div.textContent = match.title;
+                    // When clicked, redirect to the link and clear the input
+                    div.addEventListener('click', function() {
+                        window.location.href = match.link;
+                        searchInput.value = '';
+                        searchResults.style.display = 'none';
+                    });
+                    searchResults.appendChild(div);
+                });
+
+                searchResults.style.display = 'block';
+            }
+
             searchInput.addEventListener('input', function() {
-                var searchTerm = this.value.toLowerCase();
+                var searchTerm = this.value.toLowerCase().trim();
+                var matches = [];
+
+                // If search term is empty, hide results
+                if (searchTerm === '') {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+
                 cards.forEach(function(card) {
                     var title = card.querySelector('h2').textContent.toLowerCase();
                     if (title.includes(searchTerm)) {
-                        card.style.display = '';
-                    } else {
-                        card.style.display = 'none';
+                        matches.push({
+                            title: card.querySelector('h2').textContent,
+                            link: card.href
+                        });
                     }
+                    // Do NOT hide/show cards; keep them visible.
                 });
+
+                showResults(matches);
+            });
+
+            // Hide results when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.style.display = 'none';
+                }
             });
         });
     </script>
