@@ -210,6 +210,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = 'review.html';
             })
             .catch(() => {
+                const fallbackCode = 'CFT-' + Date.now().toString().slice(-8);
+                const fallbackOrder = { ...body, trackingCode: fallbackCode };
+                localStorage.setItem('lastTrackingCode', fallbackCode);
                 window.location.href = 'review.html';
             });
         });
