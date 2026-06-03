@@ -307,7 +307,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const adminLoggedIn = localStorage.getItem('adminData');
     if (!adminLoggedIn && document.getElementById('adminPanel')) {
-        window.location.href = 'admin-login.html';
+        window.location.href = 'login.html';
+    }
+
+    const ordersBadge = document.getElementById('ordersBadge');
+    const chatBadge = document.getElementById('chatBadge');
+
+    function updateAdminBadges() {
+        fetch('/api/orders')
+            .then(r => r.json())
+            .then(orders => {
+                const pendingCount = (orders || []).filter(o => o.status === 'pending').length;
+                if (ordersBadge) {
+                    ordersBadge.textContent = pendingCount;
+                    ordersBadge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+                }
+            })
+            .catch(() => {});
+        fetch('/api/admin/chat/customers')
+            .then(r => r.json())
+            .then(function(customers) {
+                const newCount = (customers || []).reduce(function(sum, c) { return sum + (c.unread || 0); }, 0);
+                if (chatBadge) {
+                    chatBadge.textContent = newCount;
+                    chatBadge.style.display = newCount > 0 ? 'inline-block' : 'none';
+                }
+            })
+            .catch(() => {});
+    }
+
+    if (ordersBadge || chatBadge) {
+        updateAdminBadges();
+        setInterval(updateAdminBadges, 10000);
     }
 
     const adminLogoutBtn = document.getElementById('adminLogoutBtn');
@@ -315,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         adminLogoutBtn.addEventListener('click', e => {
             e.preventDefault();
             localStorage.removeItem('adminData');
-            window.location.href = 'admin-login.html';
+            window.location.href = 'login.html';
         });
     }
 
@@ -463,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
             } else {
                 if (chatPanel && chatPanel.style.display !== 'none' && !inlinePolling) {
-                    inlinePolling = setInterval(loadInlineMessages, 2000);
+                    inlinePolling = setInterval(loadInlineMessages, 10000);
                 }
             }
         });
@@ -471,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (chatPanel && !inlinePolling) {
             chatPanel.addEventListener('transitionend', function() {
                 if (chatPanel.style.display !== 'none' && !inlinePolling) {
-                    inlinePolling = setInterval(loadInlineMessages, 2000);
+                    inlinePolling = setInterval(loadInlineMessages, 10000);
                 }
             });
         }
@@ -491,38 +522,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewImg = document.getElementById('previewImg');
     const saveBannerBtn = document.getElementById('saveBannerBtn');
 
-    function compressImage(file, maxWidth = 800, maxHeight = 200, quality = 0.7) {
-        return new Promise((resolve) => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const img = new Image();
-            img.onload = () => {
-                let { width, height } = img;
-                if (width > maxWidth || height > maxHeight) {
-                    const ratio = Math.min(maxWidth / width, maxHeight / height);
-                    width = Math.round(width * ratio);
-                    height = Math.round(height * ratio);
-                }
-                canvas.width = width;
-                canvas.height = height;
-                ctx.drawImage(img, 0, 0, width, height);
-                canvas.toBlob(resolve, 'image/jpeg', quality);
-            };
-            img.src = URL.createObjectURL(file);
-        });
-    }
-
     if (bannerUpload && previewImg) {
         bannerUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                compressImage(file).then(blob => {
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        previewImg.src = event.target.result;
-                    };
-                    reader.readAsDataURL(blob);
-                });
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    previewImg.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
             }
         });
     }

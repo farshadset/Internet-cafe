@@ -1,13 +1,30 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
 const rootDir = path.resolve(__dirname);
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(rootDir, 'public')));
+
+const oneYear = 1000 * 60 * 60 * 24 * 365;
+const staticOptions = {
+  maxAge: oneYear,
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.toString().endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+};
+app.use('/public', express.static(path.join(rootDir, 'public'), staticOptions));
+app.use(express.static(path.join(rootDir, 'public'), staticOptions));
 
 const isVercel = !!process.env.VERCEL;
 const DB_PATH = isVercel
@@ -20,6 +37,19 @@ function readDB() {
     } catch {
         return { users: [], orders: [], banners: [], chat: [] };
     }
+}
+
+function migrateChatData(db) {
+    if (!db.chat) db.chat = [];
+    db.chatMeta = db.chatMeta || {};
+    var changed = false;
+    db.chat.forEach(function(msg) {
+        if (msg.role === 'customer' && !msg.username) {
+            msg.username = 'مهمان';
+            changed = true;
+        }
+    });
+    if (changed) writeDB(db);
 }
 
 function writeDB(data) {
@@ -205,6 +235,7 @@ app.put('/api/banner/:id', async (req, res) => {
 app.get('/api/chat', async (req, res) => {
     const { username } = req.query;
     const db = readDB();
+    migrateChatData(db);
     if (username) {
         const messages = (db.chat || []).filter(m =>
             (m.role === 'customer' && m.username === username) ||
@@ -237,7 +268,22 @@ app.post('/api/chat', async (req, res) => {
 
 app.get('/api/admin/chat', async (req, res) => {
     const db = readDB();
-    res.json(db.chat || []);
+    migrateChatData(db);
+    res.json({
+        messages: db.chat || [],
+        lastReadAt: db.chatMeta && db.chatMeta.lastReadAt ? db.chatMeta.lastReadAt : null
+    });
+});
+
+app.post('/api/admin/chat/read', async (req, res) => {
+    const { lastReadAt } = req.body;
+    const db = readDB();
+    db.chatMeta = db.chatMeta || {};
+    if (lastReadAt) {
+        db.chatMeta.lastReadAt = lastReadAt;
+    }
+    writeDB(db);
+    res.json({ success: true });
 });
 
 app.post('/api/admin/chat', async (req, res) => {
@@ -259,11 +305,84 @@ app.post('/api/admin/chat', async (req, res) => {
     res.json(message);
 });
 
+app.get('/api/admin/chat/conversation', async (req, res) => {
+    const { username } = req.query;
+    if (!username) {
+        return res.status(400).json({ error: 'نام کاربری الزامی است' });
+    }
+    const db = readDB();
+    migrateChatData(db);
+    var messages = (db.chat || []).filter(function(m) {
+        return (m.role === 'customer' && m.username === username) || (m.role === 'admin' && !m.username);
+    });
+    messages.sort(function(a, b) { return new Date(a.timestamp) - new Date(b.timestamp); });
+    res.json(messages);
+});
+
+app.get('/api/admin/chat/customers', async (req, res) => {
+    const db = readDB();
+    migrateChatData(db);
+    var customers = {};
+    (db.chat || []).forEach(function(m) {
+        if (m.role === 'customer') {
+            if (!customers[m.username]) {
+                customers[m.username] = { username: m.username, lastMessage: m.text, lastTimestamp: m.timestamp, unread: 0 };
+            }
+            customers[m.username].lastMessage = m.text;
+            customers[m.username].lastTimestamp = m.timestamp;
+        }
+    });
+    var lastAdminGlobal = db.chatMeta && db.chatMeta.lastReadAt ? db.chatMeta.lastReadAt : null;
+    Object.keys(customers).forEach(function(key) {
+        var customer = customers[key];
+        var hasAdminReply = (db.chat || []).some(function(m) {
+            return m.role === 'admin' && (!m.username || m.username === customer.username) && m.timestamp >= customer.lastTimestamp;
+        });
+        customer.unread = hasAdminReply ? 0 : 1;
+        if (lastAdminGlobal && customer.lastTimestamp <= lastAdminGlobal) {
+            customer.unread = 0;
+        }
+    });
+    var list = Object.keys(customers).map(function(k) { return customers[k]; });
+    list.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
+    res.json(list);
+});
+
 const PORT = process.env.PORT || 3003;
+let server;
 if (!isVercel && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    app.listen(PORT, () => {
+    server = http.createServer(app);
+    const io = new Server(server, { path: '/socket.io' });
+
+    io.on('connection', (socket) => {
+        socket.on('join-admin-room', () => {
+            socket.join('admin-room');
+        });
+        socket.on('customer-typing', (data) => {
+            socket.to('admin-room').emit('customer-typing', data);
+        });
+        socket.on('customer-stop-typing', (data) => {
+            socket.to('admin-room').emit('customer-stop-typing', data);
+        });
+    });
+
+    app.set('io', io);
+
+    server.listen(PORT, () => {
         console.log('Server running on http://localhost:' + PORT);
     });
+} else {
+    server = app;
 }
+
+function emitChatEvent(io, event, data) {
+    try {
+        if (io && typeof io.to === 'function') {
+            io.to('admin-room').emit(event, data);
+        }
+    } catch (e) {}
+}
+
+const ORIGINAL_POST_CHAT = app._router && app._router.stack ? null : null;
 
 module.exports = app;

@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
     <div class="container">
@@ -17,17 +21,19 @@
         </header>
         <main>
             <div class="form-card" id="adminPanel">
-                <a href="admin-orders.html" class="profile-option">
+                <a href="admin-orders.html" class="profile-option" style="display: flex; align-items: center;">
                     <i class="fas fa-list"></i>
-                    لیست سفارش‌ها
+                    <span>لیست سفارش‌ها</span>
+                    <span class="badge" id="ordersBadge" style="display: none;">0</span>
                 </a>
-                <a href="admin-chat.html" class="profile-option">
+                <a href="admin-chat.html" class="profile-option" style="display: flex; align-items: center;">
                     <i class="fas fa-comments"></i>
-                    چت با مشتری
-                <a href="admin-banner.html" class="profile-option">
-                    <i class="fas fa-image"></i>
-                    بنر
+                    <span>چت با مشتری</span>
+                    <span class="badge" id="chatBadge" style="display: none;">0</span>
                 </a>
+                <a href="admin-banner.html" class="profile-option" style="display: flex; align-items: center;">
+                    <i class="fas fa-image"></i>
+                    <span>بنر</span>
                 </a>
                 <a href="#" class="profile-option" id="adminLogoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
@@ -36,7 +42,6 @@
             </div>
         </main>
     </div>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="app.js"></script>
 </body>
 </html>
