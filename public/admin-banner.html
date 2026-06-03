@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت بنرها</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
     <div class="container">
@@ -53,18 +57,15 @@
     <script>
         var bannersData = [];
         
-        function compressImage(file, maxWidth = 800, maxHeight = 200, quality = 0.7) {
+        function compressImage(file, maxWidth = 1920, maxHeight = 600, quality = 0.95) {
             return new Promise((resolve) => {
                 var canvas = document.createElement('canvas');
                 var ctx = canvas.getContext('2d');
                 var img = new Image();
                 img.onload = function() {
-                    var { width, height } = img;
-                    if (width > maxWidth || height > maxHeight) {
-                        var ratio = Math.min(maxWidth / width, maxHeight / height);
-                        width = Math.round(width * ratio);
-                        height = Math.round(height * ratio);
-                    }
+                    var ratio = Math.min(maxWidth / img.width, maxHeight / img.height);
+                    var width = Math.round(img.width * Math.min(ratio, 1));
+                    var height = Math.round(img.height * Math.min(ratio, 1));
                     canvas.width = width;
                     canvas.height = height;
                     ctx.drawImage(img, 0, 0, width, height);
@@ -134,6 +135,18 @@
             editingBannerId = id;
         }
 
+        function showToast(message) {
+            var toast = document.createElement('div');
+            toast.className = 'toast-success';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.classList.add('show'); }, 10);
+            setTimeout(function() {
+                toast.classList.remove('show');
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 3000);
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             loadBanners();
 
@@ -158,15 +171,20 @@
             document.getElementById('saveBannerPopupBtn').addEventListener('click', function() {
                 var bannerSrc = document.getElementById('popupPreviewImg').src;
                 var bannerLink = document.getElementById('popupBannerLink').value;
-                
+
+                function finish() {
+                    document.getElementById('bannerPopup').style.display = 'none';
+                    loadBanners();
+                }
+
                 if (editingBannerId) {
                     fetch('/api/banner/' + editingBannerId, {
                         method: 'PUT',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ src: bannerSrc, link: bannerLink })
                     }).then(() => {
-                        document.getElementById('bannerPopup').style.display = 'none';
-                        loadBanners();
+                        finish();
+                        showToast('بنر با موفقیت ویرایش شد');
                     }).catch(err => alert('خطا: ' + err.message));
                 } else {
                     fetch('/api/banner', {
@@ -176,14 +194,13 @@
                     })
                     .then(r => r.json())
                     .then(() => {
-                        document.getElementById('bannerPopup').style.display = 'none';
-                        loadBanners();
+                        finish();
+                        showToast('بنر با موفقیت ذخیره شد');
                     })
                     .catch(err => alert('خطا در ذخیره بنر: ' + err.message));
                 }
             });
         });
     </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </body>
 </html>

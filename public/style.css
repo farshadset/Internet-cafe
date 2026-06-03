@@ -937,6 +937,22 @@ header h1 {
     color: #155724;
 }
 
+.badge {
+    background: #e74c3c;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-right: 8px;
+    line-height: 1.2;
+}
+
+.chat-messages .message.unread {
+    border-right: 3px solid #e74c3c;
+    background: #fff5f5;
+}
+
 .cost-value {
     color: #27ae60;
     font-weight: 700;
