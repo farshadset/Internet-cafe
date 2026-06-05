@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
     .search-results {
         position: absolute;
@@ -156,10 +157,17 @@
                 </ul>
             </nav>
         </header>
-        <div class="search-container" style="margin-bottom:1.5rem; position:relative;">
-        <input type="text" id="searchInput" placeholder="جستجو در خدمات..." class="search-input" style="width:100%;padding:0.75rem 1rem;border:1px solid #ddd;border-radius:8px;font-size:1rem;font-family:inherit;direction:rtl;">
-        <div id="searchResults" class="search-results"></div>
-</div>
+        <div class="suggestive-search">
+            <div class="search-wrapper">
+                <i data-lucide="search" class="w-5 h-5 text-gray-500 shrink-0"></i>
+                <input type="text" id="searchInput" class="search-input" autocomplete="off">
+                <i data-lucide="search" class="w-4 h-4 text-gray-500 shrink-0" style="margin-right:auto;"></i>
+            </div>
+            <div class="search-overlay" id="searchOverlay">
+                <span class="search-placeholder" id="searchPlaceholder"></span>
+            </div>
+            <div id="searchResults" class="search-results"></div>
+        </div>
         <main>
             <div id="bannersContainer">
                 <a href="index.html" class="banner">
@@ -240,6 +248,10 @@
     </div>
 </div>
     <script src="app.js"></script>
+    <script src="suggestive-search.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var searchInput = document.getElementById('searchInput');

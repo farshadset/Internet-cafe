@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="fonts/all.css">
 </head>
 <body>
     <div class="container">
@@ -55,6 +55,15 @@
             var saveResultBtn = document.getElementById('saveResultBtn');
             var closeResultPopup = document.getElementById('closeResultPopup');
 
+            function updateOrdersBadge() {
+                var pendingCount = (allOrders || []).filter(function(o) { return o.status !== 'completed'; }).length;
+                var badge = document.getElementById('ordersBadge');
+                if (badge) {
+                    badge.textContent = pendingCount;
+                    badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+                }
+            }
+
             function renderOrders(orders) {
                 container.innerHTML = '';
                 var filtered = orders.filter(function(o) { return o.status === currentFilter; });
@@ -97,15 +106,16 @@
                             body: JSON.stringify({ trackingCode: code, status: status })
                         })
                         .then(function(r) { return r.json(); })
-                        .then(function(res) {
-                            if (res.success) {
-                                card.querySelectorAll('.status-btn').forEach(function(b) { b.classList.remove('active'); });
-                                this.classList.add('active');
-                                allOrders.forEach(function(o) {
-                                    if (o.trackingCode === code) o.status = status;
-                                });
-                            }
-                        }.bind(this))
+                         .then(function(res) {
+                             if (res.success) {
+                                 card.querySelectorAll('.status-btn').forEach(function(b) { b.classList.remove('active'); });
+                                 this.classList.add('active');
+                                 allOrders.forEach(function(o) {
+                                     if (o.trackingCode === code) o.status = status;
+                                 });
+                                 updateOrdersBadge();
+                             }
+                         }.bind(this))
                         .catch(function() {
                             alert('خطا در تغییر وضعیت.');
                         });
@@ -179,6 +189,8 @@
                     renderOrders(allOrders);
                 });
             });
+
+            updateOrdersBadge();
         });
     </script>
 </body>
