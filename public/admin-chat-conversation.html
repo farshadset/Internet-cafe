@@ -9,123 +9,291 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="fonts/all.css">
     <style>
+        :root {
+            --bg: #f8f9fa;
+            --surface: #ffffff;
+            --border: #e9ecef;
+            --text: #111827;
+            --muted: #6b7280;
+            --accent: #667eea;
+            --admin-bubble: #667eea;
+            --user-bubble: #e8f5e9;
+            --user-border: #c8e6c9;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Vazirmatn', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
         .chat-layout {
             display: flex;
             flex-direction: column;
             gap: 1rem;
             height: calc(100vh - 180px);
-            min-height: 500px;
+            min-height: 520px;
         }
+
         .chat-header {
             display: flex;
             align-items: center;
             gap: 1rem;
-            padding: 1rem;
-            background: #fff;
-            border-radius: 12px;
-            border: 1px solid #e9ecef;
+            padding: 1rem 1.25rem;
+            background: var(--surface);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
         }
+
+        .chat-header .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.15s ease;
+        }
+
+        .chat-header .back-link:hover {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .chat-header strong {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
         .chat-main {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: #f8f9fa;
-            border-radius: 12px;
-            border: 1px solid #e9ecef;
+            background: var(--surface);
+            border-radius: 16px;
+            border: 1px solid var(--border);
             min-width: 0;
             overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
         }
+
         .chat-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 1rem;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
         }
+
+        .empty-state {
+            text-align: center;
+            color: var(--muted);
+            margin: auto;
+            font-size: 0.95rem;
+            padding: 2rem;
+        }
+
+        /* Message bubbles */
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 75%;
+            animation: messageIn 0.2s ease-out;
+        }
+
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Admin messages - LEFT side */
+        .message.user {
+            align-self: flex-start;
+        }
+
+        .message.user .bubble {
+            background: var(--admin-bubble);
+            color: white;
+            border-radius: 16px 16px 16px 4px;
+            box-shadow: 0 1px 2px rgba(102, 126, 234, 0.2);
+        }
+
+        /* Customer messages - RIGHT side */
+        .message.support {
+            align-self: flex-end;
+        }
+
+        .message.support .bubble {
+            background: var(--user-bubble);
+            color: #1f2937;
+            border: 1px solid var(--user-border);
+            border-radius: 16px 16px 4px 16px;
+        }
+
+        .bubble {
+            padding: 0.65rem 1rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        /* Input area */
         .chat-input-area {
-            padding: 1rem;
-            background: #fff;
-            border-top: 1px solid #e9ecef;
+            padding: 0.875rem 1rem;
+            border-top: 1px solid var(--border);
+            background: var(--surface);
         }
-        .typing-indicator {
-            padding: 0.5rem 1rem;
-            color: #999;
-            font-size: 0.85rem;
-            font-style: italic;
-            min-height: 1.5rem;
-            background: #f8f9fa;
-            border-radius: 0 0 12px 12px;
-        }
-        .typing-indicator.hidden {
-            visibility: hidden;
-        }
-        .canned-responses {
+
+        .input-wrapper {
             display: flex;
-            flex-wrap: wrap;
+            align-items: flex-end;
             gap: 0.5rem;
-            margin-bottom: 0.75rem;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+            transition: box-shadow 0.15s ease, border-color 0.15s ease;
         }
-        .canned-btn {
-            background: #f0f0ff;
-            border: 1px solid #d0d5f5;
-            color: #333;
-            padding: 0.5rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            font-family: inherit;
+
+        .input-wrapper:focus-within {
+            border-color: #c7d2fe;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
-        .canned-btn:hover {
-            background: #d0d5f5;
-        }
-        .input-row {
-            display: flex;
-            gap: 0.5rem;
-        }
-        .input-row input {
+
+        .input-wrapper textarea {
             flex: 1;
+            border: none;
+            outline: none;
+            resize: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding: 0.35rem 0;
+            max-height: 120px;
+            min-height: 24px;
+            color: var(--text);
         }
+
+        .input-wrapper textarea::placeholder {
+            color: #9ca3af;
+        }
+
+        .send-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: none;
+            background: var(--accent);
+            color: white;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            background: #5563d6;
+            transform: translateY(-1px);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .send-btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Scrollbar */
+        .chat-messages::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
         @media (max-width: 768px) {
             .chat-layout {
                 height: auto;
+                min-height: calc(100vh - 140px);
+            }
+
+            .message {
+                max-width: 88%;
+            }
+
+            .chat-messages {
+                padding: 1rem;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="logo-icon" title="صفحه اصلی">
-            <i class="fas fa-mug-hot"></i>
-        </a>
-        <header>
-            <h1>چت با مشتری</h1>
-        </header>
-        <main>
-            <div class="chat-layout">
-                <div class="chat-header">
-                    <a href="admin-chat.html" class="btn-next" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
-                        <i class="fas fa-arrow-right"></i> بازگشت
-                    </a>
-                    <strong id="chatPartner">در حال بارگذاری...</strong>
+        <div class="chat-layout">
+            <div class="chat-header">
+                <a href="admin-chat.html" class="back-link">
+                    <i class="fas fa-arrow-right"></i>
+                    بازگشت
+                </a>
+                <strong id="chatPartner">در حال بارگذاری...</strong>
+            </div>
+            <div class="chat-main">
+                <div class="chat-messages" id="adminChatMessages">
+                    <div class="empty-state">در حال بارگذاری...</div>
                 </div>
-                <div class="chat-main">
-                    <div class="chat-messages" id="adminChatMessages"></div>
-                    <div class="typing-indicator hidden" id="typingIndicator">... در حال نوشتن است</div>
-                    <div class="chat-input-area">
-                        <div class="canned-responses" id="cannedResponses"></div>
-                        <div class="input-row">
-                            <input type="text" id="adminMessageInput" placeholder="پاسخ خود را اینجا بنویسید...">
-                            <button id="adminSendBtn" class="btn-next" style="padding: 0.75rem 1.25rem;">ارسال</button>
-                        </div>
+                <div class="chat-input-area">
+                    <div class="input-wrapper">
+                        <textarea id="adminMessageInput" rows="1" placeholder="پاسخ خود را اینجا بنویسید..."></textarea>
+                        <button id="adminSendBtn" class="send-btn" aria-label="ارسال پیام" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="19" x2="12" y2="5"></line>
+                                <polyline points="5 12 12 5 19 12"></polyline>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             var params = new URLSearchParams(window.location.search);
             var username = params.get('username');
             if (!username) {
@@ -137,67 +305,81 @@
             var adminMessageInput = document.getElementById('adminMessageInput');
             var adminSendBtn = document.getElementById('adminSendBtn');
             var chatPartner = document.getElementById('chatPartner');
-            var typingIndicator = document.getElementById('typingIndicator');
-            var cannedResponses = document.getElementById('cannedResponses');
 
-            var socket = null;
-            var pollingInterval = null;
-            var typingTimer = null;
+            var conversationPolling = null;
             var currentUsername = username;
+            var lastMessageId = null;
 
-            var canned = [
-                'سلام، چطور می‌توانم کمک کنم؟',
-                'مشکل شما به تیم فنی ارسال شد',
-                'لطفاً شماره تماس خود را بفرستید'
-            ];
-
-            function renderCanned() {
-                cannedResponses.innerHTML = '';
-                canned.forEach(function(text) {
-                    var btn = document.createElement('button');
-                    btn.className = 'canned-btn';
-                    btn.textContent = text;
-                    btn.addEventListener('click', function() {
-                        adminMessageInput.value = text;
-                        adminMessageInput.focus();
-                    });
-                    cannedResponses.appendChild(btn);
-                });
+            function autoResize() {
+                var el = adminMessageInput;
+                el.style.height = '0px';
+                el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+                adminSendBtn.disabled = !el.value.trim();
             }
 
-            function scrollToBottom() {
+            function appendMessage(msg) {
+                var wrapper = document.createElement('div');
+                wrapper.className = 'message ' + (msg.role === 'admin' ? 'user' : 'support');
+                var bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.textContent = msg.text;
+                wrapper.appendChild(bubble);
+                wrapper.setAttribute('data-msg-id', msg.id || '');
+                chatMessages.appendChild(wrapper);
                 if (chatMessages.scrollHeight > chatMessages.parentElement.clientHeight) {
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
             }
 
+            function markConversationRead() {
+                var now = new Date();
+                var pad = function (n) { return n < 10 ? '0' + n : n; };
+                var localDateTime =
+                    now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
+                    ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+                return fetch('/api/admin/chat/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lastReadAt: localDateTime })
+                }).catch(function () {});
+            }
+
             function loadConversation() {
                 fetch('/api/admin/chat/conversation?username=' + encodeURIComponent(currentUsername))
-                    .then(function(r) { return r.json(); })
-                    .then(function(messages) {
-                        chatMessages.innerHTML = '';
-                        if (messages.length === 0) {
-                            chatMessages.innerHTML = '<p style="text-align:center;color:#999;">پیامی وجود ندارد</p>';
-                            return;
-                        }
-                        messages.forEach(function(msg) {
-                            var div = document.createElement('div');
-                            div.className = 'message ' + (msg.role === 'admin' ? 'user' : 'support');
-                            if (msg.role === 'admin') {
-                                div.textContent = 'شما: ' + msg.text;
-                            } else {
-                                var usernameSpan = document.createElement('span');
-                                usernameSpan.className = 'customer-username';
-                                usernameSpan.textContent = msg.username + ': ';
-                                div.appendChild(usernameSpan);
-                                var textNode = document.createTextNode(msg.text);
-                                div.appendChild(textNode);
+                    .then(function (r) { return r.json(); })
+                    .then(function (messages) {
+                        if (!lastMessageId) {
+                            chatMessages.innerHTML = '';
+                            if (messages.length === 0) {
+                                chatMessages.innerHTML = '<div class="empty-state">پیامی وجود ندارد</div>';
+                                return;
                             }
-                            chatMessages.appendChild(div);
-                        });
-                        scrollToBottom();
+                            messages.forEach(function (msg) {
+                                appendMessage(msg);
+                            });
+                            lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
+                        } else {
+                            var newMessages = [];
+                            for (var i = messages.length - 1; i >= 0; i--) {
+                                if (messages[i].id === lastMessageId) break;
+                                newMessages.unshift(messages[i]);
+                            }
+                            if (newMessages.length > 0 && messages.length > 0) {
+                                if (chatMessages.querySelector('.empty-state')) {
+                                    chatMessages.innerHTML = '';
+                                }
+                                newMessages.forEach(function (msg) {
+                                    appendMessage(msg);
+                                });
+                                lastMessageId = messages[messages.length - 1].id;
+                            }
+                        }
                     })
-                    .catch(function() {});
+                    .catch(function () {
+                        if (!lastMessageId) {
+                            chatMessages.innerHTML = '<div class="empty-state" style="color:#ef4444;">خطا در بارگذاری پیام‌ها</div>';
+                        }
+                    });
             }
 
             function sendMessage() {
@@ -208,74 +390,42 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: text })
                 })
-                .then(function(r) { return r.json(); })
-                .then(function(msg) {
-                    var div = document.createElement('div');
-                    div.className = 'message user';
-                    div.textContent = 'شما: ' + msg.text;
-                    chatMessages.appendChild(div);
+                .then(function (r) { return r.json(); })
+                .then(function (msg) {
+                    var wrapper = document.createElement('div');
+                    wrapper.className = 'message user';
+                    var bubble = document.createElement('div');
+                    bubble.className = 'bubble';
+                    bubble.textContent = msg.text;
+                    wrapper.appendChild(bubble);
+                    chatMessages.appendChild(wrapper);
                     adminMessageInput.value = '';
-                    scrollToBottom();
-                    if (socket) {
-                        socket.emit('admin-message', { username: currentUsername, text: msg.text });
+                    autoResize();
+                    if (chatMessages.scrollHeight > chatMessages.parentElement.clientHeight) {
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
                     }
                 })
-                .catch(function() {});
-            }
-
-            function initSocket() {
-                if (typeof io === 'undefined') return;
-                socket = io();
-                socket.on('connect', function() {
-                    socket.emit('join-admin-room');
-                });
-                socket.on('new-customer-message', function(data) {
-                    if (data.username === currentUsername) {
-                        loadConversation();
-                    }
-                });
-                socket.on('customer-typing', function(data) {
-                    if (data.username === currentUsername) {
-                        typingIndicator.classList.remove('hidden');
-                        if (typingTimer) clearTimeout(typingTimer);
-                        typingTimer = setTimeout(function() {
-                            typingIndicator.classList.add('hidden');
-                        }, 2000);
-                    }
-                });
-                socket.on('customer-stop-typing', function(data) {
-                    if (data.username === currentUsername) {
-                        typingIndicator.classList.add('hidden');
-                        if (typingTimer) clearTimeout(typingTimer);
-                    }
+                .catch(function () {
+                    alert('خطا در ارسال پیام');
                 });
             }
 
-            chatPartner.textContent = 'چت با: ' + currentUsername;
-            renderCanned();
+            chatPartner.textContent = currentUsername;
             loadConversation();
-            pollingInterval = setInterval(loadConversation, 10000);
-            initSocket();
+            markConversationRead();
+            conversationPolling = setInterval(loadConversation, 2000);
 
             adminSendBtn.addEventListener('click', sendMessage);
-            adminMessageInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
+            adminMessageInput.addEventListener('input', autoResize);
+            adminMessageInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
                 }
-                if (socket) {
-                    socket.emit('typing-start', { username: currentUsername });
-                    if (typingTimer) clearTimeout(typingTimer);
-                    typingTimer = setTimeout(function() {
-                        if (socket) socket.emit('typing-stop', { username: currentUsername });
-                    }, 2000);
-                }
             });
 
-            window.addEventListener('beforeunload', function() {
-                if (pollingInterval) clearInterval(pollingInterval);
-                if (typingTimer) clearTimeout(typingTimer);
-                if (socket) socket.disconnect();
+            window.addEventListener('beforeunload', function () {
+                if (conversationPolling) clearInterval(conversationPolling);
             });
         });
     </script>

@@ -355,12 +355,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!dropdown || !menuKey || !MEGA_MENU_DATA[menuKey]) return;
 
             const items = MEGA_MENU_DATA[menuKey];
-            let html = '<div class="mega-grid">';
+            let html = '<div class="mega-menu-columns">';
             items.forEach(section => {
-                html += '<div class="mega-section">';
-                html += '<a href="' + section.link + '" class="mega-title"><i class="fas ' + section.icon + '"></i> ' + section.title + '</a>';
+                html += '<div class="mega-column">';
+                html += '<h4 class="mega-column-title"><a href="' + section.link + '"><i class="fas ' + section.icon + '"></i> ' + section.title + '</a></h4>';
                 if (section.subItems && section.subItems.length) {
-                    html += '<ul class="mega-sub">';
+                    html += '<ul>';
                     section.subItems.forEach(sub => {
                         html += '<li><a href="' + sub.link + '">' + sub.title + '</a></li>';
                     });
