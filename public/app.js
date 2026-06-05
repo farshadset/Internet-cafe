@@ -185,6 +185,196 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const MEGA_MENU_DATA = {
+        banking: [
+            {
+                title: 'وام ازدواج',
+                icon: 'fa-ring',
+                link: 'marriage-loan.html',
+                subItems: [
+                    { title: 'ثبت نام وام ازدواج', link: 'marriage-loan.html' },
+                    { title: 'استعلام وضعیت وام', link: '#' },
+                    { title: 'تمدید مهلت وام', link: '#' },
+                    { title: 'پرداخت اقساط', link: '#' }
+                ]
+            },
+            {
+                title: 'وام ودیعه مسکن',
+                icon: 'fa-home',
+                link: 'rental-deposit.html',
+                subItems: [
+                    { title: 'ثبت نام وام ودیعه مسکن', link: 'rental-deposit.html' },
+                    { title: 'شرایط و مدارک', link: '#' },
+                    { title: 'استعلام بانکی', link: '#' },
+                    { title: 'پاسخ به استعلام', link: '#' }
+                ]
+            },
+            {
+                title: 'وام ضروری',
+                icon: 'fa-hand-holding-usd',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام وام ضروری بازنشستگان', link: '#' },
+                    { title: 'وام ضروری کارمندان', link: '#' },
+                    { title: 'وام دانشجویی', link: '#' }
+                ]
+            },
+            {
+                title: 'تسهیلات مسکن',
+                icon: 'fa-city',
+                link: 'housing-movement.html',
+                subItems: [
+                    { title: 'تسهیلات خرید مسکن', link: 'housing-movement.html' },
+                    { title: 'جععه تعمیرات', link: '#' },
+                    { title: 'وام ساخت مسکن', link: '#' }
+                ]
+            },
+            {
+                title: 'کارت اعتباری بانکی',
+                icon: 'fa-credit-card',
+                link: '#',
+                subItems: [
+                    { title: 'درخواست کارت اعتباری', link: '#' },
+                    { title: 'افزایش اعتبار', link: '#' },
+                    { title: 'تمدید کارت', link: '#' }
+                ]
+            },
+            {
+                title: 'سهام عدالت',
+                icon: 'fa-balance-scale',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام سهام عدالت', link: '#' },
+                    { title: 'استعلام سهام', link: '#' },
+                    { title: 'فروش سهام', link: '#' },
+                    { title: 'سود سهام عدالت', link: '#' }
+                ]
+            },
+            {
+                title: 'یارانه نقدی و معیشتی',
+                icon: 'fa-hand-holding-heart',
+                link: 'subsidy.html',
+                subItems: [
+                    { title: 'ثبت نام یارانه معیشتی', link: 'subsidy.html' },
+                    { title: 'اعتراض به یارانه', link: '#' },
+                    { title: 'به‌روزرسانی اطلاعات', link: '#' },
+                    { title: 'استعلام یارانه', link: '#' }
+                ]
+            },
+            {
+                title: 'بورس و سرمایه‌گذاری',
+                icon: 'fa-chart-line',
+                link: '#',
+                subItems: [
+                    { title: 'افتتاح کد بورسی', link: '#' },
+                    { title: 'خرید و فروش سهام', link: '#' },
+                    { title: 'سجام (احراز هویت بورسی)', link: '#' }
+                ]
+            }
+        ],
+        education: [
+            {
+                title: 'پیش ثبت نام مدارس',
+                icon: 'fa-school',
+                link: 'schools.html',
+                subItems: [
+                    { title: 'ثبت نام پیش ثبت نام مدارس', link: 'schools.html' }
+                ]
+            },
+            {
+                title: 'کنکور سراسری',
+                icon: 'fa-graduation-cap',
+                link: 'konkor.html',
+                subItems: [
+                    { title: 'ثبت نام کنکور سراسری', link: 'konkor.html' }
+                ]
+            },
+            {
+                title: 'تافل و آیلتس',
+                icon: 'fa-language',
+                link: 'ielts-toefl.html',
+                subItems: [
+                    { title: 'ثبت نام تافل', link: 'ielts-toefl.html' },
+                    { title: 'ثبت نام آیلتس', link: 'ielts-toefl.html' }
+                ]
+            }
+        ],
+        identity: [
+            {
+                title: 'کارت ملی هوشمند',
+                icon: 'fa-id-card',
+                link: 'smart-national-card.html',
+                subItems: [
+                    { title: 'ثبت نام کارت ملی هوشمند', link: 'smart-national-card.html' }
+                ]
+            },
+            {
+                title: 'گواهی عدم سوء پیشینه',
+                icon: 'fa-file-alt',
+                link: 'criminal-record.html',
+                subItems: [
+                    { title: 'صدور گواهی عدم سوء پیشینه', link: 'criminal-record.html' }
+                ]
+            },
+            {
+                title: 'بیمه سلامت',
+                icon: 'fa-heartbeat',
+                link: 'health-insurance.html',
+                subItems: [
+                    { title: 'ثبت نام بیمه سلامت', link: 'health-insurance.html' }
+                ]
+            }
+        ],
+        automotive: [
+            {
+                title: 'کارت سوخت',
+                icon: 'fa-gas-pump',
+                link: 'fuel-card.html',
+                subItems: [
+                    { title: 'صدور کارت جدید', link: 'fuel-card.html' },
+                    { title: 'المثنی (گم شدگی/خرابی)', link: 'fuel-card.html' }
+                ]
+            }
+        ],
+        administrative: [
+            {
+                title: 'سایر خدمات اداری',
+                icon: 'fa-file-invoice',
+                link: '#',
+                subItems: [
+                    { title: 'خدمات اداری', link: '#' }
+                ]
+            }
+        ]
+    };
+
+    function buildMegaMenu() {
+        document.querySelectorAll('.menu-item').forEach(item => {
+            const menuKey = item.getAttribute('data-menu');
+            const dropdown = item.querySelector('.mega-dropdown');
+            if (!dropdown || !menuKey || !MEGA_MENU_DATA[menuKey]) return;
+
+            const items = MEGA_MENU_DATA[menuKey];
+            let html = '<div class="mega-grid">';
+            items.forEach(section => {
+                html += '<div class="mega-section">';
+                html += '<a href="' + section.link + '" class="mega-title"><i class="fas ' + section.icon + '"></i> ' + section.title + '</a>';
+                if (section.subItems && section.subItems.length) {
+                    html += '<ul class="mega-sub">';
+                    section.subItems.forEach(sub => {
+                        html += '<li><a href="' + sub.link + '">' + sub.title + '</a></li>';
+                    });
+                    html += '</ul>';
+                }
+                html += '</div>';
+            });
+            html += '</div>';
+            dropdown.innerHTML = html;
+        });
+    }
+
+    buildMegaMenu();
+
     function setupServiceForm(formElement, serviceKey) {
         const config = SERVICE_CONFIGS[serviceKey];
         if (!config) return;
@@ -494,7 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
             } else {
                 if (chatPanel && chatPanel.style.display !== 'none' && !inlinePolling) {
-                    inlinePolling = setInterval(loadInlineMessages, 10000);
+                    inlinePolling = setInterval(loadInlineMessages, 3000);
                 }
             }
         });
@@ -502,7 +692,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (chatPanel && !inlinePolling) {
             chatPanel.addEventListener('transitionend', function() {
                 if (chatPanel.style.display !== 'none' && !inlinePolling) {
-                    inlinePolling = setInterval(loadInlineMessages, 10000);
+                    inlinePolling = setInterval(loadInlineMessages, 3000);
                 }
             });
         }
