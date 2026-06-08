@@ -194,8 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 subItems: [
                     { title: 'ثبت نام وام ازدواج', link: 'marriage-loan.html' },
                     { title: 'استعلام وضعیت وام', link: '#' },
-                    { title: 'تمدید مهلت وام', link: '#' },
-                    { title: 'پرداخت اقساط', link: '#' }
+                    { title: 'تمدید مهلت وام', link: '#' }
                 ]
             },
             {
@@ -203,10 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-home',
                 link: 'rental-deposit.html',
                 subItems: [
-                    { title: 'ثبت نام وام ودیعه مسکن', link: 'rental-deposit.html' },
-                    { title: 'شرایط و مدارک', link: '#' },
-                    { title: 'استعلام بانکی', link: '#' },
-                    { title: 'پاسخ به استعلام', link: '#' }
+                    { title: 'ثبت نام وام ودیعه مسکن', link: 'rental-deposit.html' }
                 ]
             },
             {
@@ -225,18 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 link: 'housing-movement.html',
                 subItems: [
                     { title: 'تسهیلات خرید مسکن', link: 'housing-movement.html' },
-                    { title: 'جععه تعمیرات', link: '#' },
                     { title: 'وام ساخت مسکن', link: '#' }
-                ]
-            },
-            {
-                title: 'کارت اعتباری بانکی',
-                icon: 'fa-credit-card',
-                link: '#',
-                subItems: [
-                    { title: 'درخواست کارت اعتباری', link: '#' },
-                    { title: 'افزایش اعتبار', link: '#' },
-                    { title: 'تمدید کارت', link: '#' }
                 ]
             },
             {
@@ -246,8 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 subItems: [
                     { title: 'ثبت نام سهام عدالت', link: '#' },
                     { title: 'استعلام سهام', link: '#' },
-                    { title: 'فروش سهام', link: '#' },
-                    { title: 'سود سهام عدالت', link: '#' }
+                    { title: 'فروش سهام', link: '#' }
                 ]
             },
             {
@@ -278,7 +262,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-school',
                 link: 'schools.html',
                 subItems: [
-                    { title: 'ثبت نام پیش ثبت نام مدارس', link: 'schools.html' }
+                    { title: 'پیش ثبت نام پایه اول دبستان', link: '#' },
+                    { title: 'پیش ثبت نام متوسطه اول', link: '#' },
+                    { title: 'پیش ثبت نام متوسطه دوم', link: '#' }
+                ]
+            },
+            {
+                title: 'ثبت نام مدارس خاص',
+                icon: 'fa-school',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام مدارس شاهد', link: '#' },
+                    { title: 'ثبت نام مدارس نمونه دولتی', link: '#' },
+                    { title: 'ثبت نام مدارس تیزهوشان (سمپاد)', link: '#' }
+                ]
+            },
+            {
+                title: 'ثبت نام مدارس غیردولتی',
+                icon: 'fa-globe',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام مدارس بین‌الملل', link: '#' },
+                    { title: 'ثبت نام مدارس هیئت امنایی', link: '#' }
                 ]
             },
             {
@@ -286,16 +291,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-graduation-cap',
                 link: 'konkor.html',
                 subItems: [
-                    { title: 'ثبت نام کنکور سراسری', link: 'konkor.html' }
+                    { title: 'ثبت نام کنکور کارشناسی', link: 'konkor.html' },
+                    { title: 'ثبت نام کنکور ارشد', link: 'konkor.html' },
+                    { title: 'ثبت نام کنکور دکتری', link: 'konkor.html' },
+                    { title: 'کارت ورود به جلسه', link: '#' },
+                    { title: 'اعلام نتایج', link: '#' }
                 ]
             },
             {
-                title: 'تافل و آیلتس',
+                title: 'آزمون‌های خارجی',
                 icon: 'fa-language',
                 link: 'ielts-toefl.html',
                 subItems: [
-                    { title: 'ثبت نام تافل', link: 'ielts-toefl.html' },
-                    { title: 'ثبت نام آیلتس', link: 'ielts-toefl.html' }
+                    { title: 'ثبت نام تافل (TOEFL)', link: 'ielts-toefl.html' },
+                    { title: 'ثبت نام آیلتس (IELTS)', link: 'ielts-toefl.html' },
+                    { title: 'ثبت نام GRE', link: '#' },
+                    { title: 'ثبت نام PTE', link: '#' }
+                ]
+            },
+            {
+                title: 'ثبت نام دانشگاه‌ها',
+                icon: 'fa-university',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام بدون کنکور دانشگاه آزاد', link: '#' },
+                    { title: 'ثبت نام پیام نور', link: '#' },
+                    { title: 'ثبت نام علمی کاربردی', link: '#' },
+                    { title: 'ثبت نام غیرحضوری', link: '#' }
+                ]
+            },
+            {
+                title: 'آزمون‌های استخدامی',
+                icon: 'fa-file-alt',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام آزمون استخدامی آموزش و پرورش', link: '#' },
+                    { title: 'ثبت نام استخدامی بانک‌ها', link: '#' },
+                    { title: 'ثبت نام استخدامی دستگاه‌های دولتی', link: '#' }
                 ]
             }
         ],
@@ -305,7 +337,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-id-card',
                 link: 'smart-national-card.html',
                 subItems: [
-                    { title: 'ثبت نام کارت ملی هوشمند', link: 'smart-national-card.html' }
+                    { title: 'درخواست کارت ملی هوشمند جدید', link: 'smart-national-card.html' },
+                    { title: 'تعویض کارت ملی قدیم', link: 'smart-national-card.html' },
+                    { title: 'المثنی کارت ملی', link: 'smart-national-card.html' },
+                    { title: 'پیگیری پستی', link: '#' },
+                    { title: 'تغییر نشانی', link: '#' }
+                ]
+            },
+            {
+                title: 'شناسنامه',
+                icon: 'fa-file-alt',
+                link: '#',
+                subItems: [
+                    { title: 'درخواست شناسنامه المثنی', link: '#' },
+                    { title: 'اصلاح مشخصات شناسنامه', link: '#' },
+                    { title: 'المثنی برگه هویت', link: '#' }
+                ]
+            },
+            {
+                title: 'گذرنامه (پاسپورت)',
+                icon: 'fa-passport',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام اینترنتی گذرنامه', link: '#' },
+                    { title: 'تمدید گذرنامه', link: '#' },
+                    { title: 'المثنی گذرنامه', link: '#' },
+                    { title: 'پیگیری وضعیت', link: '#' }
                 ]
             },
             {
@@ -313,15 +370,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-file-alt',
                 link: 'criminal-record.html',
                 subItems: [
-                    { title: 'صدور گواهی عدم سوء پیشینه', link: 'criminal-record.html' }
+                    { title: 'صدور گواهی اینترنتی', link: 'criminal-record.html' },
+                    { title: 'گواهی برای مهاجرت', link: 'criminal-record.html' },
+                    { title: 'گواهی برای کار', link: 'criminal-record.html' },
+                    { title: 'گواهی برای ازدواج', link: 'criminal-record.html' },
+                    { title: 'تمدید گواهی', link: '#' }
                 ]
             },
             {
-                title: 'بیمه سلامت',
-                icon: 'fa-heartbeat',
-                link: 'health-insurance.html',
+                title: 'پایگاه ثبت احوال',
+                icon: 'fa-database',
+                link: '#',
                 subItems: [
-                    { title: 'ثبت نام بیمه سلامت', link: 'health-insurance.html' }
+                    { title: 'استعلام کد ملی', link: '#' },
+                    { title: 'استعلام وضعیت شناسنامه', link: '#' },
+                    { title: 'درخواست کد پستی', link: '#' }
+                ]
+            },
+            {
+                title: 'ثبت نام انتخابات',
+                icon: 'fa-vote-yea',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام رأی اولی‌ها', link: '#' },
+                    { title: 'تأیید صلاحیت', link: '#' },
+                    { title: 'تعیین شعبه اخذ رأی', link: '#' }
+                ]
+            },
+            {
+                title: 'سامانه ثنا (قضایی)',
+                icon: 'fa-gavel',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام ثنا', link: '#' },
+                    { title: 'پیگیری پرونده قضایی', link: '#' },
+                    { title: 'دریافت کارت وکالت', link: '#' },
+                    { title: 'ابلاغ الکترونیک', link: '#' }
                 ]
             }
         ],
@@ -331,18 +415,111 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-gas-pump',
                 link: 'fuel-card.html',
                 subItems: [
-                    { title: 'صدور کارت جدید', link: 'fuel-card.html' },
-                    { title: 'المثنی (گم شدگی/خرابی)', link: 'fuel-card.html' }
+                    { title: 'ثبت نام کارت سوخت جدید', link: 'fuel-card.html' },
+                    { title: 'صدور کارت سوخت المثنی', link: 'fuel-card.html' },
+                    { title: 'مفقودی کارت سوخت', link: 'fuel-card.html' },
+                    { title: 'تعویض کارت سوخت آسیب دیده', link: 'fuel-card.html' },
+                    { title: 'پیگیری وضعیت کارت', link: '#' }
+                ]
+            },
+            {
+                title: 'استعلام کارت سوخت',
+                icon: 'fa-search',
+                link: '#',
+                subItems: [
+                    { title: 'استعلام سهمیه بنزین', link: '#' },
+                    { title: 'استعلام سهمیه گازوئیل', link: '#' },
+                    { title: 'مشاهده شارژ کارت', link: '#' }
+                ]
+            },
+            {
+                title: 'شارژ کارت سوخت',
+                icon: 'fa-credit-card',
+                link: '#',
+                subItems: [
+                    { title: 'شارژ کارت سوخت شخصی', link: '#' },
+                    { title: 'شارژ کارت سوخت جایگاه‌داران', link: '#' },
+                    { title: 'انتقال سهمیه', link: '#' }
+                ]
+            },
+            {
+                title: 'تغییر خودرو در کارت سوخت',
+                icon: 'fa-car',
+                link: '#',
+                subItems: [
+                    { title: 'انتقال کارت سوخت به خودرو جدید', link: '#' },
+                    { title: 'حذف خودرو فروخته شده', link: '#' }
+                ]
+            },
+            {
+                title: 'سامانه تعویض پلاک',
+                icon: 'fa-ticket-alt',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام نوبت تعویض پلاک', link: '#' },
+                    { title: 'استعلام خلافی خودرو', link: '#' },
+                    { title: 'نقل و انتقال خودرو', link: '#' }
+                ]
+            },
+            {
+                title: 'جریمه‌های رانندگی',
+                icon: 'fa-exclamation-triangle',
+                link: '#',
+                subItems: [
+                    { title: 'استعلام جریمه', link: '#' },
+                    { title: 'پرداخت آنلاین جریمه', link: '#' },
+                    { title: 'اعتراض به جریمه', link: '#' }
+                ]
+            },
+            {
+                title: 'معاینه فنی',
+                icon: 'fa-tools',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام نوبت معاینه فنی', link: '#' },
+                    { title: 'استعلام اعتبار معاینه فنی', link: '#' }
                 ]
             }
         ],
         administrative: [
             {
-                title: 'سایر خدمات اداری',
+                title: 'ثبت شرکت و کسب و کار',
+                icon: 'fa-building',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت شرکت آنلاین', link: '#' },
+                    { title: 'ثبت برند و علامت تجاری', link: '#' },
+                    { title: 'تغییرات شرکت', link: '#' }
+                ]
+            },
+            {
+                title: 'دریافت مجوزها',
+                icon: 'fa-certificate',
+                link: '#',
+                subItems: [
+                    { title: 'مجوز کسب و کار (جواز کسب)', link: '#' },
+                    { title: 'مجوز صنفی', link: '#' },
+                    { title: 'مجوز تولیدی', link: '#' }
+                ]
+            },
+            {
+                title: 'سامانه ثبت اظهارنامه مالیاتی',
                 icon: 'fa-file-invoice',
                 link: '#',
                 subItems: [
-                    { title: 'خدمات اداری', link: '#' }
+                    { title: 'ثبت اظهارنامه مالیاتی عملکرد', link: '#' },
+                    { title: 'ثبت اظهارنامه ارزش افزوده', link: '#' },
+                    { title: 'تمدید کارت بازرگانی', link: '#' }
+                ]
+            },
+            {
+                title: 'تکمیل فرم‌های اداری',
+                icon: 'fa-file-alt',
+                link: '#',
+                subItems: [
+                    { title: 'تکمیل فرم استخدامی', link: '#' },
+                    { title: 'تکمیل فرم بانکی', link: '#' },
+                    { title: 'تکمیل فرم مهاجرت', link: '#' }
                 ]
             }
         ]
