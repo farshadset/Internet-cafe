@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خرید و فروش سهام</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>خرید و فروش سهام</h1>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="stock-trade">
+                <div class="form-group">
+                    <label for="applicantPhone">شماره تلفن همراه</label>
+                    <input type="tel" id="applicantPhone" name="applicantPhone" placeholder="09xx-xxx-xxxx" required>
+                </div>
+                <div class="form-group">
+                    <label for="tradeType">نوع معامله</label>
+                    <select id="tradeType" name="tradeType" required>
+                        <option value="">انتخاب کنید</option>
+                        <option value="buy">خرید سهام</option>
+                        <option value="sell">فروش سهام</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stockSymbol">نماد سهام</label>
+                    <input type="text" id="stockSymbol" name="stockSymbol" placeholder="مثلاً خودرو یا فملیای" required>
+                </div>
+                <div class="form-group">
+                    <label for="stockCount">تعداد سهام</label>
+                    <input type="number" id="stockCount" name="stockCount" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="price">قیمت هر سهم (تومان)</label>
+                    <input type="text" id="price" name="price" placeholder="مثلاً ۱,۰۰۰" required>
+                </div>
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <textarea id="additionalNotes" name="additionalNotes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn-next">ثبت درخواست</button>
+            </form>
+        </main>
+    </div>
+    <link rel="stylesheet" href="fonts/all.css">
+    <script src="app.js"></script>
+</body>
+</html>
