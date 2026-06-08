@@ -891,23 +891,32 @@ header h1 {
 }
 
 .banner {
-    width: 100%;
-    margin-bottom: 2rem;
+    width: 600px;
+    margin: 0 auto 2rem;
     border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    display: block;
 }
 
 .banner img {
-    width: 100%;
-    height: auto;
+    width: 600px;
+    height: 300px;
+    object-fit: cover;
     display: block;
 }
 
 @media (max-width: 768px) {
     .banner {
-        margin-bottom: 1rem;
+        width: auto;
+        max-width: 100%;
+        margin: 0 auto 1rem;
         border-radius: 12px;
+    }
+    .banner img {
+        width: auto;
+        max-width: 100%;
+        height: auto;
     }
 }
 
