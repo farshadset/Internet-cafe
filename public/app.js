@@ -182,6 +182,212 @@ document.addEventListener('DOMContentLoaded', () => {
                 familyMembers: data.familyMembers,
                 additionalNotes: data.additionalNotes,
             })
+        },
+        marriageLoanStatus: {
+            title: 'استعلام وضعیت وام ازدواج',
+            cost: '۳۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'trackingCode', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                trackingCode: data.trackingCode,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        marriageLoanRenew: {
+            title: 'تمدید مهلت وام ازدواج',
+            cost: '۲۵,۰۰۰ تومان',
+            fields: ['applicantPhone', 'trackingCode', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                trackingCode: data.trackingCode,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        urgentLoan: {
+            title: 'وام ضروری',
+            cost: '۱۰۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'postalCode', 'loanType', 'amount', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                postalCode: data.postalCode,
+                loanType: data.loanType === 'retired' ? 'بازنشستگان' : data.loanType === 'employee' ? 'کارمندان' : 'دانشجویی',
+                amount: data.amount,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        housingPurchase: {
+            title: 'تسهیلات خرید مسکن',
+            cost: '۸۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'postalCode', 'propertyAddress', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                postalCode: data.postalCode,
+                propertyAddress: data.propertyAddress,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        housingConstruction: {
+            title: 'وام ساخت مسکن',
+            cost: '۱۰۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'postalCode', 'constructionAddress', 'constructionArea', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                postalCode: data.postalCode,
+                constructionAddress: data.constructionAddress,
+                constructionArea: data.constructionArea,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        justiceStocks: {
+            title: 'سهام عدالت',
+            cost: '۵۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'actionType', 'stockCount', 'sellPrice', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                actionType: data.actionType === 'register' ? 'ثبت نام' : data.actionType === 'inquiry' ? 'استعلام' : 'فروش',
+                stockCount: data.stockCount,
+                sellPrice: data.sellPrice,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        stockRegistration: {
+            title: 'افتتاح کد بورسی',
+            cost: '۱۰۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'bankName', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                bankName: data.bankName,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        stockTrade: {
+            title: 'خرید و فروش سهام',
+            cost: '۵۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'tradeType', 'stockSymbol', 'stockCount', 'price', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                tradeType: data.tradeType === 'buy' ? 'خرید' : 'فروش',
+                stockSymbol: data.stockSymbol,
+                stockCount: data.stockCount,
+                price: data.price,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        sjam: {
+            title: 'سجام (احراز هویت بورسی)',
+            cost: '۷۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'bankName', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                bankName: data.bankName,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        elementaryRegistration: {
+            title: 'پیش ثبت نام پایه اول دبستان',
+            cost: '۴۵,۰۰۰ تومان',
+            fields: ['parentPhone', 'parentNationalId', 'studentNationalId', 'postalCode', 'preferredSchool', 'additionalNotes'],
+            transform: (data) => ({
+                parentPhone: data.parentPhone,
+                parentNationalId: data.parentNationalId,
+                studentNationalId: data.studentNationalId,
+                postalCode: data.postalCode,
+                preferredSchool: data.preferredSchool,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        middleSchoolRegistration: {
+            title: 'پیش ثبت نام متوسطه اول',
+            cost: '۴۵,۰۰۰ تومان',
+            fields: ['parentPhone', 'parentNationalId', 'studentNationalId', 'postalCode', 'preferredSchool', 'additionalNotes'],
+            transform: (data) => ({
+                parentPhone: data.parentPhone,
+                parentNationalId: data.parentNationalId,
+                studentNationalId: data.studentNationalId,
+                postalCode: data.postalCode,
+                preferredSchool: data.preferredSchool,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        highSchoolRegistration: {
+            title: 'پیش ثبت نام متوسطه دوم',
+            cost: '۴۵,۰۰۰ تومان',
+            fields: ['parentPhone', 'parentNationalId', 'studentNationalId', 'postalCode', 'preferredSchool', 'fieldOfStudy', 'additionalNotes'],
+            transform: (data) => ({
+                parentPhone: data.parentPhone,
+                parentNationalId: data.parentNationalId,
+                studentNationalId: data.studentNationalId,
+                postalCode: data.postalCode,
+                preferredSchool: data.preferredSchool,
+                fieldOfStudy: data.fieldOfStudy,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        specialSchools: {
+            title: 'ثبت نام مدارس خاص',
+            cost: '۵۰,۰۰۰ تومان',
+            fields: ['parentPhone', 'parentNationalId', 'studentNationalId', 'postalCode', 'schoolType', 'preferredField', 'additionalNotes'],
+            transform: (data) => ({
+                parentPhone: data.parentPhone,
+                parentNationalId: data.parentNationalId,
+                studentNationalId: data.studentNationalId,
+                postalCode: data.postalCode,
+                schoolType: data.schoolType === 'shahed' ? 'شاهد' : data.schoolType === 'nemone-dovvom' ? 'نمونه دولتی' : 'سمپاد',
+                preferredField: data.preferredField,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        nonGovSchools: {
+            title: 'ثبت نام مدارس غیردولتی',
+            cost: '۶۰,۰۰۰ تومان',
+            fields: ['parentPhone', 'parentNationalId', 'studentNationalId', 'postalCode', 'schoolType', 'preferredSchool', 'additionalNotes'],
+            transform: (data) => ({
+                parentPhone: data.parentPhone,
+                parentNationalId: data.parentNationalId,
+                studentNationalId: data.studentNationalId,
+                postalCode: data.postalCode,
+                schoolType: data.schoolType === 'international' ? 'بین‌الملل' : 'هیئت امنایی',
+                preferredSchool: data.preferredSchool,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        universityRegistration: {
+            title: 'ثبت نام دانشگاه‌ها',
+            cost: '۱۰۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'universityType', 'preferredField', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                universityType: data.universityType,
+                preferredField: data.preferredField,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        employmentExam: {
+            title: 'ثبت نام آزمون استخدامی',
+            cost: '۸۰,۰۰۰ تومان',
+            fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'examType', 'educationLevel', 'preferredOrganization', 'additionalNotes'],
+            transform: (data) => ({
+                applicantPhone: data.applicantPhone,
+                applicantNationalId: data.applicantNationalId,
+                birthDate: [data.birthYear, data.birthMonth, data.birthDay].filter(Boolean).join('/'),
+                examType: data.examType,
+                educationLevel: data.educationLevel,
+                preferredOrganization: data.preferredOrganization,
+                additionalNotes: data.additionalNotes,
+            })
         }
     };
 
@@ -193,8 +399,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 link: 'marriage-loan.html',
                 subItems: [
                     { title: 'ثبت نام وام ازدواج', link: 'marriage-loan.html' },
-                    { title: 'استعلام وضعیت وام', link: '#' },
-                    { title: 'تمدید مهلت وام', link: '#' }
+                    { title: 'استعلام وضعیت وام', link: 'marriage-loan-status.html' },
+                    { title: 'تمدید مهلت وام', link: 'marriage-loan-renew.html' }
                 ]
             },
             {
@@ -208,11 +414,11 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 title: 'وام ضروری',
                 icon: 'fa-hand-holding-usd',
-                link: '#',
+                link: 'urgent-loan.html',
                 subItems: [
-                    { title: 'ثبت نام وام ضروری بازنشستگان', link: '#' },
-                    { title: 'وام ضروری کارمندان', link: '#' },
-                    { title: 'وام دانشجویی', link: '#' }
+                    { title: 'ثبت نام وام ضروری بازنشستگان', link: 'urgent-loan.html' },
+                    { title: 'وام ضروری کارمندان', link: 'urgent-loan.html' },
+                    { title: 'وام دانشجویی', link: 'urgent-loan.html' }
                 ]
             },
             {
@@ -220,18 +426,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-city',
                 link: 'housing-movement.html',
                 subItems: [
-                    { title: 'تسهیلات خرید مسکن', link: 'housing-movement.html' },
-                    { title: 'وام ساخت مسکن', link: '#' }
+                    { title: 'تسهیلات خرید مسکن', link: 'housing-purchase.html' },
+                    { title: 'وام ساخت مسکن', link: 'housing-construction.html' }
                 ]
             },
             {
                 title: 'سهام عدالت',
                 icon: 'fa-balance-scale',
-                link: '#',
+                link: 'justice-stocks.html',
                 subItems: [
-                    { title: 'ثبت نام سهام عدالت', link: '#' },
-                    { title: 'استعلام سهام', link: '#' },
-                    { title: 'فروش سهام', link: '#' }
+                    { title: 'ثبت نام سهام عدالت', link: 'justice-stocks.html' },
+                    { title: 'استعلام سهام', link: 'justice-stocks.html' },
+                    { title: 'فروش سهام', link: 'justice-stocks.html' }
                 ]
             },
             {
@@ -240,9 +446,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 link: 'subsidy.html',
                 subItems: [
                     { title: 'ثبت نام یارانه معیشتی', link: 'subsidy.html' },
-                    { title: 'اعتراض به یارانه', link: '#' },
-                    { title: 'به‌روزرسانی اطلاعات', link: '#' },
-                    { title: 'استعلام یارانه', link: '#' }
+                    { title: 'اعتراض به یارانه', link: 'subsidy.html' },
+                    { title: 'به‌روزرسانی اطلاعات', link: 'subsidy.html' },
+                    { title: 'استعلام یارانه', link: 'subsidy.html' }
                 ]
             },
             {
@@ -250,9 +456,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-chart-line',
                 link: '#',
                 subItems: [
-                    { title: 'افتتاح کد بورسی', link: '#' },
-                    { title: 'خرید و فروش سهام', link: '#' },
-                    { title: 'سجام (احراز هویت بورسی)', link: '#' }
+                    { title: 'افتتاح کد بورسی', link: 'stock-registration.html' },
+                    { title: 'خرید و فروش سهام', link: 'stock-trade.html' },
+                    { title: 'سجام (احراز هویت بورسی)', link: 'sjam.html' }
                 ]
             }
         ],
@@ -262,28 +468,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-school',
                 link: 'schools.html',
                 subItems: [
-                    { title: 'پیش ثبت نام پایه اول دبستان', link: '#' },
-                    { title: 'پیش ثبت نام متوسطه اول', link: '#' },
-                    { title: 'پیش ثبت نام متوسطه دوم', link: '#' }
+                    { title: 'پیش ثبت نام پایه اول دبستان', link: 'elementary-registration.html' },
+                    { title: 'پیش ثبت نام متوسطه اول', link: 'middle-school-registration.html' },
+                    { title: 'پیش ثبت نام متوسطه دوم', link: 'high-school-registration.html' }
                 ]
             },
             {
                 title: 'ثبت نام مدارس خاص',
                 icon: 'fa-school',
-                link: '#',
+                link: 'special-schools.html',
                 subItems: [
-                    { title: 'ثبت نام مدارس شاهد', link: '#' },
-                    { title: 'ثبت نام مدارس نمونه دولتی', link: '#' },
-                    { title: 'ثبت نام مدارس تیزهوشان (سمپاد)', link: '#' }
+                    { title: 'ثبت نام مدارس شاهد', link: 'special-schools.html' },
+                    { title: 'ثبت نام مدارس نمونه دولتی', link: 'special-schools.html' },
+                    { title: 'ثبت نام مدارس تیزهوشان (سمپاد)', link: 'special-schools.html' }
                 ]
             },
             {
                 title: 'ثبت نام مدارس غیردولتی',
                 icon: 'fa-globe',
-                link: '#',
+                link: 'non-gov-schools.html',
                 subItems: [
-                    { title: 'ثبت نام مدارس بین‌الملل', link: '#' },
-                    { title: 'ثبت نام مدارس هیئت امنایی', link: '#' }
+                    { title: 'ثبت نام مدارس بین‌الملل', link: 'non-gov-schools.html' },
+                    { title: 'ثبت نام مدارس هیئت امنایی', link: 'non-gov-schools.html' }
                 ]
             },
             {
@@ -293,41 +499,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 subItems: [
                     { title: 'ثبت نام کنکور کارشناسی', link: 'konkor.html' },
                     { title: 'ثبت نام کنکور ارشد', link: 'konkor.html' },
-                    { title: 'ثبت نام کنکور دکتری', link: 'konkor.html' },
-                    { title: 'کارت ورود به جلسه', link: '#' },
-                    { title: 'اعلام نتایج', link: '#' }
-                ]
-            },
-            {
-                title: 'آزمون‌های خارجی',
-                icon: 'fa-language',
-                link: 'ielts-toefl.html',
-                subItems: [
-                    { title: 'ثبت نام تافل (TOEFL)', link: 'ielts-toefl.html' },
-                    { title: 'ثبت نام آیلتس (IELTS)', link: 'ielts-toefl.html' },
-                    { title: 'ثبت نام GRE', link: '#' },
-                    { title: 'ثبت نام PTE', link: '#' }
+                    { title: 'ثبت نام کنکور دکتری', link: 'konkor.html' }
                 ]
             },
             {
                 title: 'ثبت نام دانشگاه‌ها',
                 icon: 'fa-university',
-                link: '#',
+                link: 'university-registration.html',
                 subItems: [
-                    { title: 'ثبت نام بدون کنکور دانشگاه آزاد', link: '#' },
-                    { title: 'ثبت نام پیام نور', link: '#' },
-                    { title: 'ثبت نام علمی کاربردی', link: '#' },
-                    { title: 'ثبت نام غیرحضوری', link: '#' }
+                    { title: 'ثبت نام بدون کنکور دانشگاه آزاد', link: 'university-registration.html' },
+                    { title: 'ثبت نام پیام نور', link: 'university-registration.html' },
+                    { title: 'ثبت نام علمی کاربردی', link: 'university-registration.html' },
+                    { title: 'ثبت نام غیرحضوری', link: 'university-registration.html' }
                 ]
             },
             {
                 title: 'آزمون‌های استخدامی',
                 icon: 'fa-file-alt',
-                link: '#',
+                link: 'employment-exam.html',
                 subItems: [
-                    { title: 'ثبت نام آزمون استخدامی آموزش و پرورش', link: '#' },
-                    { title: 'ثبت نام استخدامی بانک‌ها', link: '#' },
-                    { title: 'ثبت نام استخدامی دستگاه‌های دولتی', link: '#' }
+                    { title: 'ثبت نام آزمون استخدامی آموزش و پرورش', link: 'employment-exam.html' },
+                    { title: 'ثبت نام استخدامی بانک‌ها', link: 'employment-exam.html' },
+                    { title: 'ثبت نام استخدامی دستگاه‌های دولتی', link: 'employment-exam.html' }
                 ]
             }
         ],
