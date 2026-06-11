@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تغییر خودرو در کارت سوخت</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>تغییر خودرو در کارت سوخت</h1>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="fuel-card-change-vehicle">
+                <div class="form-group">
+                    <label for="ownerPhone">شماره تلفن همراه صاحب کارت</label>
+                    <input type="tel" id="ownerPhone" name="ownerPhone" placeholder="09xx-xxx-xxxx" required>
+                </div>
+                <div class="form-group">
+                    <label for="ownerNationalId">کد ملی صاحب کارت</label>
+                    <input type="text" id="ownerNationalId" name="ownerNationalId" maxlength="10" required>
+                </div>
+                <div class="form-group">
+                    <label for="cardNumber">شماره کارت سوخت</label>
+                    <input type="text" id="cardNumber" name="cardNumber" placeholder="شماره ۱۶ رقمی کارت" required>
+                </div>
+                <div class="form-group">
+                    <label for="changeReason">دلیل تغییر</label>
+                    <select id="changeReason" name="changeReason" required>
+                        <option value="">انتخاب کنید</option>
+                        <option value="plate-change">تغییر پلاک</option>
+                        <option value="vin-change">تغییر شماره شاسی</option>
+                        <option value="color-change">تغییر رنگ خودرو</option>
+                        <option value="other">سایر موارد</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="currentPlateLetters">حروف پلاک فعلی</label>
+                    <input type="text" id="currentPlateLetters" name="currentPlateLetters" maxlength="3" required>
+                </div>
+                <div class="form-group">
+                    <label for="currentPlateNumbersFirst">عدد پلاک فعلی (۳ رقم اول)</label>
+                    <input type="text" id="currentPlateNumbersFirst" name="currentPlateNumbersFirst" maxlength="3" required>
+                </div>
+                <div class="form-group">
+                    <label for="currentPlateNumbersSecond">عدد پلاک فعلی (۳ رقم آخر)</label>
+                    <input type="text" id="currentPlateNumbersSecond" name="currentPlateNumbersSecond" maxlength="3" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPlateLetters">حروف پلاک جدید</label>
+                    <input type="text" id="newPlateLetters" name="newPlateLetters" maxlength="3">
+                </div>
+                <div class="form-group">
+                    <label for="newPlateNumbersFirst">عدد پلاک جدید (۳ رقم اول)</label>
+                    <input type="text" id="newPlateNumbersFirst" name="newPlateNumbersFirst" maxlength="3">
+                </div>
+                <div class="form-group">
+                    <label for="newPlateNumbersSecond">عدد پلاک جدید (۳ رقم آخر)</label>
+                    <input type="text" id="newPlateNumbersSecond" name="newPlateNumbersSecond" maxlength="3">
+                </div>
+                <div class="form-group">
+                    <label for="newVin">شماره شاسی جدید (VIN)</label>
+                    <input type="text" id="newVin" name="newVin" maxlength="17">
+                </div>
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <textarea id="additionalNotes" name="additionalNotes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn-next">ثبت درخواست</button>
+            </form>
+        </main>
+    </div>
+    <link rel="stylesheet" href="fonts/all.css">
+    <script src="app.js"></script>
+</body>
+</html>
