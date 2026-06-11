@@ -26,25 +26,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 postalCode: data.postalCode,
                 studentNationalId: data.studentNationalId,
                 additionalNotes: data.additionalNotes,
+})
+        },
+        fineInquiry: {
+            title: 'استعلام جریمه',
+            cost: '۲۵,۰۰۰ تومان',
+            fields: ['ownerPhone', 'ownerNationalId', 'plateNumber', 'additionalNotes'],
+            transform: (data) => ({
+                ownerPhone: data.ownerPhone,
+                ownerNationalId: data.ownerNationalId,
+                plateNumber: data.plateNumber,
+                additionalNotes: data.additionalNotes,
             })
         },
-        fuel: {
-            title: 'کارت سوخت',
-            cost: '۱۵۰,۰۰۰ تومان',
-            fields: ['ownerPhone', 'ownerNationalId', 'plateLetters', 'plateNumbersFirst',
-                     'plateNumbersSecond', 'vin', 'requestType', 'additionalNotes'],
-            transform: (data) => {
-                const plateFull = [data.plateLetters, data.plateNumbersFirst, data.plateNumbersSecond].filter(Boolean).join(' - ');
-                const requestTypeLabels = { new: 'صدور کارت جدید', duplicate: 'المثنی (گم شدگی/خرابی)' };
-                return {
-                    ownerPhone: data.ownerPhone,
-                    ownerNationalId: data.ownerNationalId,
-                    plate: plateFull,
-                    vin: data.vin,
-                    requestType: requestTypeLabels[data.requestType] || data.requestType,
-                    additionalNotes: data.additionalNotes,
-                };
-            }
+        finePayment: {
+            title: 'پرداخت آنلاین جریمه',
+            cost: '۳۵,۰۰۰ تومان',
+            fields: ['ownerPhone', 'ownerNationalId', 'plateNumber', 'violationNumber', 'paymentMethod', 'additionalNotes'],
+            transform: (data) => ({
+                ownerPhone: data.ownerPhone,
+                ownerNationalId: data.ownerNationalId,
+                plateNumber: data.plateNumber,
+                violationNumber: data.violationNumber,
+                paymentMethod: data.paymentMethod === 'card' ? 'کارت بانکی' : data.paymentMethod === 'online' ? 'درگاه اینترنتی' : 'کیف پول الکترونیک',
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        fineAppeal: {
+            title: 'اعتراض به جریمه',
+            cost: '۴۵,۰۰۰ تومان',
+            fields: ['ownerPhone', 'ownerNationalId', 'plateNumber', 'violationNumber', 'appealReason', 'additionalNotes'],
+            transform: (data) => ({
+                ownerPhone: data.ownerPhone,
+                ownerNationalId: data.ownerNationalId,
+                plateNumber: data.plateNumber,
+                violationNumber: data.violationNumber,
+                appealReason: data.appealReason,
+                additionalNotes: data.additionalNotes,
+            })
         },
         marriage: {
             title: 'وام ازدواج',
@@ -460,8 +479,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     { title: 'خرید و فروش سهام', link: 'stock-trade.html' },
                     { title: 'سجام (احراز هویت بورسی)', link: 'sjam.html' }
                 ]
-            }
-        ],
+            },
+            technicalInspectionAppointment: {
+                title: 'ثبت نام نوبت معاینه فنی',
+                cost: '۳۵,۰۰۰ تومان',
+                fields: ['ownerPhone', 'ownerNationalId', 'vehicleType', 'plateNumber', 'preferredDate', 'additionalNotes'],
+                transform: (data) => ({
+                    ownerPhone: data.ownerPhone,
+                    ownerNationalId: data.ownerNationalId,
+                    vehicleType: data.vehicleType,
+                    plateNumber: data.plateNumber,
+                    preferredDate: data.preferredDate,
+                    additionalNotes: data.additionalNotes,
+                })
+            },
+            technicalInspectionValidity: {
+                title: 'استعلام اعتبار معاینه فنی',
+                cost: '۲۰,۰۰۰ تومان',
+                fields: ['ownerPhone', 'ownerNationalId', 'plateNumber', 'vin', 'additionalNotes'],
+                transform: (data) => ({
+                    ownerPhone: data.ownerPhone,
+                    ownerNationalId: data.ownerNationalId,
+                    plateNumber: data.plateNumber,
+                    vin: data.vin,
+                    additionalNotes: data.additionalNotes,
+                })
+            },
         education: [
             {
                 title: 'پیش ثبت نام مدارس',
@@ -615,33 +658,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     { title: 'پیگیری وضعیت کارت', link: '#' }
                 ]
             },
-            {
-                title: 'استعلام کارت سوخت',
-                icon: 'fa-search',
-                link: '#',
-                subItems: [
-                    { title: 'استعلام سهمیه بنزین', link: '#' },
-                    { title: 'استعلام سهمیه گازوئیل', link: '#' },
-                    { title: 'مشاهده شارژ کارت', link: '#' }
-                ]
-            },
-            {
-                title: 'شارژ کارت سوخت',
-                icon: 'fa-credit-card',
-                link: '#',
-                subItems: [
-                    { title: 'شارژ کارت سوخت شخصی', link: '#' },
-                    { title: 'شارژ کارت سوخت جایگاه‌داران', link: '#' },
-                    { title: 'انتقال سهمیه', link: '#' }
-                ]
-            },
+
             {
                 title: 'تغییر خودرو در کارت سوخت',
                 icon: 'fa-car',
                 link: '#',
                 subItems: [
-                    { title: 'انتقال کارت سوخت به خودرو جدید', link: '#' },
-                    { title: 'حذف خودرو فروخته شده', link: '#' }
+                    { title: 'انتقال کارت سوخت به خودرو جدید', link: 'fuel-card-transfer.html' },
+                    { title: 'حذف خودرو فروخته شده', link: 'fuel-card-remove-vehicle.html' },
+                    { title: 'تغییر خودرو در کارت سوخت', link: 'fuel-card-change-vehicle.html' }
                 ]
             },
             {
@@ -659,9 +684,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-exclamation-triangle',
                 link: '#',
                 subItems: [
-                    { title: 'استعلام جریمه', link: '#' },
-                    { title: 'پرداخت آنلاین جریمه', link: '#' },
-                    { title: 'اعتراض به جریمه', link: '#' }
+                    { title: 'استعلام جریمه', link: 'fine-inquiry.html' },
+                    { title: 'پرداخت آنلاین جریمه', link: 'fine-payment.html' },
+                    { title: 'اعتراض به جریمه', link: 'fine-appeal.html' }
                 ]
             },
             {
@@ -669,8 +694,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-tools',
                 link: '#',
                 subItems: [
-                    { title: 'ثبت نام نوبت معاینه فنی', link: '#' },
-                    { title: 'استعلام اعتبار معاینه فنی', link: '#' }
+                    { title: 'ثبت نام نوبت معاینه فنی', link: 'technical-inspection-appointment.html' },
+                    { title: 'استعلام اعتبار معاینه فنی', link: 'technical-inspection-validity.html' }
                 ]
             }
         ],
