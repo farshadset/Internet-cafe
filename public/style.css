@@ -1421,3 +1421,62 @@ header h1 {
     font-weight: 700;
     font-size: 1.1rem;
 }
+
+.service-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    direction: rtl;
+}
+
+.service-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.service-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+}
+
+.service-btn img {
+    width: 170px;
+    height: 170px;
+    object-fit: cover;
+    display: block;
+    border-radius: 16px;
+}
+
+.service-label {
+    width: 170px;
+    padding: 0.5rem 0;
+    text-align: center;
+    color: #667eea;
+    font-weight: 500;
+    font-size: 1rem;
+    background: transparent;
+}
+
+@media (max-width: 768px) {
+    .service-buttons {
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    
+    .service-btn img {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .service-label {
+        width: 150px;
+        font-size: 0.9rem;
+        padding: 0.4rem 0;
+    }
+}
