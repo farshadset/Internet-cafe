@@ -6,8 +6,6 @@
     <title>کافینت آنلاین</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="fonts/all.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
@@ -176,21 +174,10 @@
                                         <li><a href="university-registration.html">ثبت نام علمی کاربردی</a></li>
                                         <li><a href="university-registration.html">ثبت نام غیرحضوری</a></li>
                                     </ul>
-</div>
-                        </div>
-                        <div class="mega-menu-columns">
-                            <div class="mega-column">
-                                <h4 class="mega-column-title">آزمون‌های استخدامی</h4>
-                                <ul>
-                                    <li><a href="employment-exam.html">ثبت نام آزمون استخدامی آموزش و پرورش</a></li>
-                                    <li><a href="employment-exam.html">ثبت نام استخدامی بانک‌ها</a></li>
-                                    <li><a href="employment-exam.html">ثبت نام استخدامی دستگاه‌های دولتی</a></li>
-                                </ul>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </li>
-
+                    </li>
                     <li class="menu-item" data-menu="automotive">
                         <a href="#"><i class="fas fa-car"></i> خودرو</a>
                         <div class="mega-dropdown">
@@ -203,7 +190,7 @@
                                         <li><a href="fuel-card.html">مفقودی کارت سوخت</a></li>
                                         <li><a href="fuel-card.html">تعویض کارت سوخت آسیم دیده</a></li>
                                         <li><a href="fuel-card.html">پیگیری وضعیت کارت</a></li>
-</ul>
+                                    </ul>
                                 </div>
                                 <div class="mega-column">
                                     <h4 class="mega-column-title">تغییر خودرو در کارت سوخت</h4>
@@ -309,35 +296,35 @@
     <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn"><i class="fas fa-headset"></i></a>
     
     <div class="modal" id="supportModal">
-    <div class="modal-content">
-        <span class="close-btn" id="closeModal">&times;</span>
-        <h2>پشتیبانی</h2>
-        <div class="support-tabs">
-<button class="support-tab active" id="faqTab">
-                <i class="fas fa-question-circle"></i> سوالات متداول
-            </button>
-            <button class="support-tab" id="chatTab">
-                <i class="fas fa-comments"></i> چت با پشتیبانی
-            </button>
-        </div>
-        <div class="support-panel" id="faqPanel">
-            <div class="faq-list">
-                <div class="faq-item"><strong>چگونه می‌توانم ثبت نام کنم؟</strong><p>از صفحه اصلی روی گزینه «پیش ثبت نام مدارس» کلیک کنید.</p></div>
-                <div class="faq-item"><strong>هزینه ثبت نام چقدر است؟</strong><p>هزینه ثبت نام ۵۰,۰۰۰ تومان می‌باشد.</p></div>
-                <div class="faq-item"><strong>زمان تحویل چه زمانی است؟</strong><p>پس از ثبت نام، اطلاعات کامل در ۲۲ روز کاری ارسال می‌شود.</p></div>
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2>پشتیبانی</h2>
+            <div class="support-tabs">
+                <button class="support-tab active" id="faqTab">
+                    <i class="fas fa-question-circle"></i> سوالات متداول
+                </button>
+                <button class="support-tab" id="chatTab">
+                    <i class="fas fa-comments"></i> چت با پشتیبانی
+                </button>
             </div>
-        </div>
-        <div class="support-panel" id="chatPanel" style="display:none;">
-            <div class="inline-chat">
-                <div class="chat-messages" id="inlineChatMessages"></div>
-                <div class="chat-input">
-                    <input type="text" id="inlineMessageInput" placeholder="پیام خود را اینجا بنویسید...">
-                    <button id="inlineSendBtn">ارسال</button>
+            <div class="support-panel" id="faqPanel">
+                <div class="faq-list">
+                    <div class="faq-item"><strong>چگونه می‌توانم ثبت نام کنم؟</strong><p>از صفحه اصلی روی گزینه «پیش ثبت نام مدارس» کلیک کنید.</p></div>
+                    <div class="faq-item"><strong>هزینه ثبت نام چقدر است؟</strong><p>هزینه ثبت نام ۵۰,۰۰۰ تومان می‌باشد.</p></div>
+                    <div class="faq-item"><strong>زمان تحویل چه زمانی است؟</strong><p>پس از ثبت نام، اطلاعات کامل در ۲۲ روز کاری ارسال می‌شود.</p></div>
+                </div>
+            </div>
+            <div class="support-panel" id="chatPanel" style="display:none;">
+                <div class="inline-chat">
+                    <div class="chat-messages" id="inlineChatMessages"></div>
+                    <div class="chat-input">
+                        <input type="text" id="inlineMessageInput" placeholder="پیام خود را اینجا بنویسید...">
+                        <button id="inlineSendBtn">ارسال</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
     <script src="app.js"></script>
     <script src="suggestive-search.js"></script>
     <script>
@@ -349,22 +336,18 @@
             var searchResults = document.getElementById('searchResults');
             var cards = document.querySelectorAll('.card');
 
-            // Function to create the results dropdown
             function showResults(matches) {
-                // Clear previous results
                 searchResults.innerHTML = '';
                 if (matches.length === 0 || searchInput.value.trim() === '') {
                     searchResults.style.display = 'none';
                     return;
                 }
 
-                // Limit to 6 results
                 var limitedMatches = matches.slice(0, 6);
 
                 limitedMatches.forEach(function(match) {
                     var div = document.createElement('div');
                     div.textContent = match.title;
-                    // When clicked, redirect to the link and clear the input
                     div.addEventListener('click', function() {
                         window.location.href = match.link;
                         searchInput.value = '';
@@ -380,7 +363,6 @@
                 var searchTerm = this.value.toLowerCase().trim();
                 var matches = [];
 
-                // If search term is empty, hide results
                 if (searchTerm === '') {
                     searchResults.style.display = 'none';
                     return;
@@ -394,13 +376,11 @@
                             link: card.href
                         });
                     }
-                    // Do NOT hide/show cards; keep them visible.
                 });
 
                 showResults(matches);
             });
 
-            // Hide results when clicking outside
             document.addEventListener('click', function(e) {
                 if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
                     searchResults.style.display = 'none';
