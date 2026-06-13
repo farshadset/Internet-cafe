@@ -407,6 +407,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 preferredOrganization: data.preferredOrganization,
                 additionalNotes: data.additionalNotes,
             })
+        },
+        technicalInspectionAppointment: {
+            title: 'ثبت نام نوبت معاینه فنی',
+            cost: '۳۵,۰۰۰ تومان',
+            fields: ['ownerPhone', 'ownerNationalId', 'vehicleType', 'plateNumber', 'preferredDate', 'additionalNotes'],
+            transform: (data) => ({
+                ownerPhone: data.ownerPhone,
+                ownerNationalId: data.ownerNationalId,
+                vehicleType: data.vehicleType,
+                plateNumber: data.plateNumber,
+                preferredDate: data.preferredDate,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        technicalInspectionValidity: {
+            title: 'استعلام اعتبار معاینه فنی',
+            cost: '۲۰,۰۰۰ تومان',
+            fields: ['ownerPhone', 'ownerNationalId', 'plateNumber', 'vin', 'additionalNotes'],
+            transform: (data) => ({
+                ownerPhone: data.ownerPhone,
+                ownerNationalId: data.ownerNationalId,
+                plateNumber: data.plateNumber,
+                vin: data.vin,
+                additionalNotes: data.additionalNotes,
+            })
         }
     };
 
@@ -479,32 +504,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     { title: 'خرید و فروش سهام', link: 'stock-trade.html' },
                     { title: 'سجام (احراز هویت بورسی)', link: 'sjam.html' }
                 ]
-            },
-            technicalInspectionAppointment: {
-                title: 'ثبت نام نوبت معاینه فنی',
-                cost: '۳۵,۰۰۰ تومان',
-                fields: ['ownerPhone', 'ownerNationalId', 'vehicleType', 'plateNumber', 'preferredDate', 'additionalNotes'],
-                transform: (data) => ({
-                    ownerPhone: data.ownerPhone,
-                    ownerNationalId: data.ownerNationalId,
-                    vehicleType: data.vehicleType,
-                    plateNumber: data.plateNumber,
-                    preferredDate: data.preferredDate,
-                    additionalNotes: data.additionalNotes,
-                })
-            },
-            technicalInspectionValidity: {
-                title: 'استعلام اعتبار معاینه فنی',
-                cost: '۲۰,۰۰۰ تومان',
-                fields: ['ownerPhone', 'ownerNationalId', 'plateNumber', 'vin', 'additionalNotes'],
-                transform: (data) => ({
-                    ownerPhone: data.ownerPhone,
-                    ownerNationalId: data.ownerNationalId,
-                    plateNumber: data.plateNumber,
-                    vin: data.vin,
-                    additionalNotes: data.additionalNotes,
-                })
-            },
+            }
+        ],
         education: [
             {
                 title: 'پیش ثبت نام مدارس',
