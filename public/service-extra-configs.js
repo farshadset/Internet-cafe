@@ -37,6 +37,18 @@ const EXTRA_SERVICE_OPTIONS = {
         economicCode: 'بروزرسانی کد اقتصادی',
         acquirer: 'اتصال پذیرنده مالیاتی'
     },
+    'business-tax': {
+        taxReturn: 'اظهارنامه مالیاتی',
+        article100: 'تبصره ۱۰۰',
+        vat: 'ارزش افزوده',
+        economicCode: 'کد اقتصادی',
+        company: 'ثبت شرکت',
+        brand: 'ثبت برند',
+        companyChanges: 'تغییرات شرکت',
+        license: 'جواز کسب',
+        guildLicense: 'مجوز صنفی',
+        productionLicense: 'مجوز تولیدی'
+    },
     finance: {
         account: 'افتتاح حساب بانکی',
         bankIdentity: 'احراز هویت بانک‌ها',
@@ -105,7 +117,7 @@ function EXTRA_COMMON_IDENTITY_TRANSFORM(data) {
     };
 }
 
-window.EXTRA_SERVICE_CONFIGS = {
+const EXTRA_SERVICE_CONFIGS = {
     judicial: {
         cost: '۸۰,۰۰۰ تومان',
         dynamicForm: true,
@@ -187,6 +199,22 @@ window.EXTRA_SERVICE_CONFIGS = {
             { name: 'notes', label: 'توضیحات اضافی', type: 'textarea', required: false }
         ],
         transform: data => ({ ...EXTRA_COMMON_IDENTITY_TRANSFORM(data), title: EXTRA_OPTION_LABEL(data.serviceType, EXTRA_SERVICE_OPTIONS.government), email: data.email, trackingCode: data.trackingCode, propertyCode: data.propertyCode, contractType: EXTRA_OPTION_LABEL(data.contractType, { rent: 'اجاره', sale: 'خرید و فروش', other: 'سایر' }), landlordPhone: data.landlordPhone, tenantPhone: data.tenantPhone, contractDate: data.contractDate, licenseCategory: data.licenseCategory, workshopAddress: data.workshopAddress, notes: data.notes })
+    },
+    'business-tax': {
+        title: 'مالیات، مجوز و کسب‌وکار',
+        cost: '۱۲۰,۰۰۰ تومان',
+        dynamicForm: true,
+        fieldConfigs: [
+            ...EXTRA_IDENTITY_FIELDS,
+            { name: 'serviceType', label: 'نوع خدمت مالیات/مجوز/کسب‌وکار', type: 'select', required: true, options: EXTRA_SERVICE_OPTIONS['business-tax'] },
+            { name: 'email', label: 'ایمیل', type: 'email', required: false },
+            { name: 'businessName', label: 'نام شرکت/برند/کسب‌وکار', type: 'text', required: false },
+            { name: 'businessCategory', label: 'دسته فعالیت', type: 'text', required: false },
+            { name: 'trackingCode', label: 'کد پیگیری/شناسه ملی', type: 'text', required: false },
+            { name: 'workshopAddress', label: 'آدرس محل فعالیت', type: 'textarea', required: false },
+            { name: 'notes', label: 'توضیحات اضافی', type: 'textarea', required: false }
+        ],
+        transform: data => ({ ...EXTRA_COMMON_IDENTITY_TRANSFORM(data), title: EXTRA_OPTION_LABEL(data.serviceType, EXTRA_SERVICE_OPTIONS['business-tax']), email: data.email, businessName: data.businessName, businessCategory: data.businessCategory, trackingCode: data.trackingCode, workshopAddress: data.workshopAddress, notes: data.notes })
     },
     tax: {
         title: 'خدمات مالیاتی',
@@ -336,3 +364,5 @@ window.EXTRA_SERVICE_CONFIGS = {
         transform: data => ({ ...EXTRA_COMMON_IDENTITY_TRANSFORM(data), title: EXTRA_OPTION_LABEL(data.serviceType, EXTRA_SERVICE_OPTIONS.identity), verificationService: EXTRA_OPTION_LABEL(data.verificationService, { mygov: 'دولت من', bank: 'بانک', sejam: 'سجام', other: 'سایر' }), trackingCode: data.trackingCode, bankName: data.bankName, iban: data.iban, notes: data.notes })
     }
 };
+
+window.EXTRA_SERVICE_CONFIGS = EXTRA_SERVICE_CONFIGS;
