@@ -1,6 +1,32 @@
 document.addEventListener('DOMContentLoaded', () => {
     const currentUserData = JSON.parse(localStorage.getItem('userData') || 'null');
 
+    function joinDateParts(data, prefix = 'birth') {
+        return [data[prefix + 'Year'], data[prefix + 'Month'], data[prefix + 'Day']].filter(Boolean).join('/');
+    }
+
+    function optionLabel(value, options) {
+        return options[value] || value;
+    }
+
+    function commonIdentityTransform(data) {
+        return {
+            phone: data.phone,
+            nationalId: data.nationalId,
+            birthDate: joinDateParts(data)
+        };
+    }
+
+    const YES_NO_OPTIONS = { yes: 'بله', no: 'خیر' };
+    const COMMON_IDENTITY_FIELDS = [
+        { name: 'phone', label: 'شماره تلفن همراه', type: 'tel', placeholder: '09xx-xxx-xxxx', required: true },
+        { name: 'nationalId', label: 'کد ملی', type: 'text', maxLength: 10, required: true },
+        { name: 'birthDate', label: 'تاریخ تولد', type: 'dateParts', required: true }
+    ];
+    const COMMON_TRACKING_FIELDS = [
+        { name: 'trackingCode', label: 'کد پیگیری/رهگیری', type: 'text', required: false }
+    ];
+
     // بارگذاری بنر از دیتابیس
     fetch('/api/banner')
         .then(r => r.json())
@@ -435,214 +461,99 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    Object.assign(SERVICE_CONFIGS, window.EXTRA_SERVICE_CONFIGS || {});
+
     const MEGA_MENU_DATA = {
-        banking: [
+        'identity-judicial': [
             {
-                title: 'وام ازدواج',
-                icon: 'fa-ring',
+                title: 'کارت ملی و شناسنامه',
+                icon: 'fa-id-card',
+                link: 'smart-national-card.html',
+                subItems: [
+                    { title: 'کارت ملی هوشمند', link: 'smart-national-card.html' },
+                    { title: 'المثنی کارت ملی', link: 'smart-national-card.html' },
+                    { title: 'تغییر نشانی', link: '#' },
+                    { title: 'شناسنامه المثنی', link: '#' },
+                    { title: 'اصلاح مشخصات', link: '#' }
+                ]
+            },
+            {
+                title: 'گذرنامه و مهاجرت',
+                icon: 'fa-passport',
+                link: '#',
+                subItems: [
+                    { title: 'ثبت نام گذرنامه', link: '#' },
+                    { title: 'تمدید پاسپورت', link: '#' },
+                    { title: 'المثنی گذرنامه', link: '#' },
+                    { title: 'فرم مهاجرت', link: '#' }
+                ]
+            },
+            {
+                title: 'سامانه ثنا و قضایی',
+                icon: 'fa-gavel',
+                link: 'service.html?service=judicial',
+                subItems: [
+                    { title: 'ثبت نام ثنا', link: '#' },
+                    { title: 'بازیابی رمز ثنا', link: 'service.html?service=judicial' },
+                    { title: 'ابلاغ الکترونیک', link: '#' },
+                    { title: 'پیگیری پرونده', link: '#' },
+                    { title: 'نوبت‌دهی قضایی', link: 'service.html?service=judicial' }
+                ]
+            },
+            {
+                title: 'سوء پیشینه و استعلام‌ها',
+                icon: 'fa-search',
+                link: 'criminal-record.html',
+                subItems: [
+                    { title: 'گواهی عدم سوء پیشینه', link: 'criminal-record.html' },
+                    { title: 'استعلام کد ملی', link: '#' },
+                    { title: 'استعلام شناسنامه', link: '#' },
+                    { title: 'استعلام محکومیت', link: 'service.html?service=licenses' }
+                ]
+            }
+        ],
+        finance: [
+            {
+                title: 'وام و تسهیلات',
+                icon: 'fa-hand-holding-usd',
                 link: 'marriage-loan.html',
                 subItems: [
-                    { title: 'ثبت نام وام ازدواج', link: 'marriage-loan.html' },
-                    { title: 'استعلام وضعیت وام', link: 'marriage-loan-status.html' },
-                    { title: 'تمدید مهلت وام', link: 'marriage-loan-renew.html' }
+                    { title: 'وام ازدواج', link: 'marriage-loan.html' },
+                    { title: 'وام ودیعه مسکن', link: 'rental-deposit.html' },
+                    { title: 'وام ضروری', link: 'urgent-loan.html' },
+                    { title: 'تسهیلات خرید مسکن', link: 'housing-purchase.html' }
                 ]
             },
             {
-                title: 'وام ودیعه مسکن',
-                icon: 'fa-home',
-                link: 'rental-deposit.html',
+                title: 'یارانه و سهام عدالت',
+                icon: 'fa-hand-holding-heart',
+                link: 'subsidy.html',
                 subItems: [
-                    { title: 'ثبت نام وام ودیعه مسکن', link: 'rental-deposit.html' }
-                ]
-            },
-            {
-                title: 'وام ضروری',
-                icon: 'fa-hand-holding-usd',
-                link: 'urgent-loan.html',
-                subItems: [
-                    { title: 'ثبت نام وام ضروری بازنشستگان', link: 'urgent-loan.html' },
-                    { title: 'وام ضروری کارمندان', link: 'urgent-loan.html' },
-                    { title: 'وام دانشجویی', link: 'urgent-loan.html' }
-                ]
-            },
-            {
-                title: 'تسهیلات مسکن',
-                icon: 'fa-city',
-                link: 'housing-movement.html',
-                subItems: [
-                    { title: 'تسهیلات خرید مسکن', link: 'housing-purchase.html' },
-                    { title: 'وام ساخت مسکن', link: 'housing-construction.html' }
-                ]
-            },
-            {
-                title: 'سهام عدالت',
-                icon: 'fa-balance-scale',
-                link: 'justice-stocks.html',
-                subItems: [
-                    { title: 'ثبت نام سهام عدالت', link: 'justice-stocks.html' },
-                    { title: 'استعلام سهام', link: 'justice-stocks.html' },
+                    { title: 'یارانه معیشتی', link: 'subsidy.html' },
+                    { title: 'اعتراض یارانه', link: 'subsidy.html' },
+                    { title: 'سهام عدالت', link: 'justice-stocks.html' },
                     { title: 'فروش سهام', link: 'justice-stocks.html' }
                 ]
             },
             {
-                title: 'یارانه نقدی و معیشتی',
-                icon: 'fa-hand-holding-heart',
-                link: 'subsidy.html',
-                subItems: [
-                    { title: 'ثبت نام یارانه معیشتی', link: 'subsidy.html' },
-                    { title: 'اعتراض به یارانه', link: 'subsidy.html' },
-                    { title: 'به‌روزرسانی اطلاعات', link: 'subsidy.html' },
-                    { title: 'استعلام یارانه', link: 'subsidy.html' }
-                ]
-            },
-            {
-                title: 'بورس و سرمایه‌گذاری',
+                title: 'بورس و سجام',
                 icon: 'fa-chart-line',
-                link: '#',
+                link: 'sjam.html',
                 subItems: [
-                    { title: 'افتتاح کد بورسی', link: 'stock-registration.html' },
-                    { title: 'خرید و فروش سهام', link: 'stock-trade.html' },
-                    { title: 'سجام (احراز هویت بورسی)', link: 'sjam.html' }
-                ]
-            }
-        ],
-        education: [
-            {
-                title: 'پیش ثبت نام مدارس',
-                icon: 'fa-school',
-                link: 'schools.html',
-                subItems: [
-                    { title: 'پیش ثبت نام پایه اول دبستان', link: 'elementary-registration.html' },
-                    { title: 'پیش ثبت نام متوسطه اول', link: 'middle-school-registration.html' },
-                    { title: 'پیش ثبت نام متوسطه دوم', link: 'high-school-registration.html' }
+                    { title: 'ثبت سجام', link: 'sjam.html' },
+                    { title: 'احراز هویت بورسی', link: 'sjam.html' },
+                    { title: 'افتتاح کد بورسی', link: 'stock-registration.html' }
                 ]
             },
             {
-                title: 'ثبت نام مدارس خاص',
-                icon: 'fa-school',
-                link: 'special-schools.html',
+                title: 'خدمات بانکی',
+                icon: 'fa-wallet',
+                link: 'service.html?service=finance',
                 subItems: [
-                    { title: 'ثبت نام مدارس شاهد', link: 'special-schools.html' },
-                    { title: 'ثبت نام مدارس نمونه دولتی', link: 'special-schools.html' },
-                    { title: 'ثبت نام مدارس تیزهوشان (سمپاد)', link: 'special-schools.html' }
-                ]
-            },
-            {
-                title: 'ثبت نام مدارس غیردولتی',
-                icon: 'fa-globe',
-                link: 'non-gov-schools.html',
-                subItems: [
-                    { title: 'ثبت نام مدارس بین‌الملل', link: 'non-gov-schools.html' },
-                    { title: 'ثبت نام مدارس هیئت امنایی', link: 'non-gov-schools.html' }
-                ]
-            },
-            {
-                title: 'کنکور سراسری',
-                icon: 'fa-graduation-cap',
-                link: 'konkor.html',
-                subItems: [
-                    { title: 'ثبت نام کنکور کارشناسی', link: 'konkor.html' },
-                    { title: 'ثبت نام کنکور ارشد', link: 'konkor.html' },
-                    { title: 'ثبت نام کنکور دکتری', link: 'konkor.html' }
-                ]
-            },
-            {
-                title: 'ثبت نام دانشگاه‌ها',
-                icon: 'fa-university',
-                link: 'university-registration.html',
-                subItems: [
-                    { title: 'ثبت نام بدون کنکور دانشگاه آزاد', link: 'university-registration.html' },
-                    { title: 'ثبت نام پیام نور', link: 'university-registration.html' },
-                    { title: 'ثبت نام علمی کاربردی', link: 'university-registration.html' },
-                    { title: 'ثبت نام غیرحضوری', link: 'university-registration.html' }
-                ]
-            },
-            {
-                title: 'آزمون‌های استخدامی',
-                icon: 'fa-file-alt',
-                link: 'employment-exam.html',
-                subItems: [
-                    { title: 'ثبت نام آزمون استخدامی آموزش و پرورش', link: 'employment-exam.html' },
-                    { title: 'ثبت نام استخدامی بانک‌ها', link: 'employment-exam.html' },
-                    { title: 'ثبت نام استخدامی دستگاه‌های دولتی', link: 'employment-exam.html' }
-                ]
-            }
-        ],
-        identity: [
-            {
-                title: 'کارت ملی هوشمند',
-                icon: 'fa-id-card',
-                link: 'smart-national-card.html',
-                subItems: [
-                    { title: 'درخواست کارت ملی هوشمند جدید', link: 'smart-national-card.html' },
-                    { title: 'تعویض کارت ملی قدیم', link: 'smart-national-card.html' },
-                    { title: 'المثنی کارت ملی', link: 'smart-national-card.html' },
-                    { title: 'پیگیری پستی', link: '#' },
-                    { title: 'تغییر نشانی', link: '#' }
-                ]
-            },
-            {
-                title: 'شناسنامه',
-                icon: 'fa-file-alt',
-                link: '#',
-                subItems: [
-                    { title: 'درخواست شناسنامه المثنی', link: '#' },
-                    { title: 'اصلاح مشخصات شناسنامه', link: '#' },
-                    { title: 'المثنی برگه هویت', link: '#' }
-                ]
-            },
-            {
-                title: 'گذرنامه (پاسپورت)',
-                icon: 'fa-passport',
-                link: '#',
-                subItems: [
-                    { title: 'ثبت نام اینترنتی گذرنامه', link: '#' },
-                    { title: 'تمدید گذرنامه', link: '#' },
-                    { title: 'المثنی گذرنامه', link: '#' },
-                    { title: 'پیگیری وضعیت', link: '#' }
-                ]
-            },
-            {
-                title: 'گواهی عدم سوء پیشینه',
-                icon: 'fa-file-alt',
-                link: 'criminal-record.html',
-                subItems: [
-                    { title: 'صدور گواهی اینترنتی', link: 'criminal-record.html' },
-                    { title: 'گواهی برای مهاجرت', link: 'criminal-record.html' },
-                    { title: 'گواهی برای کار', link: 'criminal-record.html' },
-                    { title: 'گواهی برای ازدواج', link: 'criminal-record.html' },
-                    { title: 'تمدید گواهی', link: '#' }
-                ]
-            },
-            {
-                title: 'پایگاه ثبت احوال',
-                icon: 'fa-database',
-                link: '#',
-                subItems: [
-                    { title: 'استعلام کد ملی', link: '#' },
-                    { title: 'استعلام وضعیت شناسنامه', link: '#' },
-                    { title: 'درخواست کد پستی', link: '#' }
-                ]
-            },
-            {
-                title: 'ثبت نام انتخابات',
-                icon: 'fa-vote-yea',
-                link: '#',
-                subItems: [
-                    { title: 'ثبت نام رأی اولی‌ها', link: '#' },
-                    { title: 'تأیید صلاحیت', link: '#' },
-                    { title: 'تعیین شعبه اخذ رأی', link: '#' }
-                ]
-            },
-            {
-                title: 'سامانه ثنا (قضایی)',
-                icon: 'fa-gavel',
-                link: '#',
-                subItems: [
-                    { title: 'ثبت نام ثنا', link: '#' },
-                    { title: 'پیگیری پرونده قضایی', link: '#' },
-                    { title: 'دریافت کارت وکالت', link: '#' },
-                    { title: 'ابلاغ الکترونیک', link: '#' }
+                    { title: 'افتتاح حساب', link: 'service.html?service=finance' },
+                    { title: 'احراز هویت بانک', link: 'service.html?service=finance' },
+                    { title: 'اعتبارسنجی مرآت', link: 'service.html?service=finance' },
+                    { title: 'پرداخت آنلاین', link: 'service.html?service=finance' }
                 ]
             }
         ],
@@ -652,97 +563,216 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-gas-pump',
                 link: 'fuel-card.html',
                 subItems: [
-                    { title: 'ثبت نام کارت سوخت جدید', link: 'fuel-card.html' },
-                    { title: 'صدور کارت سوخت المثنی', link: 'fuel-card.html' },
-                    { title: 'مفقودی کارت سوخت', link: 'fuel-card.html' },
-                    { title: 'تعویض کارت سوخت آسیب دیده', link: 'fuel-card.html' },
-                    { title: 'پیگیری وضعیت کارت', link: '#' }
-                ]
-            },
-
-            {
-                title: 'تغییر خودرو در کارت سوخت',
-                icon: 'fa-car',
-                link: '#',
-                subItems: [
-                    { title: 'انتقال کارت سوخت به خودرو جدید', link: 'fuel-card-transfer.html' },
-                    { title: 'حذف خودرو فروخته شده', link: 'fuel-card-remove-vehicle.html' },
-                    { title: 'تغییر خودرو در کارت سوخت', link: 'fuel-card-change-vehicle.html' }
+                    { title: 'صدور کارت سوخت', link: 'fuel-card.html' },
+                    { title: 'المثنی کارت سوخت', link: 'fuel-card.html' },
+                    { title: 'انتقال کارت سوخت', link: 'fuel-card-transfer.html' }
                 ]
             },
             {
-                title: 'سامانه تعویض پلاک',
+                title: 'تعویض پلاک و خودرو',
                 icon: 'fa-ticket-alt',
                 link: '#',
                 subItems: [
-                    { title: 'ثبت نام نوبت تعویض پلاک', link: '#' },
-                    { title: 'استعلام خلافی خودرو', link: '#' },
-                    { title: 'نقل و انتقال خودرو', link: '#' }
+                    { title: 'نوبت تعویض پلاک', link: '#' },
+                    { title: 'نقل و انتقال خودرو', link: '#' },
+                    { title: 'مالیات نقل و انتقال', link: 'service.html?service=finance' }
                 ]
             },
             {
-                title: 'جریمه‌های رانندگی',
+                title: 'جریمه و معاینه فنی',
                 icon: 'fa-exclamation-triangle',
-                link: '#',
+                link: 'fine-payment.html',
                 subItems: [
-                    { title: 'استعلام جریمه', link: 'fine-inquiry.html' },
-                    { title: 'پرداخت آنلاین جریمه', link: 'fine-payment.html' },
-                    { title: 'اعتراض به جریمه', link: 'fine-appeal.html' }
+                    { title: 'استعلام خلافی', link: '#' },
+                    { title: 'پرداخت جریمه', link: 'fine-payment.html' },
+                    { title: 'اعتراض جریمه', link: 'fine-appeal.html' },
+                    { title: 'نوبت معاینه فنی', link: 'technical-inspection-appointment.html' }
                 ]
             },
             {
-                title: 'معاینه فنی',
-                icon: 'fa-tools',
-                link: '#',
+                title: 'ثبت نام خودرو',
+                icon: 'fa-car',
+                link: 'service.html?service=vehicles',
                 subItems: [
-                    { title: 'ثبت نام نوبت معاینه فنی', link: 'technical-inspection-appointment.html' },
-                    { title: 'استعلام اعتبار معاینه فنی', link: 'technical-inspection-validity.html' }
+                    { title: 'ایران خودرو', link: 'service.html?service=vehicles' },
+                    { title: 'سایپا', link: 'service.html?service=vehicles' },
+                    { title: 'سامانه یکپارچه', link: 'service.html?service=vehicles' },
+                    { title: 'انتخاب خودرو', link: 'service.html?service=vehicles' }
+                ]
+            },
+            {
+                title: 'خدمات شهری',
+                icon: 'fa-city',
+                link: 'service.html?service=vehicles',
+                subItems: [
+                    { title: 'تهران من', link: 'service.html?service=vehicles' },
+                    { title: 'یارانه سوخت وانت', link: 'service.html?service=vehicles' }
                 ]
             }
         ],
-        administrative: [
+        education: [
             {
-                title: 'ثبت شرکت و کسب و کار',
+                title: 'مدارس',
+                icon: 'fa-school',
+                link: 'schools.html',
+                subItems: [
+                    { title: 'پیش ثبت نام مدارس', link: 'schools.html' },
+                    { title: 'مدارس شاهد', link: 'special-schools.html' },
+                    { title: 'مدارس تیزهوشان', link: 'special-schools.html' },
+                    { title: 'مدارس غیردولتی', link: 'non-gov-schools.html' }
+                ]
+            },
+            {
+                title: 'دانشگاه‌ها',
+                icon: 'fa-university',
+                link: 'university-registration.html',
+                subItems: [
+                    { title: 'دانشگاه آزاد', link: 'university-registration.html' },
+                    { title: 'پیام نور', link: 'university-registration.html' },
+                    { title: 'علمی کاربردی', link: 'university-registration.html' },
+                    { title: 'ثبت نام غیرحضوری', link: 'university-registration.html' }
+                ]
+            },
+            {
+                title: 'کنکور و آزمون‌ها',
+                icon: 'fa-graduation-cap',
+                link: 'konkor.html',
+                subItems: [
+                    { title: 'کنکور سراسری', link: 'konkor.html' },
+                    { title: 'ارشد', link: 'konkor.html' },
+                    { title: 'دکتری', link: 'konkor.html' }
+                ]
+            },
+            {
+                title: 'آزمون‌های استخدامی',
+                icon: 'fa-file-alt',
+                link: 'employment-exam.html',
+                subItems: [
+                    { title: 'آموزش و پرورش', link: 'employment-exam.html' },
+                    { title: 'بانک‌ها', link: 'employment-exam.html' },
+                    { title: 'دستگاه‌های دولتی', link: 'employment-exam.html' }
+                ]
+            },
+            {
+                title: 'خدمات دانشجویی',
+                icon: 'fa-user-graduate',
+                link: 'service.html?service=student',
+                subItems: [
+                    { title: 'سامانه‌های آموزشی', link: 'service.html?service=student' },
+                    { title: 'وام دانشجویی', link: 'urgent-loan.html' }
+                ]
+            }
+        ],
+        'business-tax': [
+            {
+                title: 'مالیات',
+                icon: 'fa-file-invoice-dollar',
+                link: 'service.html?service=tax',
+                subItems: [
+                    { title: 'اظهارنامه مالیاتی', link: '#' },
+                    { title: 'تبصره ۱۰۰', link: 'service.html?service=tax' },
+                    { title: 'ارزش افزوده', link: '#' },
+                    { title: 'اعتراض مالیاتی', link: 'service.html?service=tax' },
+                    { title: 'کد اقتصادی', link: 'service.html?service=tax' }
+                ]
+            },
+            {
+                title: 'ثبت و تغییرات شرکت',
                 icon: 'fa-building',
                 link: '#',
                 subItems: [
-                    { title: 'ثبت شرکت آنلاین', link: '#' },
-                    { title: 'ثبت برند و علامت تجاری', link: '#' },
+                    { title: 'ثبت شرکت', link: '#' },
+                    { title: 'ثبت برند', link: '#' },
                     { title: 'تغییرات شرکت', link: '#' }
                 ]
             },
             {
-                title: 'دریافت مجوزها',
+                title: 'مجوزها',
                 icon: 'fa-certificate',
-                link: '#',
+                link: 'service.html?service=licenses',
                 subItems: [
-                    { title: 'مجوز کسب و کار (جواز کسب)', link: '#' },
+                    { title: 'سامانه ملی مجوزها', link: 'service.html?service=licenses' },
+                    { title: 'جواز کسب', link: '#' },
                     { title: 'مجوز صنفی', link: '#' },
                     { title: 'مجوز تولیدی', link: '#' }
                 ]
             },
             {
-                title: 'سامانه ثبت اظهارنامه مالیاتی',
-                icon: 'fa-file-invoice',
-                link: '#',
+                title: 'اصناف و اماکن',
+                icon: 'fa-store',
+                link: 'service.html?service=licenses',
                 subItems: [
-                    { title: 'ثبت اظهارنامه مالیاتی عملکرد', link: '#' },
-                    { title: 'ثبت اظهارنامه ارزش افزوده', link: '#' },
-                    { title: 'تمدید کارت بازرگانی', link: '#' }
+                    { title: 'نوین اصناف', link: 'service.html?service=licenses' },
+                    { title: 'بازدید اماکن', link: 'service.html?service=licenses' },
+                    { title: 'صلاحیت بهداشتی', link: 'service.html?service=licenses' },
+                    { title: 'گواهی مالیاتی ۱۸۶', link: 'service.html?service=licenses' }
+                ]
+            }
+        ],
+        'government-services': [
+            {
+                title: 'سامانه‌های عمومی',
+                icon: 'fa-landmark',
+                link: 'service.html?service=government',
+                subItems: [
+                    { title: 'میخک', link: 'service.html?service=government' },
+                    { title: 'سخا', link: 'service.html?service=government' },
+                    { title: 'شمس', link: 'service.html?service=government' },
+                    { title: 'ستاد ایران', link: 'service.html?service=government' }
                 ]
             },
             {
-                title: 'تکمیل فرم‌های اداری',
-                icon: 'fa-file-alt',
+                title: 'املاک و اسکان',
+                icon: 'fa-home',
+                link: 'service.html?service=housing',
+                subItems: [
+                    { title: 'ثبت‌نام املاک و اسکان', link: 'service.html?service=housing' },
+                    { title: 'خودنویس', link: 'service.html?service=government' },
+                    { title: 'ثبت سند ملکی', link: 'service.html?service=government' }
+                ]
+            },
+            {
+                title: 'تأمین اجتماعی و بیمه',
+                icon: 'fa-shield-alt',
+                link: 'service.html?service=insurance',
+                subItems: [
+                    { title: 'نام نویسی کارفرما', link: 'service.html?service=insurance' },
+                    { title: 'ثبت نیروی کار', link: 'service.html?service=insurance' },
+                    { title: 'ارسال لیست بیمه', link: 'service.html?service=insurance' },
+                    { title: 'بیمه با سابقه', link: 'service.html?service=insurance' },
+                    { title: 'کمیسیون پزشکی', link: 'service.html?service=insurance' },
+                    { title: 'کمک هزینه عینک', link: 'service.html?service=insurance' },
+                    { title: 'کمک هزینه سمعک', link: 'service.html?service=insurance' }
+                ]
+            },
+            {
+                title: 'خدمات توکن',
+                icon: 'fa-key',
+                link: 'service.html?service=token',
+                subItems: [
+                    { title: 'راه‌اندازی توکن', link: 'service.html?service=token' },
+                    { title: 'امضا در ثبت من', link: 'service.html?service=token' },
+                    { title: 'امضای نرم‌افزاری', link: 'service.html?service=token' }
+                ]
+            },
+            {
+                title: 'خدمات انتخاباتی',
+                icon: 'fa-vote-yea',
                 link: '#',
                 subItems: [
-                    { title: 'تکمیل فرم استخدامی', link: '#' },
-                    { title: 'تکمیل فرم بانکی', link: '#' },
-                    { title: 'تکمیل فرم مهاجرت', link: '#' }
+                    { title: 'رأی اولی‌ها', link: '#' },
+                    { title: 'تعیین شعبه', link: '#' },
+                    { title: 'تأیید صلاحیت', link: '#' }
                 ]
             }
         ]
     };
+
+    function buildServiceLink(link, title) {
+        if (!link.includes('service.html?service=') || link.includes('label=')) return link;
+        const separator = link.includes('?') ? '&' : '?';
+        return link + separator + 'label=' + encodeURIComponent(title);
+    }
 
     function buildMegaMenu() {
         document.querySelectorAll('.menu-item').forEach(item => {
@@ -758,7 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (section.subItems && section.subItems.length) {
                     html += '<ul>';
                     section.subItems.forEach(sub => {
-                        html += '<li><a href="' + sub.link + '">' + sub.title + '</a></li>';
+                        html += '<li><a href="' + buildServiceLink(sub.link, sub.title) + '">' + sub.title + '</a></li>';
                     });
                     html += '</ul>';
                 }
@@ -771,6 +801,100 @@ document.addEventListener('DOMContentLoaded', () => {
 
     buildMegaMenu();
 
+    function renderServiceForm(formElement, serviceKey) {
+        const config = SERVICE_CONFIGS[serviceKey];
+        if (!config || !config.dynamicForm) return;
+
+        const titleElement = document.getElementById('serviceTitle');
+        const label = new URLSearchParams(window.location.search).get('label');
+        if (titleElement) titleElement.textContent = label || config.title;
+
+        formElement.innerHTML = '';
+        formElement.dataset.service = serviceKey;
+
+        (config.fieldConfigs || []).forEach(field => {
+            formElement.appendChild(createFormElement(field));
+        });
+
+        const submitButton = document.createElement('button');
+        submitButton.type = 'submit';
+        submitButton.className = 'btn-next';
+        submitButton.textContent = 'ثبت درخواست';
+        formElement.appendChild(submitButton);
+    }
+
+    function createFormElement(field) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'form-group';
+
+        const label = document.createElement('label');
+        label.setAttribute('for', field.name);
+        label.textContent = field.label;
+        wrapper.appendChild(label);
+
+        let input;
+        if (field.type === 'select') {
+            input = document.createElement('select');
+            input.id = field.name;
+            input.name = field.name;
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = 'انتخاب کنید';
+            input.appendChild(emptyOption);
+            Object.keys(field.options || {}).forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = field.options[value];
+                input.appendChild(option);
+            });
+        } else if (field.type === 'textarea') {
+            input = document.createElement('textarea');
+            input.id = field.name;
+            input.name = field.name;
+            input.rows = field.rows || 3;
+        } else if (field.type === 'dateParts') {
+            const dateWrapper = document.createElement('div');
+            dateWrapper.className = 'date-fields';
+            const prefix = field.prefix || 'birth';
+            ['Year', 'Month', 'Day'].forEach((suffix, index) => {
+                const part = document.createElement('input');
+                part.type = 'number';
+                part.id = prefix + suffix;
+                part.name = prefix + suffix;
+                part.placeholder = suffix === 'Year' ? 'سال' : suffix === 'Month' ? 'ماه' : 'روز';
+                part.min = suffix === 'Year' ? '1300' : suffix === 'Month' ? '1' : '1';
+                part.max = suffix === 'Year' ? '1500' : suffix === 'Month' ? '12' : '31';
+                dateWrapper.appendChild(part);
+            });
+            input = dateWrapper;
+        } else {
+            input = document.createElement('input');
+            input.type = field.type || 'text';
+            input.id = field.name;
+            input.name = field.name;
+        }
+
+        if (field.placeholder && input.tagName !== 'DIV') input.placeholder = field.placeholder;
+        if (field.maxLength && input.tagName !== 'DIV') input.maxLength = field.maxLength;
+        if (field.required) {
+            if (input.tagName === 'DIV') {
+                Array.from(input.querySelectorAll('input')).forEach(part => part.required = true);
+            } else {
+                input.required = true;
+            }
+        }
+
+        wrapper.appendChild(input);
+
+        if (field.hint) {
+            const small = document.createElement('small');
+            small.textContent = field.hint;
+            wrapper.appendChild(small);
+        }
+
+        return wrapper;
+    }
+
     function setupServiceForm(formElement, serviceKey) {
         const config = SERVICE_CONFIGS[serviceKey];
         if (!config) return;
@@ -778,10 +902,11 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const raw = Object.fromEntries(new FormData(formElement));
             localStorage.setItem('registrationData', JSON.stringify(raw));
+            const transformed = config.transform(raw);
             const body = {
-                title: config.title,
-                cost: config.cost,
-                ...config.transform(raw),
+                ...transformed,
+                title: transformed.title || config.title,
+                cost: transformed.cost || config.cost,
                 status: 'pending',
                 username: currentUserData ? currentUserData.username : null
             };
@@ -808,8 +933,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const key = form.id === 'registrationForm' ? 'schools'
                   : form.id === 'fuelCardForm' ? 'fuel'
                   : form.id === 'marriageLoanForm' ? 'marriage'
-                  : form.dataset.service;
-        if (key) setupServiceForm(form, key);
+                  : form.dataset.service || new URLSearchParams(window.location.search).get('service');
+        if (key) {
+            renderServiceForm(form, key);
+            setupServiceForm(form, key);
+        }
     });
 
     const authForm = document.getElementById('authForm');

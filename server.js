@@ -16,7 +16,8 @@ const staticOptions = {
   etag: true,
   lastModified: true,
   setHeaders: (res, filePath) => {
-    if (filePath.toString().endsWith('.html')) {
+    const pathString = filePath.toString();
+    if (pathString.endsWith('.html') || pathString.endsWith('.js')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     } else {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
