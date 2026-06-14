@@ -669,9 +669,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-file-invoice-dollar',
                 link: 'service.html?service=tax',
                 subItems: [
-                    { title: 'اظهارنامه مالیاتی', link: '#' },
+                    { title: 'اظهارنامه مالیاتی', link: 'service.html?service=business-tax' },
                     { title: 'تبصره ۱۰۰', link: 'service.html?service=tax' },
-                    { title: 'ارزش افزوده', link: '#' },
+                    { title: 'ارزش افزوده', link: 'service.html?service=business-tax' },
                     { title: 'اعتراض مالیاتی', link: 'service.html?service=tax' },
                     { title: 'کد اقتصادی', link: 'service.html?service=tax' }
                 ]
@@ -681,9 +681,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: 'fa-building',
                 link: '#',
                 subItems: [
-                    { title: 'ثبت شرکت', link: '#' },
-                    { title: 'ثبت برند', link: '#' },
-                    { title: 'تغییرات شرکت', link: '#' }
+                    { title: 'ثبت شرکت', link: 'service.html?service=business-tax' },
+                    { title: 'ثبت برند', link: 'service.html?service=business-tax' },
+                    { title: 'تغییرات شرکت', link: 'service.html?service=business-tax' }
                 ]
             },
             {
@@ -692,9 +692,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 link: 'service.html?service=licenses',
                 subItems: [
                     { title: 'سامانه ملی مجوزها', link: 'service.html?service=licenses' },
-                    { title: 'جواز کسب', link: '#' },
-                    { title: 'مجوز صنفی', link: '#' },
-                    { title: 'مجوز تولیدی', link: '#' }
+                    { title: 'جواز کسب', link: 'service.html?service=licenses' },
+                    { title: 'مجوز صنفی', link: 'service.html?service=licenses' },
+                    { title: 'مجوز تولیدی', link: 'service.html?service=licenses' }
                 ]
             },
             {
