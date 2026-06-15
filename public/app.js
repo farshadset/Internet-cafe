@@ -1232,51 +1232,147 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const bannerUpload = document.getElementById('bannerUpload');
-    const previewImg = document.getElementById('previewImg');
-    const saveBannerBtn = document.getElementById('saveBannerBtn');
+const bannerUpload = document.getElementById('bannerUpload');
+     const previewImg = document.getElementById('previewImg');
+     const saveBannerBtn = document.getElementById('saveBannerBtn');
 
-    if (bannerUpload && previewImg) {
-        bannerUpload.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    previewImg.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
+     if (bannerUpload && previewImg) {
+         bannerUpload.addEventListener('change', function(e) {
+             const file = e.target.files[0];
+             if (file) {
+                 const reader = new FileReader();
+                 reader.onload = function(event) {
+                     previewImg.src = event.target.result;
+                 };
+                 reader.readAsDataURL(file);
+             }
+         });
+     }
 
-    if (saveBannerBtn && previewImg) {
-        saveBannerBtn.addEventListener('click', function() {
-            const bannerSrc = previewImg.src;
-            fetch('/api/banner', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ src: bannerSrc })
-            })
-            .then(() => {
-                const toast = document.createElement('div');
-                toast.className = 'toast';
-                toast.textContent = 'بنر با موفقیت ذخیره شد!';
-                document.body.appendChild(toast);
-                toast.classList.add('show');
-                setTimeout(() => {
-                    toast.classList.remove('show');
-                    setTimeout(() => toast.remove(), 300);
-                }, 3000);
-                window.location.href = 'index.html';
-            })
-            .catch(() => {
-                let banners = JSON.parse(localStorage.getItem('banners') || '[]');
-                banners.push({ id: Date.now(), src: bannerSrc, date: new Date().toISOString() });
-                localStorage.setItem('banners', JSON.stringify(banners));
-                alert('بنر ذخیره شد (در حافظه مرورگر)!');
-                window.location.href = 'index.html';
-            });
-        });
-    }
+     if (saveBannerBtn && previewImg) {
+         saveBannerBtn.addEventListener('click', function() {
+             const bannerSrc = previewImg.src;
+             fetch('/api/banner', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({ src: bannerSrc })
+             })
+             .then(() => {
+                 const toast = document.createElement('div');
+                 toast.className = 'toast';
+                 toast.textContent = 'بنر با موفقیت ذخیره شد!';
+                 document.body.appendChild(toast);
+                 toast.classList.add('show');
+                 setTimeout(() => {
+                     toast.classList.remove('show');
+                     setTimeout(() => toast.remove(), 300);
+                 }, 3000);
+                 window.location.href = 'index.html';
+             })
+             .catch(() => {
+                 let banners = JSON.parse(localStorage.getItem('banners') || '[]');
+                 banners.push({ id: Date.now(), src: bannerSrc, date: new Date().toISOString() });
+                 localStorage.setItem('banners', JSON.stringify(banners));
+                 alert('بنر ذخیره شد (در حافظه مرورگر)!');
+                 window.location.href = 'index.html';
+             });
+         });
+     }
+
+     const pinAttachment = document.getElementById('pinAttachment');
+     const attachmentFile = document.getElementById('attachmentFile');
+     const attachmentPreview = document.getElementById('attachmentPreview');
+     const textareaPlaceholder = document.getElementById('textareaPlaceholder');
+     const additionalNotes = document.getElementById('additionalNotes');
+     
+      if (pinAttachment && attachmentFile) {
+          function showAttachmentLimitToast() {
+              const toast = document.createElement('div');
+              toast.className = 'attachment-limit-toast';
+              toast.textContent = 'فقط می توان چهار فایل آپلود کرد';
+              document.body.appendChild(toast);
+
+              requestAnimationFrame(function() {
+                  toast.classList.add('show');
+              });
+
+              setTimeout(function() {
+                  toast.classList.remove('show');
+                  setTimeout(function() {
+                      toast.remove();
+                  }, 300);
+              }, 3000);
+          }
+
+          pinAttachment.addEventListener('click', function() {
+             attachmentFile.click();
+         });
+         
+         attachmentFile.addEventListener('change', function(e) {
+             const file = e.target.files[0];
+             if (file && attachmentPreview) {
+                 const fileName = file.name;
+                 
+                  if (file.type.startsWith('image/')) {
+                      if (attachmentPreview.querySelectorAll('.attachment-thumbnail img').length >= 4) {
+                          showAttachmentLimitToast();
+                          attachmentFile.value = '';
+                          return;
+                      }
+
+                      const reader = new FileReader();
+                       reader.onload = function(event) {
+                           attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail"><img src="' + event.target.result + '" alt="' + fileName + '"><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
+                           attachmentPreview.classList.remove('hidden');
+                       };
+                      reader.readAsDataURL(file);
+                   } else if (file.type === 'application/pdf') {
+                      attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail"><div class="pdf-icon">PDF</div><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
+                      attachmentPreview.classList.remove('hidden');
+                  } else {
+                     const textarea = document.getElementById('additionalNotes');
+                     if (textarea) {
+                         const currentText = textarea.value;
+                         textarea.value = currentText + (currentText ? '\n' : '') + 'فایل پیوست: ' + fileName;
+                     }
+                 }
+                 
+                 attachmentFile.value = '';
+             }
+         });
+         
+          window.removeAttachment = function(button) {
+              const thumbnail = button.closest('.attachment-thumbnail');
+              if (thumbnail) {
+                  thumbnail.remove();
+              }
+
+              if (attachmentPreview && attachmentPreview.querySelectorAll('.attachment-thumbnail').length === 0) {
+                  attachmentPreview.classList.add('hidden');
+              }
+          };
+     }
+     
+     if (additionalNotes && textareaPlaceholder) {
+         const placeholderTexts = [
+             'توضیحات خود را اینجا بنویسید...',
+             'تصویر آپلود کنید...',
+             'PDF آپلود کنید...'
+         ];
+         
+         function updatePlaceholder() {
+             if (additionalNotes.value.length === 0) {
+                 textareaPlaceholder.style.display = 'flex';
+             } else {
+                 textareaPlaceholder.style.display = 'none';
+             }
+         }
+         
+         additionalNotes.addEventListener('input', updatePlaceholder);
+         additionalNotes.addEventListener('focus', updatePlaceholder);
+         additionalNotes.addEventListener('blur', updatePlaceholder);
+         
+         updatePlaceholder();
+     }
 });
 
