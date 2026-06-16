@@ -29,7 +29,27 @@
                 </div>
                 <div class="form-group">
                     <label for="additionalNotes">توضیحات تمدید</label>
-                    <textarea id="additionalNotes" name="additionalNotes" rows="3" placeholder="علت تمدید و مدت زمان مورد نیاز..."></textarea>
+                    <div class="textarea-wrapper">
+
+                        <textarea id="additionalNotes" name="additionalNotes" class="additional-notes"></textarea>
+
+                        <div class="attachment-preview hidden" id="attachmentPreview"></div>
+
+                        <button type="button" class="pin-attachment" id="pinAttachment" title="افزودن فایل">
+
+                            <i class="fas fa-paperclip"></i>
+
+                        </button>
+
+                        <div class="textarea-placeholder" id="textareaPlaceholder">
+
+                            <span>توضیحات خود را اینجا بنویسید ...</span><span class="cursor"></span>
+
+                        </div>
+
+                    </div>
+
+                    <input type="file" id="attachmentFile" accept="image/*,.pdf" style="display: none;">
                 </div>
                 <button type="submit" class="btn-next">درخواست تمدید</button>
             </form>

@@ -35,19 +35,9 @@
 
                 <div class="form-group">
                     <label for="customerPhone">شماره تلفن</label>
-                    <input type="tel" id="customerPhone" name="customerPhone" placeholder="09xx-xxx-xxxx" required>
+<input type="tel" id="customerPhone" name="customerPhone" placeholder="09xx-xxx-xxxx" required>
                 </div>
-
-                <div class="form-group">
-                    <label for="customerEmail">ایمیل</label>
-                    <input type="email" id="customerEmail" name="customerEmail">
-                </div>
-
-                <div class="form-group">
-                    <label for="serviceDescription">توضیحات خدمت</label>
-                    <textarea id="serviceDescription" name="serviceDescription" rows="4" placeholder="جزئیات خدمت را توضیح دهید..." required></textarea>
-                </div>
-
+                <div class="info-item"><strong>قیمت خدمات:</strong> <span class="cost-value" id="displayCost">در حال بارگذاری...</span></div>
                 <button type="submit" class="btn-next">ثبت درخواست</button>
             </form>
         </main>
@@ -56,11 +46,32 @@
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/pricing')
+                .then(function(r) { return r.json(); })
+                .then(function(pricing) {
+                    var pricingMap = {};
+                    pricing.forEach(function(p) { pricingMap[p.service] = p.price; });
+                    var price = pricingMap['customServices'];
+                    var displayCost = document.getElementById('displayCost');
+                    if (displayCost) {
+                        displayCost.textContent = price ? price.toLocaleString('fa-IR') + ' تومان' : 'قیمت توسط مدیر تنظیم نشده';
+                    }
+                })
+                .catch(function() {
+                    var displayCost = document.getElementById('displayCost');
+                    if (displayCost) {
+                        displayCost.textContent = 'قیمت توسط مدیر تنظیم نشده';
+                    }
+                });
+            
             const form = document.getElementById('customServicesForm');
             if (form) {
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
                     const data = Object.fromEntries(new FormData(form));
+                    data.serviceKey = 'customServices';
+                    data.serviceTitle = 'خدمات سفارشی';
+                    data.cost = document.getElementById('displayCost').textContent;
                     localStorage.setItem('registrationData', JSON.stringify(data));
                     window.location.href = 'review.html';
                 });

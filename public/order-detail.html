@@ -74,7 +74,8 @@
                     var paymentLabel = order.status === 'pending' ? 'پرداخت شده' : order.status;
                     var paymentClass = order.status === 'pending' ? 'paid-badge' : 'order-status status-' + order.status;
                     var birthDate = [order.birthYear, order.birthMonth, order.birthDay].filter(Boolean).join('/');
-container.innerHTML = '<h2 style="text-align:center;margin-bottom:1rem;">' + (order.username || 'کاربر') + '</h2>' +
+                    var costDisplay = order.cost ? '<span class="cost-value">' + order.cost + '</span> تومان' : '-';
+                    container.innerHTML = '<h2 style="text-align:center;margin-bottom:1rem;">' + (order.username || 'کاربر') + '</h2>' +
                          '<div class="detail-row"><span class="detail-label">نوع سرویس:</span><span class="detail-value">' + serviceTitle + '</span></div>' +
                          '<div class="detail-row"><span class="detail-label">کد سفارش:</span><span class="detail-value">' + order.trackingCode + '</span></div>' +
                          '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + (order.parentPhone || order.applicantPhone || '-') + '</span></div>' +
@@ -82,9 +83,22 @@ container.innerHTML = '<h2 style="text-align:center;margin-bottom:1rem;">' + (or
                          '<div class="detail-row"><span class="detail-label">تاریخ تولد:</span><span class="detail-value">' + (birthDate || '-') + '</span></div>' +
                          '<div class="detail-row"><span class="detail-label">کد پستی:</span><span class="detail-value">' + (order.postalCode || '-') + '</span></div>' +
                          '<div class="detail-row"><span class="detail-label">کد ملی دانش‌آموز:</span><span class="detail-value">' + (order.studentNationalId || '-') + '</span></div>' +
-                         '<div class="detail-row"><span class="detail-label">هزینه:</span><span class="detail-value cost-value">' + (order.cost || '-') + '</span></div>' +
                          '<div class="detail-row"><span class="detail-label">وضعیت پرداخت:</span><span class="detail-value"><span class="' + paymentClass + '">' + paymentLabel + '</span></span></div>' +
-                         '<div class="detail-row"><span class="detail-label">توضیحات:</span><span class="detail-value">' + (order.additionalNotes || 'ندارد') + '</span></div>';
+                         '<div class="detail-row"><span class="detail-label">توضیحات:</span><span class="detail-value">' + (order.additionalNotes || 'ندارد') + '</span></div>' +
+                         '<div class="detail-row"><span class="detail-label">قیمت:</span><span class="detail-value">' + costDisplay + '</span></div>';
+
+                    var attachmentButton = document.createElement('button');
+                    attachmentButton.type = 'button';
+                    attachmentButton.className = 'detail-attachment-button';
+                    attachmentButton.setAttribute('data-code', order.trackingCode);
+                    attachmentButton.title = 'مشاهده فایل‌های پیوست';
+                    attachmentButton.innerHTML = '<i class="fas fa-image"></i>';
+                    attachmentButton.addEventListener('click', function() {
+                        window.openAttachmentPopup(order.attachments || [], { adminMode: true, code: order.trackingCode });
+                    });
+                    if ((order.attachments || []).length > 0) {
+                        container.querySelector('.detail-row:last-child').appendChild(attachmentButton);
+                    }
                 })
                 .catch(function() {
                     container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری جزئیات.</p>';

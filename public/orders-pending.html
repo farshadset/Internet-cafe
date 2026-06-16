@@ -40,7 +40,7 @@
                         container.innerHTML = '<p style="text-align:center;color:#999;">سفارشی یافت نشد.</p>';
                         return;
                     }
-                    orders.forEach(function(order) {
+                    orders.slice().reverse().forEach(function(order) {
                         var div = document.createElement('div');
                         var serviceTitle = order.title || '-';
                         if (!order.title) {
@@ -68,7 +68,7 @@
                             else serviceTitle = 'پیش ثبت نام مدارس';
                         }
                         div.className = 'order-card';
-                        var dateStr = new Date(order.id).toLocaleDateString('fa-IR');
+                        var dateStr = order.created_at ? new Date(order.created_at).toLocaleDateString('fa-IR') : '-';
                         div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
                             '<div class="order-title">' + serviceTitle + '</div>' +
                             '<small style="color:#666;">' + dateStr + '</small>' +
@@ -78,9 +78,10 @@
                             '</div>' +
                             (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + order.result + '</span></div>' : '') +
                             '<div class="order-actions" style="text-align:center;">' +
-                            '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">جزئیات سفارش</a></div>';
+                            '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
                         container.appendChild(div);
                     });
+
                 })
                 .catch(function() {
                     container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری سفارشات.</p>';
