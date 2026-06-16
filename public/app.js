@@ -37,6 +37,15 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(() => {});
 
+    // بارگذاری قیمت‌ها از دیتابیس
+    let adminPricing = {};
+    const pricingPromise = fetch('/api/pricing')
+        .then(r => r.json())
+        .then(pricing => {
+            pricing.forEach(p => { adminPricing[p.service] = p.price; });
+        })
+        .catch(() => {});
+
     const SERVICE_CONFIGS = {
         schools: {
             title: 'پیش ثبت نام مدارس',
@@ -898,42 +907,61 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupServiceForm(formElement, serviceKey) {
         const config = SERVICE_CONFIGS[serviceKey];
         if (!config) return;
+        const effectiveCost = adminPricing[serviceKey] || config.cost;
         formElement.addEventListener('submit', e => {
             e.preventDefault();
+            if (isReadingAttachment) {
+                showAttachmentLimitToast('لطفا صبر کنید فایل در حال بارگذاری است.');
+                return;
+            }
+
             const raw = Object.fromEntries(new FormData(formElement));
-            localStorage.setItem('registrationData', JSON.stringify(raw));
             const transformed = config.transform(raw);
             const body = {
                 ...transformed,
+                attachments: currentAttachments,
                 title: transformed.title || config.title,
-                cost: transformed.cost || config.cost,
+                cost: effectiveCost,
                 status: 'pending',
                 username: currentUserData ? currentUserData.username : null
             };
+            saveRegistrationData(raw, {
+                serviceKey,
+                serviceTitle: config.title,
+                cost: effectiveCost
+            });
             fetch('/api/order', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(body)
             })
             .then(r => r.json())
-            .then(result => {
+            .then(async result => {
                 localStorage.setItem('lastTrackingCode', result.trackingCode);
+                await saveAttachmentsAfterSubmit(result.trackingCode);
                 window.location.href = 'review.html';
             })
-            .catch(() => {
+            .catch(async () => {
                 const fallbackCode = 'CFT-' + Date.now().toString().slice(-8);
                 const fallbackOrder = { ...body, trackingCode: fallbackCode };
                 localStorage.setItem('lastTrackingCode', fallbackCode);
+                await saveAttachmentsAfterSubmit(fallbackCode);
                 window.location.href = 'review.html';
             });
         });
+    }
+
+    function normalizeServiceKey(key) {
+        return key ? key.replace(/-([a-z])/g, function(match, letter) {
+            return letter.toUpperCase();
+        }) : key;
     }
 
     document.querySelectorAll('#registrationForm, #fuelCardForm, #marriageLoanForm, #serviceForm').forEach(form => {
         const key = form.id === 'registrationForm' ? 'schools'
                   : form.id === 'fuelCardForm' ? 'fuel'
                   : form.id === 'marriageLoanForm' ? 'marriage'
-                  : form.dataset.service || new URLSearchParams(window.location.search).get('service');
+                  : normalizeServiceKey(form.dataset.service || new URLSearchParams(window.location.search).get('service'));
         if (key) {
             renderServiceForm(form, key);
             setupServiceForm(form, key);
@@ -1284,66 +1312,235 @@ const bannerUpload = document.getElementById('bannerUpload');
      const attachmentPreview = document.getElementById('attachmentPreview');
      const textareaPlaceholder = document.getElementById('textareaPlaceholder');
      const additionalNotes = document.getElementById('additionalNotes');
-     
+     let currentAttachments = [];
+     let isReadingAttachment = false;
+
+     function showAttachmentLimitToast(message) {
+         const toast = document.createElement('div');
+         toast.className = 'attachment-limit-toast';
+         toast.textContent = message || 'فقط می توان چهار فایل آپلود کرد';
+         document.body.appendChild(toast);
+
+         requestAnimationFrame(function() {
+             toast.classList.add('show');
+         });
+
+         setTimeout(function() {
+             toast.classList.remove('show');
+             setTimeout(function() {
+                 toast.remove();
+             }, 300);
+         }, 3000);
+     }
+
+     function openAttachmentStorage() {
+         return new Promise(function(resolve, reject) {
+             if (typeof indexedDB === 'undefined') {
+                 resolve(null);
+                 return;
+             }
+
+             const request = indexedDB.open('caffint_attachments', 1);
+             request.onupgradeneeded = function() {
+                 const db = request.result;
+                 if (!db.objectStoreNames.contains('attachments')) {
+                     db.createObjectStore('attachments', { keyPath: 'trackingCode' });
+                 }
+             };
+             request.onsuccess = function() {
+                 resolve(request.result);
+             };
+             request.onerror = function() {
+                 reject(request.error);
+             };
+         });
+     }
+
+     window.saveAttachmentsForTrackingCode = function(trackingCode, attachments) {
+         if (!trackingCode || !attachments || attachments.length === 0) return Promise.resolve();
+
+         return openAttachmentStorage().then(function(db) {
+             if (!db) return;
+
+             return new Promise(function(resolve, reject) {
+                 const transaction = db.transaction('attachments', 'readwrite');
+                 const store = transaction.objectStore('attachments');
+                 const request = store.put({ trackingCode: trackingCode, attachments: attachments });
+                 request.onsuccess = function() {
+                     db.close();
+                     resolve();
+                 };
+                 request.onerror = function() {
+                     db.close();
+                     reject(request.error);
+                 };
+             });
+         }).catch(function() {});
+     };
+
+     window.getAttachmentsForTrackingCode = function(trackingCode) {
+         if (!trackingCode) return Promise.resolve([]);
+
+         return openAttachmentStorage().then(function(db) {
+             if (!db) return [];
+
+             return new Promise(function(resolve, reject) {
+                 const transaction = db.transaction('attachments', 'readonly');
+                 const store = transaction.objectStore('attachments');
+                 const request = store.get(trackingCode);
+                 request.onsuccess = function() {
+                     db.close();
+                     resolve(request.result && request.result.attachments ? request.result.attachments : []);
+                 };
+                 request.onerror = function() {
+                     db.close();
+                     reject(request.error);
+                 };
+             });
+         }).catch(function() {
+             return [];
+         });
+     };
+
       if (pinAttachment && attachmentFile) {
-          function showAttachmentLimitToast() {
-              const toast = document.createElement('div');
-              toast.className = 'attachment-limit-toast';
-              toast.textContent = 'فقط می توان چهار فایل آپلود کرد';
-              document.body.appendChild(toast);
-
-              requestAnimationFrame(function() {
-                  toast.classList.add('show');
+          function escapeAttachmentHtml(value) {
+              return String(value || '').replace(/[&<>"']/g, function(char) {
+                  return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
               });
+          }
 
-              setTimeout(function() {
-                  toast.classList.remove('show');
-                  setTimeout(function() {
-                      toast.remove();
-                  }, 300);
-              }, 3000);
+          function countCurrentAttachments(type) {
+              return currentAttachments.filter(function(attachment) {
+                  if (type === 'image') return attachment.type && attachment.type.startsWith('image/');
+                  return attachment.type === type;
+              }).length;
+          }
+
+          function createAttachment(file, dataUrl) {
+              return {
+                  id: 'att_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+                  name: file.name,
+                  type: file.type,
+                  size: file.size,
+                  dataUrl: dataUrl,
+                  uploadedAt: new Date().toISOString()
+              };
+          }
+
+          function attachmentForStorage(attachment) {
+              return {
+                  id: attachment.id,
+                  name: attachment.name,
+                  type: attachment.type,
+                  size: attachment.size,
+                  dataUrl: '',
+                  uploadedAt: attachment.uploadedAt
+              };
+          }
+
+          function saveRegistrationData(raw, metadata = {}) {
+              const storageData = {
+                  ...raw,
+                  ...metadata,
+                  attachments: currentAttachments.map(attachmentForStorage)
+              };
+
+              try {
+                  localStorage.setItem('registrationData', JSON.stringify(storageData));
+              } catch (error) {
+                  localStorage.setItem('registrationData', JSON.stringify({
+                      ...raw,
+                      ...metadata,
+                      attachments: []
+                  }));
+              }
+          }
+
+
+          function saveAttachmentsAfterSubmit(trackingCode) {
+              return window.saveAttachmentsForTrackingCode(trackingCode, currentAttachments);
+          }
+
+          function renderAttachmentPreview(attachment, dataUrl) {
+              if (!attachmentPreview) return;
+
+              if (attachment.type.startsWith('image/')) {
+                  attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail" data-attachment-id="' + escapeAttachmentHtml(attachment.id) + '"><img src="' + dataUrl + '" alt="' + escapeAttachmentHtml(attachment.name) + '"><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
+              } else {
+                  attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail" data-attachment-id="' + escapeAttachmentHtml(attachment.id) + '"><div class="pdf-icon">PDF</div><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
+              }
+
+              attachmentPreview.classList.remove('hidden');
+          }
+
+          function addAttachmentFromFile(file) {
+              if (!file || !attachmentPreview || isReadingAttachment) return;
+
+              if (file.type.startsWith('image/') && countCurrentAttachments('image') >= 4) {
+                  showAttachmentLimitToast('فقط می توان چهار فایل آپلود کرد');
+                  attachmentFile.value = '';
+                  return;
+              }
+
+              if (file.type === 'application/pdf' && countCurrentAttachments('application/pdf') >= 4) {
+                  showAttachmentLimitToast('فقط می توان چهار فایل آپلود کرد');
+                  attachmentFile.value = '';
+                  return;
+              }
+
+              if (file.type.startsWith('image/')) {
+                  const reader = new FileReader();
+                  isReadingAttachment = true;
+                  reader.onload = function(event) {
+                      const attachment = createAttachment(file, event.target.result);
+                      currentAttachments.push(attachment);
+                      renderAttachmentPreview(attachment, event.target.result);
+                      isReadingAttachment = false;
+                  };
+                  reader.onerror = function() {
+                      isReadingAttachment = false;
+                  };
+                  reader.readAsDataURL(file);
+              } else if (file.type === 'application/pdf') {
+                  const reader = new FileReader();
+                  isReadingAttachment = true;
+                  reader.onload = function(event) {
+                      const attachment = createAttachment(file, event.target.result);
+                      currentAttachments.push(attachment);
+                      renderAttachmentPreview(attachment, event.target.result);
+                      isReadingAttachment = false;
+                  };
+                  reader.onerror = function() {
+                      isReadingAttachment = false;
+                  };
+                  reader.readAsDataURL(file);
+              } else {
+                  const textarea = document.getElementById('additionalNotes');
+                  if (textarea) {
+                      const currentText = textarea.value;
+                      textarea.value = currentText + (currentText ? '\n' : '') + 'فایل پیوست: ' + file.name;
+                  }
+              }
+
+              attachmentFile.value = '';
           }
 
           pinAttachment.addEventListener('click', function() {
-             attachmentFile.click();
-         });
-         
-         attachmentFile.addEventListener('change', function(e) {
-             const file = e.target.files[0];
-             if (file && attachmentPreview) {
-                 const fileName = file.name;
-                 
-                  if (file.type.startsWith('image/')) {
-                      if (attachmentPreview.querySelectorAll('.attachment-thumbnail img').length >= 4) {
-                          showAttachmentLimitToast();
-                          attachmentFile.value = '';
-                          return;
-                      }
+              attachmentFile.click();
+          });
 
-                      const reader = new FileReader();
-                       reader.onload = function(event) {
-                           attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail"><img src="' + event.target.result + '" alt="' + fileName + '"><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
-                           attachmentPreview.classList.remove('hidden');
-                       };
-                      reader.readAsDataURL(file);
-                   } else if (file.type === 'application/pdf') {
-                      attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail"><div class="pdf-icon">PDF</div><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
-                      attachmentPreview.classList.remove('hidden');
-                  } else {
-                     const textarea = document.getElementById('additionalNotes');
-                     if (textarea) {
-                         const currentText = textarea.value;
-                         textarea.value = currentText + (currentText ? '\n' : '') + 'فایل پیوست: ' + fileName;
-                     }
-                 }
-                 
-                 attachmentFile.value = '';
-             }
-         });
-         
+          attachmentFile.addEventListener('change', function(e) {
+              const file = e.target.files[0];
+              addAttachmentFromFile(file);
+          });
+
           window.removeAttachment = function(button) {
               const thumbnail = button.closest('.attachment-thumbnail');
               if (thumbnail) {
+                  const attachmentId = thumbnail.getAttribute('data-attachment-id');
+                  currentAttachments = currentAttachments.filter(function(attachment) {
+                      return attachment.id !== attachmentId;
+                  });
                   thumbnail.remove();
               }
 
@@ -1351,28 +1548,208 @@ const bannerUpload = document.getElementById('bannerUpload');
                   attachmentPreview.classList.add('hidden');
               }
           };
+
      }
-     
-     if (additionalNotes && textareaPlaceholder) {
-         const placeholderTexts = [
-             'توضیحات خود را اینجا بنویسید...',
-             'تصویر آپلود کنید...',
-             'PDF آپلود کنید...'
-         ];
-         
-         function updatePlaceholder() {
-             if (additionalNotes.value.length === 0) {
-                 textareaPlaceholder.style.display = 'flex';
-             } else {
-                 textareaPlaceholder.style.display = 'none';
-             }
-         }
-         
-         additionalNotes.addEventListener('input', updatePlaceholder);
-         additionalNotes.addEventListener('focus', updatePlaceholder);
-         additionalNotes.addEventListener('blur', updatePlaceholder);
-         
-         updatePlaceholder();
-     }
+
+     window.openAttachmentPopup = async function(attachments, options) {
+          function escapeAttachmentHtml(value) {
+              return String(value || '').replace(/[&<>"']/g, function(char) {
+                  return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
+              });
+          }
+
+          const attachmentList = Array.isArray(attachments) ? attachments : [];
+          const isAdminMode = !!(options && options.adminMode);
+          const code = options && options.code;
+          let visibleAttachments = attachmentList.filter(function(attachment) {
+              return attachment && attachment.dataUrl;
+          });
+
+          if (visibleAttachments.length === 0 && code && window.getAttachmentsForTrackingCode) {
+              const storedAttachments = await window.getAttachmentsForTrackingCode(code);
+              visibleAttachments = storedAttachments.filter(function(attachment) {
+                  return attachment && attachment.dataUrl;
+              });
+          }
+
+          if (visibleAttachments.length === 0) {
+              showAttachmentLimitToast('فایلی برای نمایش وجود ندارد.');
+              return;
+          }
+
+          let popup = document.getElementById('attachmentPopup');
+          if (!popup) {
+              document.body.insertAdjacentHTML('beforeend', '<div class="popup-overlay" id="attachmentPopup"><div class="popup-content attachment-popup-content"><button type="button" class="popup-close-btn" id="closeAttachmentPopup" title="بستن"><i class="fas fa-times"></i></button><h3>پیش‌نمایش فایل‌های پیوست</h3><div id="attachmentPopupGrid" class="attachment-popup-grid"></div></div></div>');
+              popup = document.getElementById('attachmentPopup');
+
+              document.getElementById('closeAttachmentPopup').addEventListener('click', function() {
+                  popup.classList.remove('active');
+              });
+
+popup.addEventListener('click', function(e) {
+                   if (e.target === popup) popup.classList.remove('active');
+               });
+           }
+
+const grid = document.getElementById('attachmentPopupGrid');
+            grid.innerHTML = visibleAttachments.map(function(attachment) {
+                const isImage = attachment.type && attachment.type.startsWith('image/');
+                const safeName = escapeAttachmentHtml(attachment.name || 'فایل پیوست');
+                const safeUrl = escapeAttachmentHtml(attachment.dataUrl);
+                const preview = isImage
+                    ? '<div class="popup-image-wrapper"><img src="' + safeUrl + '" alt="' + safeName + '"><button type="button" class="popup-download-icon" onclick="downloadPopupImage(\'' + safeUrl + '\', \'' + safeName + '\')"><i class="fas fa-download"></i></button></div>'
+                    : '<div class="popup-media-wrapper"><div class="popup-pdf-icon">PDF</div><button type="button" class="popup-download-icon" onclick="downloadPopupImage(\'' + safeUrl + '\', \'' + safeName + '\')"><i class="fas fa-download"></i></button></div>';
+
+                return '<div class="attachment-popup-item">' +
+                    '<div class="attachment-popup-media">' + preview + '</div>' +
+                    '<div class="attachment-popup-name">' + safeName + '</div>' +
+                    '</div>';
+            }).join('');
+
+           popup.classList.add('active');
+       };
+
+       window.downloadPopupImage = function(dataUrl, filename) {
+           const a = document.createElement('a');
+           a.href = dataUrl;
+           a.download = filename;
+           document.body.appendChild(a);
+           a.click();
+           document.body.removeChild(a);
+       };
+
+       document.addEventListener('click', function(event) {
+          const button = event.target.closest('.detail-attachment-button, .admin-attachment-view-btn, .user-attachment-view-btn');
+          if (!button) return;
+
+          const code = button.getAttribute('data-code');
+          if (!code) return;
+
+          fetch('/api/order/' + encodeURIComponent(code))
+              .then(function(response) { return response.json(); })
+              .then(function(order) {
+                  window.openAttachmentPopup(order && order.attachments ? order.attachments : [], {
+                      adminMode: button.classList.contains('admin-attachment-view-btn'),
+                      code: code
+                  });
+              })
+              .catch(function() {});
+     });
+
+      if (additionalNotes && textareaPlaceholder) {
+          const placeholderTexts = [
+              'توضیحات خود را اینجا بنویسید ...',
+              'میتوانید چهار تصویر آپلود کنید...',
+              'میتوانید چهار pdf آپلود کنید...'
+          ];
+          const placeholderTextElement = textareaPlaceholder.querySelector('span:first-child');
+          const placeholderCursor = textareaPlaceholder.querySelector('.cursor');
+          let placeholderIndex = 0;
+          let placeholderCharIndex = 0;
+          let placeholderTimeout = null;
+
+          function clearPlaceholderAnimation() {
+              if (placeholderTimeout) {
+                  clearTimeout(placeholderTimeout);
+                  placeholderTimeout = null;
+              }
+          }
+
+          function updatePlaceholder() {
+              const shouldShowPlaceholder = additionalNotes.value.length === 0 && document.activeElement !== additionalNotes;
+              textareaPlaceholder.style.display = shouldShowPlaceholder ? 'flex' : 'none';
+
+              if (shouldShowPlaceholder) {
+                  startPlaceholderAnimation();
+              } else {
+                  clearPlaceholderAnimation();
+              }
+          }
+
+          function startPlaceholderAnimation() {
+              clearPlaceholderAnimation();
+
+              if (!placeholderTextElement || !placeholderCursor) {
+                  return;
+              }
+
+              const text = placeholderTexts[placeholderIndex] || '';
+              placeholderCharIndex = 0;
+              placeholderTextElement.textContent = '';
+
+              function typeText() {
+                  if (additionalNotes.value.length > 0 || document.activeElement === additionalNotes) {
+                      return;
+                  }
+
+                  placeholderTextElement.textContent = text.slice(0, placeholderCharIndex);
+                  placeholderCharIndex++;
+
+                  if (placeholderCharIndex <= text.length) {
+                      placeholderTimeout = setTimeout(typeText, Math.max(30, 700 / Math.max(text.length, 1)));
+                  } else {
+                      placeholderTimeout = setTimeout(deleteText, 1500);
+                  }
+              }
+
+              function deleteText() {
+                  if (additionalNotes.value.length > 0 || document.activeElement === additionalNotes) {
+                      return;
+                  }
+
+                  placeholderCharIndex--;
+                  placeholderTextElement.textContent = text.slice(0, placeholderCharIndex);
+
+                  if (placeholderCharIndex > 0) {
+                      placeholderTimeout = setTimeout(deleteText, Math.max(20, 400 / Math.max(text.length, 1)));
+                  } else {
+                      placeholderIndex = (placeholderIndex + 1) % placeholderTexts.length;
+                      startPlaceholderAnimation();
+                  }
+              }
+
+              typeText();
+          }
+
+          function autoResizeAdditionalNotes() {
+              additionalNotes.style.height = 'auto';
+              additionalNotes.style.height = Math.max(additionalNotes.scrollHeight, 150) + 'px';
+          }
+
+          additionalNotes.addEventListener('input', function() {
+              autoResizeAdditionalNotes();
+              updatePlaceholder();
+          });
+          additionalNotes.addEventListener('focus', function() {
+              autoResizeAdditionalNotes();
+              updatePlaceholder();
+          });
+          additionalNotes.addEventListener('blur', function() {
+              autoResizeAdditionalNotes();
+              updatePlaceholder();
+          });
+
+autoResizeAdditionalNotes();
+           updatePlaceholder();
+       }
+
+    const schoolTypeSelect = document.getElementById('schoolType');
+    const displayCost = document.getElementById('displayCost');
+
+    if (schoolTypeSelect && displayCost) {
+        function updateSchoolCost() {
+            const selectedType = schoolTypeSelect.value;
+            const basePrice = adminPricing['nonGovSchoolTuition'] || 0;
+            if (selectedType === 'international') {
+                displayCost.textContent = '۲۵۰.۰۰۰.۰۰۰ تا ۴۵۰.۰۰۰.۰۰۰ تومان';
+            } else if (selectedType === 'security') {
+                displayCost.textContent = '۱ تا ۷ میلیون تومان';
+            } else {
+                displayCost.textContent = '۲۵۰.۰۰۰.۰۰۰ تا ۴۵۰.۰۰۰.۰۰۰ تومان';
+            }
+        }
+
+        schoolTypeSelect.addEventListener('change', updateSchoolCost);
+    }
 });
 

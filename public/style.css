@@ -458,17 +458,18 @@ header h1 {
     min-height: 150px;
     height: 150px;
     width: 100%;
+    display: block;
     padding: 0.75rem;
-    padding-left: 44px;
-    padding-right: 72px;
-    padding-bottom: 72px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: 50px;
     border: 1px solid #ddd;
     border-radius: 8px;
     font-size: 1rem;
     font-family: inherit;
     resize: vertical;
     box-sizing: border-box;
-    overflow-y: auto;
+    overflow-y: hidden;
 }
 
 .textarea-placeholder {
@@ -506,7 +507,7 @@ header h1 {
 
 .pin-attachment {
     position: absolute;
-    bottom: 8px;
+    bottom: 10px !important;
     left: 8px;
     width: 32px;
     height: 32px;
@@ -525,7 +526,7 @@ header h1 {
 
 .attachment-preview {
     position: absolute;
-    bottom: 8px;
+    bottom: 10px !important;
     right: 8px;
     left: 52px;
     display: none;
@@ -546,7 +547,7 @@ header h1 {
 
 .attachment-preview {
     position: absolute;
-    bottom: 8px;
+    bottom: 10px !important;
     right: 8px;
     left: 52px;
     display: none;
@@ -576,6 +577,7 @@ header h1 {
     position: relative;
     width: 40px;
     height: 40px;
+    box-sizing: border-box;
     border-radius: 8px;
     overflow: hidden;
     border: 2px solid #667eea;
@@ -1190,23 +1192,170 @@ header h1 {
     padding-left: 2.5rem !important;
 }
 
-.toast-success {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #27ae60;
-    color: white;
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    z-index: 2000;
-    opacity: 0;
-    transition: opacity 0.3s;
+.pricing-category-list,
+.pricing-group-list,
+.pricing-service-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
-.toast-success.show {
-    opacity: 1;
+.pricing-category-list li,
+.pricing-group-list li,
+.pricing-service-list li {
+    padding: 0.9rem 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-right: 3px solid transparent;
+}
+
+.pricing-category-list li:hover,
+.pricing-group-list li:hover {
+    background: #eef1ff;
+    border-right-color: #667eea;
+}
+
+.pricing-service-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    border-right: 3px solid #27ae60;
+}
+
+.pricing-service-item .service-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+}
+
+.pricing-service-item .service-title {
+    font-weight: 700;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.pricing-service-item .service-price {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.pricing-service-item .service-price.has-price {
+    color: #27ae60;
+    font-weight: 700;
+}
+
+.pricing-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+    font-size: 0.9rem;
+    color: #666;
+    flex-wrap: wrap;
+}
+
+.pricing-breadcrumb span {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.pricing-breadcrumb span:hover {
+    color: #667eea;
+}
+
+.pricing-breadcrumb .sep {
+    color: #999;
+    cursor: default;
+}
+
+.pricing-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: #eef1ff;
+    color: #667eea;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    transition: background 0.2s;
+}
+
+.pricing-back-btn:hover {
+    background: #dde4ff;
+}
+
+.set-price-btn {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.3rem 0.5rem;
+    transition: color 0.2s;
+}
+
+.set-price-btn:hover {
+    color: #5568d3;
+}
+
+.category-header,
+.group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-weight: 700;
+    color: #333;
+    user-select: none;
+}
+
+.category-header:hover,
+.group-header:hover {
+    background: #eef1ff;
+}
+
+.category-header .fa-chevron-left,
+.group-header .fa-chevron-left {
+    transition: transform 0.2s;
+    font-size: 0.85rem;
+    color: #999;
+}
+
+.category-body,
+.group-body {
+    padding-right: 0.8rem;
+    margin-top: 0.35rem;
+    overflow: hidden;
+}
+
+.pricing-group-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.group-item {
+    margin-bottom: 0.25rem;
 }
 
 .attachment-limit-toast {
@@ -1260,11 +1409,129 @@ header h1 {
     margin-bottom: 1rem;
 }
 
-.form-actions {
+.popup-close-btn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #333;
+    cursor: pointer;
     display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
+    align-items: center;
     justify-content: center;
+}
+
+.attachment-popup-content {
+    max-width: 760px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.attachment-popup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+}
+
+.attachment-popup-item {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.attachment-popup-media {
+    width: 100%;
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 10px;
+    background: white;
+}
+
+.attachment-popup-media img {
+    width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+}
+
+.popup-pdf-icon {
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #f5f5f5;
+    color: #667eea;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.attachment-popup-name {
+    margin-top: 0.6rem;
+    color: #333;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.popup-image-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.popup-media-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.popup-media-wrapper .popup-pdf-icon {
+    position: relative;
+    width: 72px;
+    height: 72px;
+}
+
+.popup-download-icon {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 32px;
+    height: 32px;
+    background: rgba(102, 126, 234, 0.9);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.popup-download-icon:hover {
+    background: #667eea;
+    transform: scale(1.05);
+}
+
+.attachment-view-btn,
+.detail-attachment-button,
+.admin-attachment-view-btn,
+.user-attachment-view-btn {
+    border: none;
+    background: none;
+    color: #667eea;
+    cursor: pointer;
+    font-size: 1.05rem;
+    margin-right: 0.5rem;
+    padding: 0.2rem;
 }
 
 .form-actions .btn-confirm,
@@ -1657,4 +1924,20 @@ header h1 {
         font-size: 0.9rem;
         padding: 0.4rem 0;
     }
+}
+
+.btn-back {
+    background: #999;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-back:hover {
+    background: #777;
 }

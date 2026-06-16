@@ -71,10 +71,10 @@
                     container.innerHTML = '<p style="text-align:center;color:#999;">سفارشی یافت نشد.</p>';
                     return;
                 }
-                filtered.forEach(function(order) {
+                filtered.slice().reverse().forEach(function(order) {
                     var div = document.createElement('div');
                     div.className = 'order-card';
-                    var dateStr = new Date(order.id).toLocaleDateString('fa-IR');
+                    var dateStr = order.created_at ? new Date(order.created_at).toLocaleDateString('fa-IR') : '-';
                     div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
                         '<div class="order-title">' + (order.title || 'سرویس ناشناس') + '</div>' +
                         '<small style="color:#666;">' + dateStr + '</small>' +

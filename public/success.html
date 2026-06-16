@@ -27,18 +27,130 @@
                 <h2>پرداخت با موفقیت انجام شد!</h2>
                 <p class="tracking-code">کد سفارش: <strong id="trackingCode"></strong></p>
                 <a href="orders-pending.html" class="btn-next">پیگیری سفارش</a>
+                <button id="downloadInvoice" class="btn-next" style="background:#27ae60;margin-top:0.5rem;"><i class="fas fa-download"></i> دانلود فاکتور</button>
                 <a href="index.html" class="btn-next" style="background:#999;margin-top:0.5rem;">بازگشت به صفحه اصلی</a>
             </div>
         </main>
     </div>
     <script src="app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var tc = localStorage.getItem('lastTrackingCode');
             if (tc && document.getElementById('trackingCode')) {
                 document.getElementById('trackingCode').textContent = tc;
             }
+            
+            var downloadBtn = document.getElementById('downloadInvoice');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', generateInvoice);
+            }
         });
+        
+        function generateInvoice() {
+            var trackingCode = localStorage.getItem('lastTrackingCode');
+            var registrationData = JSON.parse(localStorage.getItem('registrationData') || '{}');
+            
+            var invoiceContainer = document.createElement('div');
+            invoiceContainer.style.cssText = 'position:fixed;top:-10000px;left:0;width:210mm;min-height:297mm;padding:15mm;background:white;box-sizing:border-box;font-family:Tahoma,Arial,sans-serif;direction:rtl;';
+            
+            function addRow(label, value) {
+                if (value) {
+                    return '<div style="margin-bottom:8px;font-size:11px;border-bottom:1px solid #ddd;padding-bottom:5px;text-align:right;"><span style="direction:rtl;unicode-bidi:plaintext;font-family:Tahoma,Arial,sans-serif;"><strong>' + label + '</strong> : ' + value + '</span></div>';
+                }
+                return '';
+            }
+            
+            var serviceName = registrationData.serviceTitle || registrationData.title || 'سرویس ناشناسه';
+            
+            invoiceContainer.innerHTML = `
+                <div style="text-align:center;margin-bottom:10px;">
+                    <h1 style="font-size:24px;font-weight:700;margin:0;color:#333;">فاکتور رسمی</h1>
+                    <div style="border-top:1px solid #333;margin:10px 0;"></div>
+                </div>
+                <div style="margin-bottom:15px;text-align:right;">
+                    ${addRow('شماره فاکتور', 'INV-' + Date.now().toString().slice(-8))}
+                    ${addRow('تاریخ', new Date().toLocaleDateString('fa-IR'))}
+                    ${addRow('کد سفارش', trackingCode || '-')}
+                </div>
+                <div style="font-size:14px;font-weight:700;margin:0 0 10px 0;color:#333;">مشخصات سرویس</div>
+                <div style="margin-bottom:15px;text-align:right;">
+                    ${addRow('نام سرویس', serviceName)}
+                    ${addRow('دستمزد', registrationData.cost || '۶۰,۰۰۰ تومان')}
+                </div>
+                <div style="font-size:14px;font-weight:700;margin:0 0 10px 0;color:#333;">جزئیات درخواست</div>
+                <div style="margin-bottom:15px;text-align:right;">
+                    ${addRow('شماره تلفن پدر/مادر', registrationData.parentPhone)}
+                    ${addRow('کد ملی والدین', registrationData.parentNationalId)}
+                    ${addRow('کد ملی دانش‌آموز', registrationData.studentNationalId)}
+                    ${addRow('کد پستی', registrationData.postalCode)}
+                    ${addRow('نوع مدرسه', registrationData.schoolType === 'international' ? 'مدارس بین‌الملل' : registrationData.schoolType === 'security' ? 'مدارس هیئت امنایی' : '')}
+                    ${addRow('مدرسه مورد علاقه', registrationData.preferredSchool)}
+                    ${addRow('توضیحات', registrationData.additionalNotes)}
+                    ${addRow('شماره تلفن متقاضی', registrationData.applicantPhone)}
+                    ${addRow('کد ملی متقاضی', registrationData.applicantNationalId)}
+                    ${addRow('تاریخ تولد', registrationData.birthDate)}
+                    ${addRow('شماره شناسنامه', registrationData.idNumber)}
+                    ${addRow('نام مادر', registrationData.motherName)}
+                    ${addRow('سریال شناسنامه', registrationData.serialNumber)}
+                    ${addRow('شماره پاسپورت', registrationData.passportNumber)}
+                    ${addRow('نوع آزمون', registrationData.examType === 'toefl' ? 'تافل iBT' : registrationData.examType === 'ielts-academic' ? 'آیلتس آکادمیک' : registrationData.examType === 'ielts-general' ? 'آیلتس جنرال' : registrationData.examType)}
+                    ${addRow('شهر برگزاری', registrationData.city)}
+                    ${addRow('آدرس', registrationData.address)}
+                    ${addRow('نام بانک', registrationData.bankName)}
+                    ${addRow('شماره شبا', registrationData.iban)}
+                    ${addRow('تعداد اعضای خانوار', registrationData.familyCount)}
+                    ${addRow('وضعیت مالکیت', registrationData.ownershipStatus === 'renter' ? 'مستأجر' : registrationData.ownershipStatus === 'loan' ? 'ساکن منزل وام‌دار' : registrationData.ownershipStatus === 'personal' ? 'ساکن منزل شخصی' : registrationData.ownershipStatus)}
+                    ${addRow('نوع وام', registrationData.loanType === 'retired' ? 'بازنشستگان' : registrationData.loanType === 'employee' ? 'کارمندان' : registrationData.loanType === 'student' ? 'دانشجویی' : registrationData.loanType)}
+                    ${addRow('مبلغ وام', registrationData.amount)}
+                    ${addRow('آدرس ملک', registrationData.propertyAddress)}
+                    ${addRow('آدرس ساخت', registrationData.constructionAddress)}
+                    ${addRow('متراژ ساخت', registrationData.constructionArea)}
+                    ${addRow('علت اعتراض', registrationData.appealReason)}
+                </div>
+                <div style="margin-top:20px;text-align:right;">
+                    <div style="border-top:1px solid #333;margin-bottom:10px;"></div>
+                    <div style="font-size:12px;font-weight:700;">وضعیت پرداخت: پرداخت شده</div>
+                    ${addRow('جمع کل', registrationData.cost || '۶۰,۰۰۰ تومان')}
+                </div>
+                <div style="text-align:center;margin-top:30px;font-size:9px;color:#666;font-style:italic;">
+                    این فاکتور صرفاً جهت مرجع است و از سامانه رسمی چاپ شده است.
+                </div>
+            `;
+            
+            document.body.appendChild(invoiceContainer);
+            
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap';
+            document.head.appendChild(link);
+            
+            html2canvas(invoiceContainer, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            }).then(function(canvas) {
+                var imgData = canvas.toDataURL('image/png');
+                var { jsPDF } = window.jspdf;
+                var doc = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                var imgWidth = 210;
+                var imgHeight = canvas.height * imgWidth / canvas.width;
+                
+                doc.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                
+                var fileName = 'فاکتور-' + (trackingCode || 'INV-' + Date.now().toString().slice(-8)) + '.pdf';
+                doc.save(fileName);
+                
+                document.body.removeChild(invoiceContainer);
+                document.head.removeChild(link);
+            });
+        }
     </script>
 </body>
 </html>

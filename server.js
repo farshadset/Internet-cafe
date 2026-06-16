@@ -107,6 +107,16 @@ app.post('/api/order', async (req, res) => {
     res.json({ success: true, trackingCode });
 });
 
+app.get('/api/order/:trackingCode', async (req, res) => {
+    const { trackingCode } = req.params;
+    const db = readDB();
+    const order = (db.orders || []).find(o => o.trackingCode === trackingCode);
+    if (!order) {
+        return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    res.json(order);
+});
+
 app.post('/api/order/confirm', async (req, res) => {
     const { trackingCode } = req.body;
     const db = readDB();
@@ -186,6 +196,29 @@ app.get('/api/orders/user', async (req, res) => {
     const db = readDB();
     let userOrders = (db.orders || []).filter(o => o.username === username);
     res.json(userOrders);
+});
+
+// Pricing routes
+app.get('/api/pricing', async (req, res) => {
+    const db = readDB();
+    res.json(db.pricing || []);
+});
+
+app.post('/api/pricing', async (req, res) => {
+    const { service, price } = req.body;
+    if (!service) {
+        return res.status(400).json({ error: 'سرویس الزامی است' });
+    }
+    const db = readDB();
+    db.pricing = db.pricing || [];
+    const existing = db.pricing.find(p => p.service === service);
+    if (existing) {
+        existing.price = price;
+    } else {
+        db.pricing.push({ service, price });
+    }
+    writeDB(db);
+    res.json({ success: true });
 });
 
 // Banner routes
