@@ -32,21 +32,30 @@
             var params = new URLSearchParams(window.location.search);
             var code = params.get('code');
             var container = document.getElementById('orderDetail');
+            
+            function isSpecialService(order) {
+                return order.serviceKey === 'resumeEmployment' || 
+                       order.serviceKey === 'customServices' || 
+                       order.serviceKey === 'articlesResearch' ||
+                       (order.jobField || order.experienceYears || order.skills) ||
+                       (order.researchType || order.subject || order.academicLevel) ||
+                       order.serviceDescription;
+            }
+            
             if (!code) {
                 container.innerHTML = '<p style="text-align:center;color:red;">کد سفارش نامعتبر است.</p>';
                 return;
             }
-            fetch('/api/orders')
+            fetch('/api/order/' + encodeURIComponent(code))
                 .then(function(r) { return r.json(); })
-                .then(function(orders) {
-                    var order = orders.find(function(o) { return o.trackingCode === code; });
-                    if (!order) {
+                .then(function(order) {
+                    if (!order || order.error) {
                         container.innerHTML = '<p style="text-align:center;color:red;">سفارش پیدا نشد.</p>';
                         return;
                     }
                     
-                    var serviceTitle = order.title || '-';
-                    if (!order.title) {
+                    var serviceTitle = (order.title && order.title !== '-') ? order.title : (order.serviceTitle || '-');
+                    if (!serviceTitle || serviceTitle === '-') {
                         var isFuelCard = order.ownerPhone || order.ownerNationalId || order.vin;
                         var isMarriageLoan = order.applicantPhone || order.applicantNationalId || order.idNumber;
                         var isKonkor = order.regionCode || order.educationLevel || order.applicantNationalId;
@@ -57,6 +66,9 @@
                         var isCriminalRecord = order.birthplace;
                         var isSmartCard = order.serialNumber;
                         var isHealthInsurance = order.familyMembers;
+                        var isResumeEmployment = order.serviceKey === 'resumeEmployment' || (order.jobField || order.experienceYears || order.skills);
+                        var isArticlesResearch = order.serviceKey === 'articlesResearch' || (order.researchType || order.subject || order.academicLevel);
+                        var isCustomServices = order.serviceKey === 'customServices' || order.serviceDescription;
                         
                         if (isFuelCard) serviceTitle = 'کارت سوخت';
                         else if (isMarriageLoan) serviceTitle = 'وام ازدواج';
@@ -68,24 +80,117 @@
                         else if (isCriminalRecord) serviceTitle = 'گواهی عدم سوء پیشینه';
                         else if (isSmartCard) serviceTitle = 'کارت ملی هوشمند';
                         else if (isHealthInsurance) serviceTitle = 'بیمه سلامت';
+                        else if (isResumeEmployment) serviceTitle = 'رزومه و استخدام';
+                        else if (isArticlesResearch) serviceTitle = 'مقاله و تحقیق';
+                        else if (isCustomServices) serviceTitle = 'خدمات سفارشی';
                         else serviceTitle = 'پیش ثبت نام مدارس';
                     }
                     
-                    var paymentLabel = order.status === 'pending' ? 'پرداخت شده' : order.status;
-                    var paymentClass = order.status === 'pending' ? 'paid-badge' : 'order-status status-' + order.status;
-                    var birthDate = [order.birthYear, order.birthMonth, order.birthDay].filter(Boolean).join('/');
-                    var costDisplay = order.cost ? '<span class="cost-value">' + order.cost + '</span> تومان' : '-';
-                    container.innerHTML = '<h2 style="text-align:center;margin-bottom:1rem;">' + (order.username || 'کاربر') + '</h2>' +
-                         '<div class="detail-row"><span class="detail-label">نوع سرویس:</span><span class="detail-value">' + serviceTitle + '</span></div>' +
-                         '<div class="detail-row"><span class="detail-label">کد سفارش:</span><span class="detail-value">' + order.trackingCode + '</span></div>' +
-                         '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + (order.parentPhone || order.applicantPhone || '-') + '</span></div>' +
-                         '<div class="detail-row"><span class="detail-label">کد ملی والدین:</span><span class="detail-value">' + (order.parentNationalId || order.applicantNationalId || '-') + '</span></div>' +
-                         '<div class="detail-row"><span class="detail-label">تاریخ تولد:</span><span class="detail-value">' + (birthDate || '-') + '</span></div>' +
-                         '<div class="detail-row"><span class="detail-label">کد پستی:</span><span class="detail-value">' + (order.postalCode || '-') + '</span></div>' +
-                         '<div class="detail-row"><span class="detail-label">کد ملی دانش‌آموز:</span><span class="detail-value">' + (order.studentNationalId || '-') + '</span></div>' +
-                         '<div class="detail-row"><span class="detail-label">وضعیت پرداخت:</span><span class="detail-value"><span class="' + paymentClass + '">' + paymentLabel + '</span></span></div>' +
-                         '<div class="detail-row"><span class="detail-label">توضیحات:</span><span class="detail-value">' + (order.additionalNotes || 'ندارد') + '</span></div>' +
-                         '<div class="detail-row"><span class="detail-label">قیمت:</span><span class="detail-value">' + costDisplay + '</span></div>';
+                    var isPricePending = order.status === 'pending' && isSpecialService(order) && ['pending', 'countersent', 'usercounter'].includes(order.priceStatus);
+                    var isPriceAccepted = order.status === 'pending' && isSpecialService(order) && order.priceStatus === 'accepted';
+                    
+                    var paymentLabel = isPricePending 
+                        ? 'در انتظار تایید قیمت' 
+                        : isPriceAccepted
+                        ? 'در انتظار پرداخت'
+                        : order.status === 'pending' ? 'پرداخت شده' : order.status;
+                    
+                    var paymentClass = isPricePending || isPriceAccepted
+                        ? 'status-pending'
+                        : order.status === 'pending' ? 'paid-badge' : 'order-status status-' + order.status;
+                    
+                    var costDisplay = order.cost ? '<span class="cost-value price-value">' + formatPrice(order.cost) + '&nbsp;&nbsp;تومان</span>' : (order.proposedPrice ? 'قیمت توسط مدیر تنظیم نشده (پیشنهاد کاربر ' + formatPrice(order.proposedPrice) + ' تومان)' : '-');
+                    
+                    var paymentRow = '<div class="detail-row"><span class="detail-label">وضعیت پرداخت:</span><span class="detail-value"><span class="' + paymentClass + '">' + paymentLabel + '</span></span></div>';
+                    
+var specialFields = '';
+                     var priceRow = '';
+                     var academicLevelLabel = order.academicLevel === 'bachelor' ? 'کارشناسی' : order.academicLevel === 'master' ? 'کارشناسی ارشد' : 'دکتری';
+                     var serviceTypeLabel = order.serviceType === 'resume' ? 'نوشتن رزومه' : order.serviceType === 'coverLetter' ? 'نامه توصیه' : order.serviceType === 'linkedin' ? 'بهینه‌سازی لینکدین' : order.serviceType === 'interview' ? 'مشاوره مصاحبه' : order.serviceType === 'document' ? 'تدوین سند' : order.serviceType === 'translation' ? 'ترجمه مدارک' : order.serviceType === 'consultation' ? 'مشاوره' : 'سایر خدمات';
+                     var researchTypeLabel = order.researchType === 'article' ? 'نوشتن مقاله' : order.researchType === 'research' ? 'تحقیق علمی' : order.researchType === 'translation' ? 'ترجمه مقالات' : order.researchType === 'editing' ? 'ویرایش مقالات' : order.researchType || '-';
+                     
+                     if (isSpecialService(order)) {
+                         if (order.serviceKey === 'resumeEmployment') {
+                             specialFields = '<div class="detail-row"><span class="detail-label">نوع خدمات:</span><span class="detail-value">' + serviceTypeLabel + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">رشته شغلی:</span><span class="detail-value">' + (order.jobField || '-') + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">سال‌های تجربه:</span><span class="detail-value">' + (order.experienceYears || '-') + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">مهارت‌ها:</span><span class="detail-value">' + (order.skills || '-') + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">سمت شغل مورد نظر:</span><span class="detail-value">' + (order.targetJob || '-') + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">نام کاربر:</span><span class="detail-value">' + (order.customerName || '-') + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + (order.customerPhone || '-') + '</span></div>';
+                         } else if (order.serviceKey === 'articlesResearch') {
+                             specialFields = '<div class="detail-row"><span class="detail-label">نوع خدمات:</span><span class="detail-value">' + researchTypeLabel + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">رشته / موضوع:</span><span class="detail-value">' + (order.subject || '-') + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">سطح تحصیلی:</span><span class="detail-value">' + academicLevelLabel + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">تعداد صفحات:</span><span class="detail-value">' + (order.pagesCount || '-') + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">مهلت تحویل:</span><span class="detail-value">' + (order.deadline || '-') + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">نام کاربر:</span><span class="detail-value">' + (order.customerName || '-') + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + (order.customerPhone || '-') + '</span></div>';
+                         } else if (order.serviceKey === 'customServices') {
+                             specialFields = '<div class="detail-row"><span class="detail-label">نوع خدمات:</span><span class="detail-value">' + serviceTypeLabel + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">نام کاربر:</span><span class="detail-value">' + (order.customerName || '-') + '</span></div>' +
+                                 '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + (order.customerPhone || '-') + '</span></div>';
+                         }
+                         
+                         if (['pending', 'countersent', 'usercounter'].includes(order.priceStatus)) {
+                              var displayedPrice = order.priceStatus === 'countersent' ? order.adminProposedPrice : order.proposedPrice;
+                              priceRow = '<div class="detail-row"><span class="detail-label">قیمت پیشنهادی:</span><span class="detail-value price-value">' + formatPrice(displayedPrice) + '&nbsp;&nbsp;تومان</span></div>';
+                         } else if (order.priceStatus === 'accepted') {
+                              priceRow = '<div class="detail-row"><span class="detail-label">قیمت نهایی:</span><span class="detail-value price-value">' + formatPrice(order.adminProposedPrice || order.proposedPrice) + '&nbsp;&nbsp;تومان</span></div>';
+                         }
+                     }
+                    
+                    var paymentButton = '';
+                    if (isSpecialService(order) && order.priceStatus === 'accepted') {
+                        paymentButton = '<div class="detail-row" style="text-align:center;margin-top:1rem;"><button id="confirmPaymentStatusBtn" class="btn-confirm" style="background:#27ae60;color:white;border:none;padding:0.5rem 1.5rem;border-radius:4px;cursor:pointer;font-size:1rem;">تایید پرداخت</button></div>';
+                    }
+                    
+container.innerHTML = '<h2 style="text-align:center;margin-bottom:1rem;">' + (order.username || 'کاربر') + '</h2>' +
+                            '<div class="detail-row"><span class="detail-label">کد سفارش:</span><span class="detail-value">' + order.trackingCode + '</span></div>' +
+                            '<div class="detail-row"><span class="detail-label">نوع سرویس:</span><span class="detail-value">' + serviceTitle + '</span></div>' +
+                            specialFields +
+                            '<div class="detail-row"><span class="detail-label">توضیحات:</span><span class="detail-value">' + (order.additionalNotes || 'ندارد') + '</span></div>' +
+                            priceRow +
+                            paymentRow +
+                            paymentButton;
+
+                    var priceSnapshot = JSON.stringify({
+                        status: order.status,
+                        priceStatus: order.priceStatus,
+                        proposedPrice: order.proposedPrice,
+                        adminProposedPrice: order.adminProposedPrice,
+                        cost: order.cost
+                    });
+
+                    var priceRefreshTimer = setInterval(function() {
+                        if (document.visibilityState && document.visibilityState !== 'visible') {
+                            return;
+                        }
+
+                        fetch('/api/order/' + encodeURIComponent(code))
+                            .then(function(r) { return r.json(); })
+                            .then(function(latestOrder) {
+                                if (!latestOrder || latestOrder.error) return;
+
+                                var latestSnapshot = JSON.stringify({
+                                    status: latestOrder.status,
+                                    priceStatus: latestOrder.priceStatus,
+                                    proposedPrice: latestOrder.proposedPrice,
+                                    adminProposedPrice: latestOrder.adminProposedPrice,
+                                    cost: latestOrder.cost
+                                });
+
+                                if (latestSnapshot !== priceSnapshot) {
+                                    priceSnapshot = latestSnapshot;
+                                    location.reload();
+                                }
+                            })
+                            .catch(function() {});
+                    }, 5000);
+
+                    window.addEventListener('beforeunload', function() {
+                        clearInterval(priceRefreshTimer);
+                    });
 
                     var attachmentButton = document.createElement('button');
                     attachmentButton.type = 'button';
@@ -99,7 +204,26 @@
                     if ((order.attachments || []).length > 0) {
                         container.querySelector('.detail-row:last-child').appendChild(attachmentButton);
                     }
-                })
+                    
+                    // Handle confirm payment status button for special services
+                    var confirmPaymentBtn = document.getElementById('confirmPaymentStatusBtn');
+                    if (confirmPaymentBtn) {
+                        confirmPaymentBtn.addEventListener('click', function() {
+                            fetch('/api/order/price-accept', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ trackingCode: code })
+                            })
+                            .then(function(r) { return r.json(); })
+                            .then(function(res) {
+                                if (res.success) {
+                                    location.reload();
+                                }
+                            })
+                            .catch(function() {});
+                        });
+                    }
+                 })
                 .catch(function() {
                     container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری جزئیات.</p>';
                 });

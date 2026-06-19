@@ -1803,6 +1803,12 @@ header h1 {
     word-break: break-word;
 }
 
+.price-value {
+    direction: rtl;
+    unicode-bidi: isolate;
+    white-space: nowrap;
+}
+
 .paid-badge {
     display: inline-block;
     padding: 0.25rem 0.7rem;

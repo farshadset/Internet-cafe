@@ -40,7 +40,7 @@
                         container.innerHTML = '<p style="text-align:center;color:#999;">سفارشی انجام شده نیست.</p>';
                         return;
                     }
-                    orders.slice().reverse().forEach(function(order) {
+                    orders.forEach(function(order) {
                         var div = document.createElement('div');
                         var serviceTitle = order.title || '-';
                         if (!order.title) {

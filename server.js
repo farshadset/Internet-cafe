@@ -163,6 +163,57 @@ app.post('/api/order/result', async (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/api/order/price-proposal', async (req, res) => {
+    const { trackingCode, proposedPrice } = req.body;
+    if (!trackingCode || !proposedPrice) {
+        return res.status(400).json({ error: 'کد سفارش و قیمت الزامی است' });
+    }
+    const db = readDB();
+    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    if (!order) {
+        return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    order.proposedPrice = proposedPrice;
+    order.priceStatus = 'usercounter';
+    order.updated_at = new Date().toISOString();
+    writeDB(db);
+    res.json({ success: true });
+});
+
+app.post('/api/order/price-counter', async (req, res) => {
+    const { trackingCode, adminProposedPrice } = req.body;
+    if (!trackingCode || !adminProposedPrice) {
+        return res.status(400).json({ error: 'کد سفارش و قیمت الزامی است' });
+    }
+    const db = readDB();
+    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    if (!order) {
+        return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    order.adminProposedPrice = adminProposedPrice;
+    order.priceStatus = 'countersent';
+    order.updated_at = new Date().toISOString();
+    writeDB(db);
+    res.json({ success: true });
+});
+
+app.post('/api/order/price-accept', async (req, res) => {
+    const { trackingCode } = req.body;
+    if (!trackingCode) {
+        return res.status(400).json({ error: 'کد سفارش الزامی است' });
+    }
+    const db = readDB();
+    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    if (!order) {
+        return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    order.priceStatus = 'accepted';
+    order.cost = 'قیمت توافقی - ' + (order.adminProposedPrice || order.proposedPrice);
+    order.updated_at = new Date().toISOString();
+    writeDB(db);
+    res.json({ success: true });
+});
+
 app.post('/api/change-password', async (req, res) => {
     const { username, currentPassword, newPassword } = req.body;
     const db = readDB();
@@ -185,16 +236,21 @@ app.get('/api/orders', async (req, res) => {
     if (status) {
         orders = orders.filter(o => o.status === status);
     }
+    orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     res.json(orders);
 });
 
 app.get('/api/orders/user', async (req, res) => {
-    const { username } = req.query;
+    const { username, status } = req.query;
     if (!username) {
         return res.status(400).json({ error: 'نام کاربری الزامی است' });
     }
     const db = readDB();
     let userOrders = (db.orders || []).filter(o => o.username === username);
+    if (status) {
+        userOrders = userOrders.filter(o => o.status === status);
+    }
+    userOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     res.json(userOrders);
 });
 

@@ -119,7 +119,7 @@ function EXTRA_COMMON_IDENTITY_TRANSFORM(data) {
 
 const EXTRA_SERVICE_CONFIGS = {
     judicial: {
-        cost: '۸۰,۰۰۰ تومان',
+        cost: 80000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -140,7 +140,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     insurance: {
         title: 'خدمات بیمه و تأمین اجتماعی',
-        cost: '۱۲۰,۰۰۰ تومان',
+        cost: 120000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -163,7 +163,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     student: {
         title: 'خدمات دانشجویی و آموزشی',
-        cost: '۱۰۰,۰۰۰ تومان',
+        cost: 100000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -182,7 +182,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     government: {
         title: 'خدمات سامانه‌های دولتی',
-        cost: '۸۰,۰۰۰ تومان',
+        cost: 80000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -202,7 +202,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     'business-tax': {
         title: 'مالیات، مجوز و کسب‌وکار',
-        cost: '۱۲۰,۰۰۰ تومان',
+        cost: 120000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -218,7 +218,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     tax: {
         title: 'خدمات مالیاتی',
-        cost: '۱۵۰,۰۰۰ تومان',
+        cost: 150000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -242,7 +242,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     finance: {
         title: 'خدمات بانکی و مالی',
-        cost: '۱۰۰,۰۰۰ تومان',
+        cost: 100000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -266,7 +266,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     vehicles: {
         title: 'خدمات خودرو',
-        cost: '۱۲۰,۰۰۰ تومان',
+        cost: 120000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -288,7 +288,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     housing: {
         title: 'خدمات مسکن و وام',
-        cost: '۲۵۰,۰۰۰ تومان',
+        cost: 250000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -307,7 +307,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     token: {
         title: 'خدمات امضا و توکن',
-        cost: '۱۵۰,۰۰۰ تومان',
+        cost: 150000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -325,7 +325,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     licenses: {
         title: 'خدمات مجوز و کسب‌وکار',
-        cost: '۱۲۰,۰۰۰ تومان',
+        cost: 120000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,
@@ -350,7 +350,7 @@ const EXTRA_SERVICE_CONFIGS = {
     },
     identity: {
         title: 'احراز هویت و سجام',
-        cost: '۷۰,۰۰۰ تومان',
+        cost: 70000,
         dynamicForm: true,
         fieldConfigs: [
             ...EXTRA_IDENTITY_FIELDS,

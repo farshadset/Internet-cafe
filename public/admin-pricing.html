@@ -42,8 +42,21 @@
             </div>
         </div>
     </div>
+     <script src="app.js"></script>
     <script src="app.js"></script>
     <script>
+        function formatPrice(price) {
+            var numStr = (price !== undefined && price !== null && price !== '') ? String(price) : '0';
+            numStr = numStr.replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
+            numStr = numStr.replace(/[,٬٫]/g, '');
+            var match = numStr.match(/\d+/);
+            if (!match) return numStr;
+            var num = parseInt(match[0], 10);
+            if (isNaN(num)) return numStr;
+            var formatted = num.toLocaleString('fa-IR').replace(/٬/g, '٫');
+            return '\u202A' + numStr.replace(match[0], formatted) + '\u202C';
+        }
+
         var currentServiceKey = null;
         document.addEventListener('DOMContentLoaded', function() {
             var container = document.getElementById('pricingContainer');
@@ -371,10 +384,10 @@
                                 var count = Object.keys(prices).length;
                                 var total = Object.values(prices).reduce(function(a, b) { return a + (b || 0); }, 0);
                                 priceText = count > 0
-                                    ? count + ' خدمته (' + total.toLocaleString('fa-IR') + ' تومان)'
+                                    ? count + ' خدمته (' + formatPrice(total) + ' تومان)'
                                     : '-';
                             } else if (pricingMap[service.key] !== undefined) {
-                                priceText = pricingMap[service.key].toLocaleString('fa-IR') + ' تومان';
+                                priceText = formatPrice(pricingMap[service.key]) + ' تومان';
                             } else {
                                 priceText = '-';
                             }
@@ -397,7 +410,7 @@
                                         serviceDiv.innerHTML = '<div class="service-info">' +
                                             '<span class="service-title">' + subName + '</span>' +
                                             '<span class="service-price ' + (typeof subPrice === 'number' ? 'has-price' : '') + '">' +
-                                            (typeof subPrice === 'number' ? subPrice.toLocaleString('fa-IR') + ' تومان' : 'قیمت تعیین نشده') +
+                                            (typeof subPrice === 'number' ? formatPrice(subPrice) + ' تومان' : 'قیمت تعیین نشده') +
                                             '</span></div>' +
                                             '<button class="set-price-btn" data-service="' + subKey + '" data-title="' + subName + '" data-price="' + (subPrice || '') + '">' +
                                             '<i class="fas fa-edit"></i></button>';
@@ -417,7 +430,7 @@
                                     singleDiv.innerHTML = '<div class="service-info">' +
                                         '<span class="service-title">' + service.title + '</span>' +
                                         '<span class="service-price ' + (typeof price === 'number' ? 'has-price' : '') + '">' +
-                                        (typeof price === 'number' ? price.toLocaleString('fa-IR') + ' تومان' : 'قیمت تعیین نشده') +
+                                        (typeof price === 'number' ? formatPrice(price) + ' تومان' : 'قیمت تعیین نشده') +
                                         '</span></div>' +
                                         '<button class="set-price-btn" data-service="' + service.key + '" data-title="' + service.title + '" data-price="' + (price || '') + '">' +
                                         '<i class="fas fa-edit"></i></button>';

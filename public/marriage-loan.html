@@ -59,7 +59,7 @@
                     <label for="additionalNotes">توضیحات اضافی</label>
                     <div class="textarea-wrapper">
 
-                        <textarea id="additionalNotes" name="additionalNotes" class="additional-notes"></textarea>
+                        <textarea id="additionalNotes" name="additionalNotes" class="additional-notes" style="height: 150px;" data-rtl-listener="true"></textarea>
 
                         <div class="attachment-preview hidden" id="attachmentPreview"></div>
 
@@ -71,7 +71,7 @@
 
                         <div class="textarea-placeholder" id="textareaPlaceholder">
 
-                            <span>توضیحات خود را اینجا بنویسید ...</span><span class="cursor"></span>
+                            <span>میتوانید چهار تصویر آپلود</span><span class="cursor"></span>
 
                         </div>
 
@@ -96,13 +96,13 @@
                     var price = pricingMap['marriage'];
                     var displayCost = document.getElementById('displayCost');
                     if (displayCost) {
-                        displayCost.textContent = price ? price.toLocaleString('fa-IR') + ' تومان' : '۲۵۰,۰۰۰ تومان';
+                        displayCost.textContent = price ? formatPrice(price) + ' تومان' : formatPrice(250000) + ' تومان';
                     }
                 })
                 .catch(function() {
                     var displayCost = document.getElementById('displayCost');
                     if (displayCost) {
-                        displayCost.textContent = '۲۵۰,۰۰۰ تومان';
+                        displayCost.textContent = formatPrice(250000) + ' تومان';
                     }
                 });
             
