@@ -62,7 +62,25 @@
                     <label for="customerPhone">شماره تلفن</label>
                     <input type="tel" id="customerPhone" name="customerPhone" placeholder="09xx-xxx-xxxx" required>
                 </div>
-                <div class="info-item"><strong>قیمت خدمات:</strong> <span class="cost-value" id="displayCost">در حال بارگذاری...</span></div>
+                <div class="form-group">
+                    <label for="additionalNotes">توضیحات اضافی</label>
+                    <div class="textarea-wrapper">
+                        <textarea id="additionalNotes" name="additionalNotes" class="additional-notes" style="height: 150px;" data-rtl-listener="true"></textarea>
+                        <div class="attachment-preview hidden" id="attachmentPreview"></div>
+                        <button type="button" class="pin-attachment" id="pinAttachment" title="افزودن فایل">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <div class="textarea-placeholder" id="textareaPlaceholder">
+                            <span>میتوانید چهار تصویر آپلود</span><span class="cursor"></span>
+                        </div>
+                    </div>
+                    <input type="file" id="attachmentFile" accept="image/*,.pdf" style="display: none;">
+                </div>
+                <div class="form-group">
+                    <label for="proposedPrice">قیمت پیشنهادی (تومان)</label>
+                    <input type="text" id="proposedPrice" name="proposedPrice" placeholder="قیمت مورد نظر خود را وارد کنید" required>
+                    <small>قیمت وارد شده بررسی و تایید یا اصلاح توسط مدیر خواهد شد</small>
+                </div>
                 <button type="submit" class="btn-next">ثبت درخواست</button>
             </form>
         </main>
@@ -71,34 +89,34 @@
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            fetch('/api/pricing')
-                .then(function(r) { return r.json(); })
-                .then(function(pricing) {
-                    var pricingMap = {};
-                    pricing.forEach(function(p) { pricingMap[p.service] = p.price; });
-                    var price = pricingMap['articlesResearch'];
-                    var displayCost = document.getElementById('displayCost');
-                    if (displayCost) {
-                        displayCost.textContent = price ? price.toLocaleString('fa-IR') + ' تومان' : 'قیمت توسط مدیر تنظیم نشده';
-                    }
-                })
-                .catch(function() {
-                    var displayCost = document.getElementById('displayCost');
-                    if (displayCost) {
-                        displayCost.textContent = 'قیمت توسط مدیر تنظیم نشده';
-                    }
-                });
-            
+            var userData = JSON.parse(localStorage.getItem('userData') || 'null');
             const form = document.getElementById('articlesResearchForm');
             if (form) {
-                form.addEventListener('submit', function(e) {
+                form.addEventListener('submit', async function(e) {
                     e.preventDefault();
                     const data = Object.fromEntries(new FormData(form));
                     data.serviceKey = 'articlesResearch';
                     data.serviceTitle = 'مقاله و تحقیق';
-                    data.cost = document.getElementById('displayCost').textContent;
-                    localStorage.setItem('registrationData', JSON.stringify(data));
-                    window.location.href = 'review.html';
+                    data.cost = 'قیمت توافقی - ' + document.getElementById('proposedPrice').value;
+                    data.status = 'pending';
+                    data.priceStatus = 'pending';
+                    data.username = userData ? userData.username : null;
+                    try {
+                        const response = await fetch('/api/order', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                        const result = await response.json();
+                        localStorage.setItem('registrationData', JSON.stringify(data));
+                        localStorage.setItem('lastTrackingCode', result.trackingCode);
+                        window.location.href = 'success.html';
+                    } catch (error) {
+                        const fallbackCode = 'CFT-' + Date.now().toString().slice(-8);
+                        localStorage.setItem('registrationData', JSON.stringify(data));
+                        localStorage.setItem('lastTrackingCode', fallbackCode);
+                        window.location.href = 'success.html';
+                    }
                 });
             }
         });

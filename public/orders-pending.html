@@ -26,65 +26,205 @@
             <a href="profile.html" class="btn-next">بازگشت</a>
         </main>
     </div>
+
+    <div class="popup-overlay" id="priceProposalPopup">
+        <div class="popup-content">
+            <h3>پیشنهاد قیمت جدید</h3>
+            <input type="text" id="userPriceInput" placeholder="قیمت پیشنهادی جدید (تومان)" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:8px;font-family:inherit;margin-bottom:1rem;">
+            <div class="form-actions">
+                <button class="btn-next" id="sendPriceProposalBtn">ارسال پیشنهاد</button>
+                <button class="btn-next" id="closePricePopup" style="background:#999;">انصراف</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var container = document.getElementById('pendingOrders');
             var userData = JSON.parse(localStorage.getItem('userData') || 'null');
             var username = userData ? userData.username : null;
-            fetch('/api/orders/user?username=' + encodeURIComponent(username) + '&status=pending')
+            var pricePopup = document.getElementById('priceProposalPopup');
+            var userPriceInput = document.getElementById('userPriceInput');
+            var sendPriceProposalBtn = document.getElementById('sendPriceProposalBtn');
+            var closePricePopup = document.getElementById('closePricePopup');
+            var currentTrackingCode = null;
+
+            function isSpecialService(order) {
+                return order.serviceKey === 'resumeEmployment' || 
+                       order.serviceKey === 'customServices' || 
+                       order.serviceKey === 'articlesResearch' ||
+                       (order.jobField || order.experienceYears || order.skills) ||
+                       (order.researchType || order.subject || order.academicLevel) ||
+                       order.serviceDescription;
+            }
+
+function renderOrders(orders) {
+                container.innerHTML = '';
+                if (!orders || orders.length === 0) {
+                    container.innerHTML = '<p style="text-align:center;color:#999;">سفارشی یافت نشد.</p>';
+                    return;
+                }
+                var pendingOrders = orders.filter(function(o) { return o.status === 'pending'; });
+                if (pendingOrders.length === 0) {
+                    container.innerHTML = '<p style="text-align:center;color:#999;">سفارشی یافت نشد.</p>';
+                    return;
+                }
+                pendingOrders.forEach(function(order) {
+                    var div = document.createElement('div');
+                    var serviceTitle = (order.title && order.title !== '-') ? order.title : (order.serviceTitle || '-');
+                    if (!order.title && !order.serviceTitle) {
+                        var isFuelCard = order.ownerPhone || order.ownerNationalId || order.vin;
+                        var isMarriageLoan = order.applicantPhone || order.applicantNationalId || order.idNumber;
+                        var isKonkor = order.regionCode || order.educationLevel || order.applicantNationalId;
+                        var isRental = order.contractNumber || order.depositAmount || order.iban;
+                        var isHousing = order.ownershipStatus || order.familyCount;
+                        var isIeltsToefl = order.passportNumber || order.examType;
+                        var isInternet = order.address || order.operator;
+                        var isCriminalRecord = order.birthplace;
+                        var isSmartCard = order.serialNumber;
+                        var isHealthInsurance = order.familyMembers;
+                        var isResumeEmployment = order.serviceKey === 'resumeEmployment' || (order.jobField || order.experienceYears || order.skills);
+                        var isArticlesResearch = order.serviceKey === 'articlesResearch' || (order.researchType || order.subject || order.academicLevel);
+                        var isCustomServices = order.serviceKey === 'customServices' || order.serviceDescription;
+                        
+                        if (isFuelCard) serviceTitle = 'کارت سوخت';
+                        else if (isMarriageLoan) serviceTitle = 'وام ازدواج';
+                        else if (isKonkor) serviceTitle = 'کنکور سراسری';
+                        else if (isRental) serviceTitle = 'ودیعه مسکن اجاره';
+                        else if (isHousing) serviceTitle = 'نهضت ملی مسکن';
+                        else if (isIeltsToefl) serviceTitle = 'ثبت‌نام تافل و آیلتس';
+                        else if (isInternet) serviceTitle = 'ثبت‌نام اینترنت پرسرعت';
+                        else if (isCriminalRecord) serviceTitle = 'گواهی عدم سوء پیشینه';
+                        else if (isSmartCard) serviceTitle = 'کارت ملی هوشمند';
+                        else if (isHealthInsurance) serviceTitle = 'بیمه سلامت';
+                        else if (isResumeEmployment) serviceTitle = 'رزومه و استخدام';
+                        else if (isArticlesResearch) serviceTitle = 'مقاله و تحقیق';
+                        else if (isCustomServices) serviceTitle = 'خدمات سفارشی';
+                        else serviceTitle = 'پیش ثبت نام مدارس';
+                    }
+                    div.className = 'order-card';
+                    var dateStr = order.created_at ? new Date(order.created_at).toLocaleDateString('fa-IR') : '-';
+                    
+                    var priceSection = '';
+                    if (isSpecialService(order)) {
+                        var priceStatus = order.priceStatus || 'pending';
+                        var proposedPrice = order.proposedPrice || '';
+                        var adminPrice = order.adminProposedPrice || '';
+                        
+                        priceSection = '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;">';
+                        
+                        if (priceStatus === 'pending') {
+                            priceSection += '<strong style="color:#ff9800;">قیمت پیشنهادی شما: </strong><span>' + formatPrice(proposedPrice) + ' تومان</span>';
+                        } else if (priceStatus === 'usercounter') {
+                            priceSection += '<strong style="color:#f44336;">قیمت پیشنهادی جدید شما: </strong><span>' + formatPrice(proposedPrice) + ' تومان</span>';
+                        } else if (priceStatus === 'countersent') {
+                            priceSection += '<strong style="color:#2196f3;">قیمت پیشنهادی مدیر: </strong><span>' + formatPrice(adminPrice) + ' تومان</span><br>';
+                            priceSection += '<button class="accept-admin-price-btn" data-code="' + order.trackingCode + '" style="background:#4caf50;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem;">تایید قیمت مدیر</button> ';
+                            priceSection += '<button class="counter-price-btn" data-code="' + order.trackingCode + '" style="background:#ff9800;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem;">پیشنهاد قیمت جدید</button>';
+                        } else if (priceStatus === 'accepted') {
+                            priceSection += '<strong style="color:#4caf50;">قیمت تایید شده: </strong><span>' + formatPrice(adminPrice) + ' تومان</span><br>';
+                            priceSection += '<a href="success.html" class="btn-confirm" style="background:#27ae60;color:white;border:none;padding:0.3rem 1rem;border-radius:4px;text-decoration:none;font-size:0.85rem;margin-top:0.5rem;display:inline-block;">پرداخت</a>';
+                        }
+                        
+                        priceSection += '</div>';
+                    }
+                    
+                    div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
+                        '<div class="order-title">' + serviceTitle + '</div>' +
+                        '<small style="color:#666;">' + dateStr + '</small>' +
+                        '</div>' +
+                        '<div style="margin-bottom:0.25rem;text-align:center;">' +
+                        '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
+                        '</div>' +
+                        priceSection +
+                        (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + order.result + '</span></div>' : '') +
+                        '<div class="order-actions" style="text-align:center;">' +
+                        '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
+                    container.appendChild(div);
+                });
+
+                document.querySelectorAll('.accept-admin-price-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var code = this.getAttribute('data-code');
+                        fetch('/api/order/price-accept', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ trackingCode: code })
+                        })
+                        .then(function(r) { return r.json(); })
+                        .then(function(res) {
+                            if (res.success) {
+                                location.reload();
+                            }
+                        })
+                        .catch(function() {});
+                    });
+                });
+
+                document.querySelectorAll('.counter-price-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        currentTrackingCode = this.getAttribute('data-code');
+                        pricePopup.classList.add('active');
+                    });
+                });
+
+                sendPriceProposalBtn.addEventListener('click', function() {
+                    var price = userPriceInput.value.trim();
+                    if (!price) return;
+                    fetch('/api/order/price-proposal', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ trackingCode: currentTrackingCode, proposedPrice: price })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(res) {
+                        if (res.success) {
+                            pricePopup.classList.remove('active');
+                            userPriceInput.value = '';
+                            location.reload();
+                        }
+                    })
+                    .catch(function() {});
+                });
+
+                closePricePopup.addEventListener('click', function() {
+                    pricePopup.classList.remove('active');
+                });
+
+                pricePopup.addEventListener('click', function(e) {
+                    if (e.target === pricePopup) pricePopup.classList.remove('active');
+                });
+            }
+
+            // Try API first, fallback to localStorage
+            fetch('/api/orders/user?username=' + encodeURIComponent(username))
                 .then(function(r) { return r.json(); })
                 .then(function(orders) {
-                    container.innerHTML = '';
-                    if (orders.length === 0) {
-                        container.innerHTML = '<p style="text-align:center;color:#999;">سفارشی یافت نشد.</p>';
-                        return;
-                    }
-                    orders.slice().reverse().forEach(function(order) {
-                        var div = document.createElement('div');
-                        var serviceTitle = order.title || '-';
-                        if (!order.title) {
-                            var isFuelCard = order.ownerPhone || order.ownerNationalId || order.vin;
-                            var isMarriageLoan = order.applicantPhone || order.applicantNationalId || order.idNumber;
-                            var isKonkor = order.regionCode || order.educationLevel || order.applicantNationalId;
-                            var isRental = order.contractNumber || order.depositAmount || order.iban;
-                            var isHousing = order.ownershipStatus || order.familyCount;
-                            var isIeltsToefl = order.passportNumber || order.examType;
-                            var isInternet = order.address || order.operator;
-                            var isCriminalRecord = order.birthplace;
-                            var isSmartCard = order.serialNumber;
-                            var isHealthInsurance = order.familyMembers;
-                            
-                            if (isFuelCard) serviceTitle = 'کارت سوخت';
-                            else if (isMarriageLoan) serviceTitle = 'وام ازدواج';
-                            else if (isKonkor) serviceTitle = 'کنکور سراسری';
-                            else if (isRental) serviceTitle = 'ودیعه مسکن اجاره';
-                            else if (isHousing) serviceTitle = 'نهضت ملی مسکن';
-                            else if (isIeltsToefl) serviceTitle = 'ثبت‌نام تافل و آیلتس';
-                            else if (isInternet) serviceTitle = 'ثبت‌نام اینترنت پرسرعت';
-                            else if (isCriminalRecord) serviceTitle = 'گواهی عدم سوء پیشینه';
-                            else if (isSmartCard) serviceTitle = 'کارت ملی هوشمند';
-                            else if (isHealthInsurance) serviceTitle = 'بیمه سلامت';
-                            else serviceTitle = 'پیش ثبت نام مدارس';
+                    if (orders && orders.length > 0) {
+                        renderOrders(orders);
+                    } else {
+                        // Fallback to localStorage for file:// protocol or no orders
+                        var registrationData = JSON.parse(localStorage.getItem('registrationData') || 'null');
+                        var lastTrackingCode = localStorage.getItem('lastTrackingCode');
+                        if (registrationData && lastTrackingCode) {
+                            var localOrder = { ...registrationData, trackingCode: lastTrackingCode, status: 'pending', created_at: new Date().toISOString() };
+                            renderOrders([localOrder]);
+                        } else {
+                            container.innerHTML = '<p style="text-align:center;color:#999;">سفارشی یافت نشد.</p>';
                         }
-                        div.className = 'order-card';
-                        var dateStr = order.created_at ? new Date(order.created_at).toLocaleDateString('fa-IR') : '-';
-                        div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
-                            '<div class="order-title">' + serviceTitle + '</div>' +
-                            '<small style="color:#666;">' + dateStr + '</small>' +
-                            '</div>' +
-                            '<div style="margin-bottom:0.25rem;text-align:center;">' +
-                            '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
-                            '</div>' +
-                            (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + order.result + '</span></div>' : '') +
-                            '<div class="order-actions" style="text-align:center;">' +
-                            '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
-                        container.appendChild(div);
-                    });
-
+                    }
                 })
                 .catch(function() {
-                    container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری سفارشات.</p>';
+                    // Fallback to localStorage for file:// protocol
+                    var registrationData = JSON.parse(localStorage.getItem('registrationData') || 'null');
+                    var lastTrackingCode = localStorage.getItem('lastTrackingCode');
+                    if (registrationData && lastTrackingCode) {
+                        var localOrder = { ...registrationData, trackingCode: lastTrackingCode, status: 'pending', created_at: new Date().toISOString() };
+                        renderOrders([localOrder]);
+                    } else {
+                        container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری سفارشات.</p>';
+                    }
                 });
         });
     </script>

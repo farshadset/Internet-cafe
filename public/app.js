@@ -1,3 +1,16 @@
+function formatPrice(price) {
+    var numStr = (price !== undefined && price !== null && price !== '') ? String(price) : '0';
+    numStr = numStr.replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
+    numStr = numStr.replace(/[,٬٫]/g, '');
+    var match = numStr.match(/\d+/);
+    if (!match) return numStr;
+    var num = parseInt(match[0], 10);
+    if (isNaN(num)) return numStr;
+    var formatted = num.toLocaleString('fa-IR').replace(/٬/g, ',');
+    var result = '\u202A' + numStr.replace(match[0], formatted) + '\u202C';
+    return result;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const currentUserData = JSON.parse(localStorage.getItem('userData') || 'null');
 
@@ -49,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const SERVICE_CONFIGS = {
         schools: {
             title: 'پیش ثبت نام مدارس',
-            cost: '۵۰,۰۰۰ تومان',
+            cost: 50000,
             fields: ['parentPhone', 'parentNationalId', 'birthYear', 'birthMonth', 'birthDay',
                      'postalCode', 'studentNationalId', 'additionalNotes'],
             transform: (data) => ({
@@ -65,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         fineInquiry: {
             title: 'استعلام جریمه',
-            cost: '۲۵,۰۰۰ تومان',
+            cost: 25000,
             fields: ['ownerPhone', 'ownerNationalId', 'plateNumber', 'additionalNotes'],
             transform: (data) => ({
                 ownerPhone: data.ownerPhone,
@@ -76,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         finePayment: {
             title: 'پرداخت آنلاین جریمه',
-            cost: '۳۵,۰۰۰ تومان',
+            cost: 35000,
             fields: ['ownerPhone', 'ownerNationalId', 'plateNumber', 'violationNumber', 'paymentMethod', 'additionalNotes'],
             transform: (data) => ({
                 ownerPhone: data.ownerPhone,
@@ -89,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         fineAppeal: {
             title: 'اعتراض به جریمه',
-            cost: '۴۵,۰۰۰ تومان',
+            cost: 45000,
             fields: ['ownerPhone', 'ownerNationalId', 'plateNumber', 'violationNumber', 'appealReason', 'additionalNotes'],
             transform: (data) => ({
                 ownerPhone: data.ownerPhone,
@@ -102,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         marriage: {
             title: 'وام ازدواج',
-            cost: '۲۵۰,۰۰۰ تومان',
+            cost: 250000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay',
                      'marriageYear', 'marriageMonth', 'marriageDay', 'idNumber', 'additionalNotes'],
             transform: (data) => ({
@@ -116,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         konkor: {
             title: 'ثبت‌نام کنکور سراسری',
-            cost: '۲۰۰,۰۰۰ تومان',
+            cost: 200000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay',
                      'regionCode', 'educationLevel', 'additionalNotes'],
             transform: (data) => ({
@@ -130,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         subsidy: {
             title: 'ثبت‌نام یارانه معیشتی',
-            cost: '۰ تومان',
+            cost: 0,
             fields: ['applicantPhone', 'applicantNationalId', 'postalCode', 'familyCount', 'iban', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -143,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         rental: {
             title: 'ثبت‌نام ودیعه مسکن اجاره',
-            cost: '۰ تومان',
+            cost: 0,
             fields: ['applicantPhone', 'applicantNationalId', 'postalCode', 'contractNumber', 'iban', 'depositAmount', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -157,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         housing: {
             title: 'ثبت‌نام نهضت ملی مسکن',
-            cost: '۰ تومان',
+            cost: 0,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'postalCode', 'familyCount', 'ownershipStatus', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -171,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         ieltsToefl: {
             title: 'ثبت‌نام تافل و آیلتس',
-            cost: '۱۵۰,۰۰۰ تومان',
+            cost: 150000,
             fields: ['applicantPhone', 'applicantNationalId', 'passportNumber', 'birthYear', 'birthMonth', 'birthDay', 'examType', 'city', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -185,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         internet: {
             title: 'ثبت‌نام اینترنت پرسرعت (ADSL/فیبر نوری)',
-            cost: '۱۰۰,۰۰۰ تومان',
+            cost: 100000,
             fields: ['applicantPhone', 'applicantNationalId', 'postalCode', 'address', 'operator', 'internetType', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -199,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         criminalRecord: {
             title: 'صدور گواهی عدم سوء پیشینه (اینترنتی)',
-            cost: '۱۸۰,۰۰۰ تومان',
+            cost: 180000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'idNumber', 'birthplace', 'deliveryMethod', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -213,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         smartCard: {
             title: 'ثبت نام کارت ملی هوشمند',
-            cost: '۸۰,۰۰۰ تومان',
+            cost: 80000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'serialNumber', 'motherName', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -226,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         healthInsurance: {
             title: 'ثبت نام و درخواست اینترنتی بیمه سلامت',
-            cost: '۱۲۰,۰۰۰ تومان',
+            cost: 120000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'postalCode', 'familyMembers', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -239,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         marriageLoanStatus: {
             title: 'استعلام وضعیت وام ازدواج',
-            cost: '۳۰,۰۰۰ تومان',
+            cost: 30000,
             fields: ['applicantPhone', 'trackingCode', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -249,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         marriageLoanRenew: {
             title: 'تمدید مهلت وام ازدواج',
-            cost: '۲۵,۰۰۰ تومان',
+            cost: 25000,
             fields: ['applicantPhone', 'trackingCode', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -259,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         urgentLoan: {
             title: 'وام ضروری',
-            cost: '۱۰۰,۰۰۰ تومان',
+            cost: 100000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'postalCode', 'loanType', 'amount', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -273,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         housingPurchase: {
             title: 'تسهیلات خرید مسکن',
-            cost: '۸۰,۰۰۰ تومان',
+            cost: 80000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'postalCode', 'propertyAddress', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -286,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         housingConstruction: {
             title: 'وام ساخت مسکن',
-            cost: '۱۰۰,۰۰۰ تومان',
+            cost: 100000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'postalCode', 'constructionAddress', 'constructionArea', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -300,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         justiceStocks: {
             title: 'سهام عدالت',
-            cost: '۵۰,۰۰۰ تومان',
+            cost: 50000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'actionType', 'stockCount', 'sellPrice', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -314,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         stockRegistration: {
             title: 'افتتاح کد بورسی',
-            cost: '۱۰۰,۰۰۰ تومان',
+            cost: 100000,
             fields: ['applicantPhone', 'applicantNationalId', 'bankName', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -325,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         stockTrade: {
             title: 'خرید و فروش سهام',
-            cost: '۵۰,۰۰۰ تومان',
+            cost: 50000,
             fields: ['applicantPhone', 'tradeType', 'stockSymbol', 'stockCount', 'price', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -338,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         sjam: {
             title: 'سجام (احراز هویت بورسی)',
-            cost: '۷۰,۰۰۰ تومان',
+            cost: 70000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'bankName', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -350,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         elementaryRegistration: {
             title: 'پیش ثبت نام پایه اول دبستان',
-            cost: '۴۵,۰۰۰ تومان',
+            cost: 45000,
             fields: ['parentPhone', 'parentNationalId', 'studentNationalId', 'postalCode', 'preferredSchool', 'additionalNotes'],
             transform: (data) => ({
                 parentPhone: data.parentPhone,
@@ -363,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         middleSchoolRegistration: {
             title: 'پیش ثبت نام متوسطه اول',
-            cost: '۴۵,۰۰۰ تومان',
+            cost: 45000,
             fields: ['parentPhone', 'parentNationalId', 'studentNationalId', 'postalCode', 'preferredSchool', 'additionalNotes'],
             transform: (data) => ({
                 parentPhone: data.parentPhone,
@@ -376,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         highSchoolRegistration: {
             title: 'پیش ثبت نام متوسطه دوم',
-            cost: '۴۵,۰۰۰ تومان',
+            cost: 45000,
             fields: ['parentPhone', 'parentNationalId', 'studentNationalId', 'postalCode', 'preferredSchool', 'fieldOfStudy', 'additionalNotes'],
             transform: (data) => ({
                 parentPhone: data.parentPhone,
@@ -390,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         specialSchools: {
             title: 'ثبت نام مدارس خاص',
-            cost: '۵۰,۰۰۰ تومان',
+            cost: 50000,
             fields: ['parentPhone', 'parentNationalId', 'studentNationalId', 'postalCode', 'schoolType', 'preferredField', 'additionalNotes'],
             transform: (data) => ({
                 parentPhone: data.parentPhone,
@@ -404,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         nonGovSchools: {
             title: 'ثبت نام مدارس غیردولتی',
-            cost: '۶۰,۰۰۰ تومان',
+            cost: 60000,
             fields: ['parentPhone', 'parentNationalId', 'studentNationalId', 'postalCode', 'schoolType', 'preferredSchool', 'additionalNotes'],
             transform: (data) => ({
                 parentPhone: data.parentPhone,
@@ -418,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         universityRegistration: {
             title: 'ثبت نام دانشگاه‌ها',
-            cost: '۱۰۰,۰۰۰ تومان',
+            cost: 100000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'universityType', 'preferredField', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -431,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         employmentExam: {
             title: 'ثبت نام آزمون استخدامی',
-            cost: '۸۰,۰۰۰ تومان',
+            cost: 80000,
             fields: ['applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay', 'examType', 'educationLevel', 'preferredOrganization', 'additionalNotes'],
             transform: (data) => ({
                 applicantPhone: data.applicantPhone,
@@ -445,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         technicalInspectionAppointment: {
             title: 'ثبت نام نوبت معاینه فنی',
-            cost: '۳۵,۰۰۰ تومان',
+            cost: '۳۵.۰۰۰ تومان',
             fields: ['ownerPhone', 'ownerNationalId', 'vehicleType', 'plateNumber', 'preferredDate', 'additionalNotes'],
             transform: (data) => ({
                 ownerPhone: data.ownerPhone,
@@ -458,13 +471,54 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         technicalInspectionValidity: {
             title: 'استعلام اعتبار معاینه فنی',
-            cost: '۲۰,۰۰۰ تومان',
+            cost: 20000,
             fields: ['ownerPhone', 'ownerNationalId', 'plateNumber', 'vin', 'additionalNotes'],
             transform: (data) => ({
                 ownerPhone: data.ownerPhone,
                 ownerNationalId: data.ownerNationalId,
                 plateNumber: data.plateNumber,
                 vin: data.vin,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        resumeEmployment: {
+            title: 'رزومه و استخدام',
+            cost: 'قیمت توسط مدیر تنظیم نشده',
+            fields: ['serviceType', 'jobField', 'experienceYears', 'skills', 'targetJob', 'customerName', 'customerPhone', 'additionalNotes'],
+            transform: (data) => ({
+                serviceType: data.serviceType === 'resume' ? 'نوشتن رزومه' : data.serviceType === 'coverLetter' ? 'نامه توصیه' : data.serviceType === 'linkedin' ? 'بهینه‌سازی لینکدین' : 'مشاوره مصاحبه',
+                jobField: data.jobField,
+                experienceYears: data.experienceYears,
+                skills: data.skills,
+                targetJob: data.targetJob,
+                customerName: data.customerName,
+                customerPhone: data.customerPhone,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        customServices: {
+            title: 'خدمات سفارشی',
+            cost: 'قیمت توسط مدیر تنظیم نشده',
+            fields: ['serviceType', 'customerName', 'customerPhone', 'additionalNotes'],
+            transform: (data) => ({
+                serviceType: data.serviceType === 'document' ? 'تدنین سند' : data.serviceType === 'translation' ? 'ترجمه مدارک' : data.serviceType === 'consultation' ? 'مشاوره' : 'سایر خدمات',
+                customerName: data.customerName,
+                customerPhone: data.customerPhone,
+                additionalNotes: data.additionalNotes,
+            })
+        },
+        articlesResearch: {
+            title: 'مقاله و تحقیق',
+            cost: 'قیمت توسط مدیر تنظیم نشده',
+            fields: ['researchType', 'subject', 'academicLevel', 'pagesCount', 'deadline', 'customerName', 'customerPhone', 'additionalNotes'],
+            transform: (data) => ({
+                researchType: data.researchType === 'article' ? 'نوشتن مقاله' : data.researchType === 'research' ? 'تحقیق علمی' : data.researchType === 'translation' ? 'ترجمه مقالات' : 'ویرایش مقالات',
+                subject: data.subject,
+                academicLevel: data.academicLevel === 'bachelor' ? 'کارشناسی' : data.academicLevel === 'master' ? 'کارشناسی ارشد' : 'دکتری',
+                pagesCount: data.pagesCount,
+                deadline: data.deadline,
+                customerName: data.customerName,
+                customerPhone: data.customerPhone,
                 additionalNotes: data.additionalNotes,
             })
         }
@@ -923,6 +977,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: transformed.title || config.title,
                 cost: effectiveCost,
                 status: 'pending',
+                serviceKey: key,
+                priceStatus: 'pending',
                 username: currentUserData ? currentUserData.username : null
             };
             saveRegistrationData(raw, {
@@ -957,11 +1013,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }) : key;
     }
 
-    document.querySelectorAll('#registrationForm, #fuelCardForm, #marriageLoanForm, #serviceForm').forEach(form => {
+    document.querySelectorAll('#registrationForm, #fuelCardForm, #marriageLoanForm, #serviceForm, #resumeEmploymentForm, #customServicesForm, #articlesResearchForm').forEach(form => {
         const key = form.id === 'registrationForm' ? 'schools'
-                  : form.id === 'fuelCardForm' ? 'fuel'
-                  : form.id === 'marriageLoanForm' ? 'marriage'
-                  : normalizeServiceKey(form.dataset.service || new URLSearchParams(window.location.search).get('service'));
+              : form.id === 'fuelCardForm' ? 'fuel'
+              : form.id === 'marriageLoanForm' ? 'marriage'
+              : form.id === 'resumeEmploymentForm' ? 'resumeEmployment'
+              : form.id === 'customServicesForm' ? 'customServices'
+              : form.id === 'articlesResearchForm' ? 'articlesResearch'
+              : normalizeServiceKey(form.dataset.service || new URLSearchParams(window.location.search).get('service'));
         if (key) {
             renderServiceForm(form, key);
             setupServiceForm(form, key);
@@ -1741,11 +1800,11 @@ autoResizeAdditionalNotes();
             const selectedType = schoolTypeSelect.value;
             const basePrice = adminPricing['nonGovSchoolTuition'] || 0;
             if (selectedType === 'international') {
-                displayCost.textContent = '۲۵۰.۰۰۰.۰۰۰ تا ۴۵۰.۰۰۰.۰۰۰ تومان';
+                displayCost.textContent = '۲۵۰,۰۰۰,۰۰۰ تا ۴۵۰,۰۰۰,۰۰۰ تومان';
             } else if (selectedType === 'security') {
                 displayCost.textContent = '۱ تا ۷ میلیون تومان';
             } else {
-                displayCost.textContent = '۲۵۰.۰۰۰.۰۰۰ تا ۴۵۰.۰۰۰.۰۰۰ تومان';
+                displayCost.textContent = '۲۵۰,۰۰۰,۰۰۰ تا ۴۵۰,۰۰۰,۰۰۰ تومان';
             }
         }
 
