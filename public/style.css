@@ -1803,6 +1803,22 @@ header h1 {
     word-break: break-word;
 }
 
+.detail-value-with-attachment {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+}
+
+.detail-notes-text {
+    direction: rtl;
+    unicode-bidi: plaintext;
+}
+
+.detail-attachment-button {
+    flex-shrink: 0;
+}
+
 .price-value {
     direction: rtl;
     unicode-bidi: isolate;
