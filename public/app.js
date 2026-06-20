@@ -11,6 +11,102 @@ function formatPrice(price) {
     return result;
 }
 
+function openAttachmentStorage() {
+    return new Promise(function(resolve, reject) {
+        if (typeof indexedDB === 'undefined') {
+            resolve(null);
+            return;
+        }
+        const request = indexedDB.open('caffint_attachments', 1);
+        request.onupgradeneeded = function() {
+            const db = request.result;
+            if (!db.objectStoreNames.contains('attachments')) {
+                db.createObjectStore('attachments', { keyPath: 'trackingCode' });
+            }
+        };
+        request.onsuccess = function() {
+            resolve(request.result);
+        };
+        request.onerror = function() {
+            reject(request.error);
+        };
+    });
+}
+
+window.saveAttachmentsForTrackingCode = function(trackingCode, attachments) {
+    if (!trackingCode || !attachments || attachments.length === 0) return Promise.resolve();
+    return openAttachmentStorage().then(function(db) {
+        if (!db) return;
+        return new Promise(function(resolve, reject) {
+            const transaction = db.transaction('attachments', 'readwrite');
+            const store = transaction.objectStore('attachments');
+            const request = store.put({ trackingCode: trackingCode, attachments: attachments });
+            request.onsuccess = function() { db.close(); resolve(); };
+            request.onerror = function() { db.close(); reject(request.error); };
+        });
+    }).catch(function() {});
+};
+
+window.getAttachmentsForTrackingCode = function(trackingCode) {
+    if (!trackingCode) return Promise.resolve([]);
+    return openAttachmentStorage().then(function(db) {
+        if (!db) return [];
+        return new Promise(function(resolve, reject) {
+            const transaction = db.transaction('attachments', 'readonly');
+            const store = transaction.objectStore('attachments');
+            const request = store.get(trackingCode);
+            request.onsuccess = function() {
+                db.close();
+                resolve(request.result && request.result.attachments ? request.result.attachments : []);
+            };
+            request.onerror = function() { db.close(); reject(request.error); };
+        });
+    });
+};
+
+function attachmentForApiStorage(attachment) {
+    return {
+        id: attachment.id,
+        name: attachment.name,
+        type: attachment.type,
+        size: attachment.size,
+        dataUrl: '',
+        uploadedAt: attachment.uploadedAt
+    };
+}
+
+function attachmentForUpload(attachment) {
+    return {
+        id: attachment.id,
+        name: attachment.name,
+        type: attachment.type,
+        size: attachment.size,
+        dataUrl: attachment.dataUrl,
+        uploadedAt: attachment.uploadedAt
+    };
+}
+
+window.uploadAttachmentsForTrackingCode = async function(trackingCode, attachments) {
+    const uploadList = Array.isArray(attachments) ? attachments.filter(function(attachment) {
+        return attachment && attachment.dataUrl;
+    }) : [];
+    if (!trackingCode || uploadList.length === 0) return [];
+
+    const uploaded = [];
+    for (const attachment of uploadList) {
+        try {
+            const response = await fetch('/api/order-attachment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trackingCode: trackingCode, attachment: attachmentForUpload(attachment) })
+            });
+            const result = await response.json();
+            if (result && result.success && result.attachment) uploaded.push(result.attachment);
+        } catch (error) {}
+    }
+    return uploaded;
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const currentUserData = JSON.parse(localStorage.getItem('userData') || 'null');
 
@@ -961,6 +1057,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupServiceForm(formElement, serviceKey) {
         const config = SERVICE_CONFIGS[serviceKey];
         if (!config) return;
+        if (['resumeEmploymentForm', 'customServicesForm', 'articlesResearchForm'].includes(formElement.id)) return;
         const effectiveCost = adminPricing[serviceKey] || config.cost;
         formElement.addEventListener('submit', e => {
             e.preventDefault();
@@ -973,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const transformed = config.transform(raw);
             const body = {
                 ...transformed,
-                attachments: currentAttachments,
+                attachments: currentAttachments.map(attachmentForApiStorage),
                 title: transformed.title || config.title,
                 cost: effectiveCost,
                 status: 'pending',
@@ -994,6 +1091,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(r => r.json())
             .then(async result => {
                 localStorage.setItem('lastTrackingCode', result.trackingCode);
+                await window.uploadAttachmentsForTrackingCode(result.trackingCode, currentAttachments);
                 await saveAttachmentsAfterSubmit(result.trackingCode);
                 window.location.href = 'review.html';
             })
@@ -1001,6 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fallbackCode = 'CFT-' + Date.now().toString().slice(-8);
                 const fallbackOrder = { ...body, trackingCode: fallbackCode };
                 localStorage.setItem('lastTrackingCode', fallbackCode);
+                await window.uploadAttachmentsForTrackingCode(fallbackCode, currentAttachments);
                 await saveAttachmentsAfterSubmit(fallbackCode);
                 window.location.href = 'review.html';
             });
@@ -1371,98 +1470,12 @@ const bannerUpload = document.getElementById('bannerUpload');
      const attachmentPreview = document.getElementById('attachmentPreview');
      const textareaPlaceholder = document.getElementById('textareaPlaceholder');
      const additionalNotes = document.getElementById('additionalNotes');
-     let currentAttachments = [];
-     let isReadingAttachment = false;
+let currentAttachments = [];
+      let isReadingAttachment = false;
+      window.currentAttachments = currentAttachments;
 
-     function showAttachmentLimitToast(message) {
-         const toast = document.createElement('div');
-         toast.className = 'attachment-limit-toast';
-         toast.textContent = message || 'فقط می توان چهار فایل آپلود کرد';
-         document.body.appendChild(toast);
-
-         requestAnimationFrame(function() {
-             toast.classList.add('show');
-         });
-
-         setTimeout(function() {
-             toast.classList.remove('show');
-             setTimeout(function() {
-                 toast.remove();
-             }, 300);
-         }, 3000);
-     }
-
-     function openAttachmentStorage() {
-         return new Promise(function(resolve, reject) {
-             if (typeof indexedDB === 'undefined') {
-                 resolve(null);
-                 return;
-             }
-
-             const request = indexedDB.open('caffint_attachments', 1);
-             request.onupgradeneeded = function() {
-                 const db = request.result;
-                 if (!db.objectStoreNames.contains('attachments')) {
-                     db.createObjectStore('attachments', { keyPath: 'trackingCode' });
-                 }
-             };
-             request.onsuccess = function() {
-                 resolve(request.result);
-             };
-             request.onerror = function() {
-                 reject(request.error);
-             };
-         });
-     }
-
-     window.saveAttachmentsForTrackingCode = function(trackingCode, attachments) {
-         if (!trackingCode || !attachments || attachments.length === 0) return Promise.resolve();
-
-         return openAttachmentStorage().then(function(db) {
-             if (!db) return;
-
-             return new Promise(function(resolve, reject) {
-                 const transaction = db.transaction('attachments', 'readwrite');
-                 const store = transaction.objectStore('attachments');
-                 const request = store.put({ trackingCode: trackingCode, attachments: attachments });
-                 request.onsuccess = function() {
-                     db.close();
-                     resolve();
-                 };
-                 request.onerror = function() {
-                     db.close();
-                     reject(request.error);
-                 };
-             });
-         }).catch(function() {});
-     };
-
-     window.getAttachmentsForTrackingCode = function(trackingCode) {
-         if (!trackingCode) return Promise.resolve([]);
-
-         return openAttachmentStorage().then(function(db) {
-             if (!db) return [];
-
-             return new Promise(function(resolve, reject) {
-                 const transaction = db.transaction('attachments', 'readonly');
-                 const store = transaction.objectStore('attachments');
-                 const request = store.get(trackingCode);
-                 request.onsuccess = function() {
-                     db.close();
-                     resolve(request.result && request.result.attachments ? request.result.attachments : []);
-                 };
-                 request.onerror = function() {
-                     db.close();
-                     reject(request.error);
-                 };
-             });
-         }).catch(function() {
-             return [];
-         });
-     };
-
-      if (pinAttachment && attachmentFile) {
-          function escapeAttachmentHtml(value) {
+if (pinAttachment && attachmentFile) {
+        function escapeAttachmentHtml(value) {
               return String(value || '').replace(/[&<>"']/g, function(char) {
                   return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
               });
@@ -1547,26 +1560,28 @@ const bannerUpload = document.getElementById('bannerUpload');
                   return;
               }
 
-              if (file.type.startsWith('image/')) {
-                  const reader = new FileReader();
-                  isReadingAttachment = true;
-                  reader.onload = function(event) {
-                      const attachment = createAttachment(file, event.target.result);
-                      currentAttachments.push(attachment);
-                      renderAttachmentPreview(attachment, event.target.result);
-                      isReadingAttachment = false;
-                  };
-                  reader.onerror = function() {
-                      isReadingAttachment = false;
-                  };
-                  reader.readAsDataURL(file);
-              } else if (file.type === 'application/pdf') {
-                  const reader = new FileReader();
-                  isReadingAttachment = true;
-                  reader.onload = function(event) {
-                      const attachment = createAttachment(file, event.target.result);
-                      currentAttachments.push(attachment);
-                      renderAttachmentPreview(attachment, event.target.result);
+if (file.type.startsWith('image/')) {
+                   const reader = new FileReader();
+                   isReadingAttachment = true;
+                   reader.onload = function(event) {
+                       const attachment = createAttachment(file, event.target.result);
+                       currentAttachments.push(attachment);
+                       window.currentAttachments = [...currentAttachments];
+                       renderAttachmentPreview(attachment, event.target.result);
+                       isReadingAttachment = false;
+                   };
+                   reader.onerror = function() {
+                       isReadingAttachment = false;
+                   };
+                   reader.readAsDataURL(file);
+               } else if (file.type === 'application/pdf') {
+                   const reader = new FileReader();
+                   isReadingAttachment = true;
+                   reader.onload = function(event) {
+                       const attachment = createAttachment(file, event.target.result);
+                       currentAttachments.push(attachment);
+                       window.currentAttachments = [...currentAttachments];
+                       renderAttachmentPreview(attachment, event.target.result);
                       isReadingAttachment = false;
                   };
                   reader.onerror = function() {
@@ -1593,20 +1608,21 @@ const bannerUpload = document.getElementById('bannerUpload');
               addAttachmentFromFile(file);
           });
 
-          window.removeAttachment = function(button) {
-              const thumbnail = button.closest('.attachment-thumbnail');
-              if (thumbnail) {
-                  const attachmentId = thumbnail.getAttribute('data-attachment-id');
-                  currentAttachments = currentAttachments.filter(function(attachment) {
-                      return attachment.id !== attachmentId;
-                  });
-                  thumbnail.remove();
-              }
+window.removeAttachment = function(button) {
+                const thumbnail = button.closest('.attachment-thumbnail');
+                if (thumbnail) {
+                    const attachmentId = thumbnail.getAttribute('data-attachment-id');
+                    currentAttachments = currentAttachments.filter(function(attachment) {
+                        return attachment.id !== attachmentId;
+                    });
+                    window.currentAttachments = currentAttachments;
+                    thumbnail.remove();
+                }
 
-              if (attachmentPreview && attachmentPreview.querySelectorAll('.attachment-thumbnail').length === 0) {
-                  attachmentPreview.classList.add('hidden');
-              }
-          };
+                if (attachmentPreview && attachmentPreview.querySelectorAll('.attachment-thumbnail').length === 0) {
+                    attachmentPreview.classList.add('hidden');
+                }
+            };
 
      }
 
@@ -1620,16 +1636,16 @@ const bannerUpload = document.getElementById('bannerUpload');
           const attachmentList = Array.isArray(attachments) ? attachments : [];
           const isAdminMode = !!(options && options.adminMode);
           const code = options && options.code;
-          let visibleAttachments = attachmentList.filter(function(attachment) {
-              return attachment && attachment.dataUrl;
-          });
+           let visibleAttachments = attachmentList.filter(function(attachment) {
+               return attachment && (attachment.dataUrl || attachment.url);
+           });
 
-          if (visibleAttachments.length === 0 && code && window.getAttachmentsForTrackingCode) {
-              const storedAttachments = await window.getAttachmentsForTrackingCode(code);
-              visibleAttachments = storedAttachments.filter(function(attachment) {
-                  return attachment && attachment.dataUrl;
-              });
-          }
+           if (visibleAttachments.length === 0 && code && window.getAttachmentsForTrackingCode) {
+               const storedAttachments = await window.getAttachmentsForTrackingCode(code);
+               visibleAttachments = storedAttachments.filter(function(attachment) {
+                   return attachment && (attachment.dataUrl || attachment.url);
+               });
+           }
 
           if (visibleAttachments.length === 0) {
               showAttachmentLimitToast('فایلی برای نمایش وجود ندارد.');
@@ -1654,7 +1670,7 @@ const grid = document.getElementById('attachmentPopupGrid');
             grid.innerHTML = visibleAttachments.map(function(attachment) {
                 const isImage = attachment.type && attachment.type.startsWith('image/');
                 const safeName = escapeAttachmentHtml(attachment.name || 'فایل پیوست');
-                const safeUrl = escapeAttachmentHtml(attachment.dataUrl);
+                const safeUrl = escapeAttachmentHtml(attachment.url || attachment.dataUrl);
                 const preview = isImage
                     ? '<div class="popup-image-wrapper"><img src="' + safeUrl + '" alt="' + safeName + '"><button type="button" class="popup-download-icon" onclick="downloadPopupImage(\'' + safeUrl + '\', \'' + safeName + '\')"><i class="fas fa-download"></i></button></div>'
                     : '<div class="popup-media-wrapper"><div class="popup-pdf-icon">PDF</div><button type="button" class="popup-download-icon" onclick="downloadPopupImage(\'' + safeUrl + '\', \'' + safeName + '\')"><i class="fas fa-download"></i></button></div>';

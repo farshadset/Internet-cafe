@@ -66,6 +66,25 @@
         document.addEventListener('DOMContentLoaded', function() {
             var userData = JSON.parse(localStorage.getItem('userData') || 'null');
             var form = document.getElementById('customServicesForm');
+            function getAttachmentMetadata() {
+                return (window.currentAttachments || []).map(function(attachment) {
+                    return {
+                        id: attachment.id,
+                        name: attachment.name,
+                        type: attachment.type,
+                        size: attachment.size,
+                        dataUrl: '',
+                        uploadedAt: attachment.uploadedAt
+                    };
+                });
+            }
+            function saveRegistrationData(data, trackingCode) {
+                localStorage.setItem('registrationData', JSON.stringify({
+                    ...data,
+                    attachments: getAttachmentMetadata()
+                }));
+                localStorage.setItem('lastTrackingCode', trackingCode);
+            }
             if (form) {
                 form.addEventListener('submit', async function(e) {
                     e.preventDefault();
@@ -76,6 +95,8 @@
                     data.status = 'pending';
                     data.priceStatus = 'pending';
                     data.username = userData ? userData.username : null;
+                    const uploadAttachments = Array.isArray(window.currentAttachments) ? window.currentAttachments : [];
+                    data.attachments = uploadAttachments.map(attachmentForApiStorage);
                     try {
                         const response = await fetch('/api/order', {
                             method: 'POST',
@@ -83,13 +104,19 @@
                             body: JSON.stringify(data)
                         });
                         const result = await response.json();
-                        localStorage.setItem('registrationData', JSON.stringify(data));
-                        localStorage.setItem('lastTrackingCode', result.trackingCode);
+                        await window.uploadAttachmentsForTrackingCode(result.trackingCode, uploadAttachments);
+                        if (window.saveAttachmentsForTrackingCode && data.attachments.length > 0) {
+                            await window.saveAttachmentsForTrackingCode(result.trackingCode, uploadAttachments);
+                        }
+                        saveRegistrationData(data, result.trackingCode);
                         window.location.href = 'success.html';
                     } catch (error) {
                         const fallbackCode = 'CFT-' + Date.now().toString().slice(-8);
-                        localStorage.setItem('registrationData', JSON.stringify(data));
-                        localStorage.setItem('lastTrackingCode', fallbackCode);
+                        await window.uploadAttachmentsForTrackingCode(fallbackCode, uploadAttachments);
+                        if (window.saveAttachmentsForTrackingCode && data.attachments.length > 0) {
+                            await window.saveAttachmentsForTrackingCode(fallbackCode, uploadAttachments);
+                        }
+                        saveRegistrationData(data, fallbackCode);
                         window.location.href = 'success.html';
                     }
                 });

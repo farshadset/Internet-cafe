@@ -25,7 +25,7 @@
                 <h2 id="successTitle">درخواست با موفقیت ثبت شد!</h2>
                 <p>درخواست شما برای بررسی مدیر ارسال شد. پس از تایید قیمت، می‌توانید پرداخت را انجام دهید.</p>
                 <p class="tracking-code">کد سفارش: <strong id="trackingCode"></strong></p>
-                <a href="orders-pending.html" class="btn-next">پیگیری سفارش</a>
+                <a href="orders-pending.html" class="btn-next">سفارش‌های در صف انتظار</a>
                 <a href="index.html" class="btn-next" style="background:#999;margin-top:0.5rem;">بازگشت به صفحه اصلی</a>
             </div>
         </main>
@@ -40,7 +40,7 @@
                 document.getElementById('trackingCode').textContent = tc;
             }
             
-            // Check if special service
+// Check if special service
             var isSpecial = registrationData.serviceKey === 'resumeEmployment' || 
                           registrationData.serviceKey === 'customServices' || 
                           registrationData.serviceKey === 'articlesResearch';

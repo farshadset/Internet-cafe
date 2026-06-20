@@ -50,7 +50,13 @@
 
                 <div class="form-group">
                     <label for="deadline">مهلت تحویل</label>
-                    <input type="date" id="deadline" name="deadline" required>
+                    <div style="display:flex;gap:0.25rem;align-items:center;flex-direction:row-reverse;direction:rtl;">
+                        <input type="number" id="deadlineYear" name="deadlineYear" placeholder="سال" min="1400" max="1500" style="width:4rem;padding:0.25rem;">
+                        <span style="color:#666;">/</span>
+                        <input type="number" id="deadlineMonth" name="deadlineMonth" placeholder="ماه" min="1" max="12" style="width:3rem;padding:0.25rem;" onkeyup="if(this.value.length>=2)document.getElementById('deadlineYear').focus()">
+                        <span style="color:#666;">/</span>
+                        <input type="number" id="deadlineDay" name="deadlineDay" placeholder="روز" min="1" max="31" style="width:3rem;padding:0.25rem;" onkeyup="if(this.value.length>=2)document.getElementById('deadlineMonth').focus()">
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -91,16 +97,46 @@
         document.addEventListener('DOMContentLoaded', function() {
             var userData = JSON.parse(localStorage.getItem('userData') || 'null');
             const form = document.getElementById('articlesResearchForm');
+            function getAttachmentMetadata() {
+                return (window.currentAttachments || []).map(function(attachment) {
+                    return {
+                        id: attachment.id,
+                        name: attachment.name,
+                        type: attachment.type,
+                        size: attachment.size,
+                        dataUrl: '',
+                        uploadedAt: attachment.uploadedAt
+                    };
+                });
+            }
+            function saveRegistrationData(data, trackingCode) {
+                localStorage.setItem('registrationData', JSON.stringify({
+                    ...data,
+                    attachments: getAttachmentMetadata()
+                }));
+                localStorage.setItem('lastTrackingCode', trackingCode);
+            }
             if (form) {
                 form.addEventListener('submit', async function(e) {
                     e.preventDefault();
                     const data = Object.fromEntries(new FormData(form));
+                    
+                    // Combine deadline fields
+                    if (data.deadlineYear && data.deadlineMonth && data.deadlineDay) {
+                        data.deadline = data.deadlineYear + '/' + data.deadlineMonth + '/' + data.deadlineDay;
+                        delete data.deadlineYear;
+                        delete data.deadlineMonth;
+                        delete data.deadlineDay;
+                    }
+                    
                     data.serviceKey = 'articlesResearch';
                     data.serviceTitle = 'مقاله و تحقیق';
                     data.cost = 'قیمت توافقی - ' + document.getElementById('proposedPrice').value;
                     data.status = 'pending';
                     data.priceStatus = 'pending';
                     data.username = userData ? userData.username : null;
+                    const uploadAttachments = Array.isArray(window.currentAttachments) ? window.currentAttachments : [];
+                    data.attachments = uploadAttachments.map(attachmentForApiStorage);
                     try {
                         const response = await fetch('/api/order', {
                             method: 'POST',
@@ -108,13 +144,19 @@
                             body: JSON.stringify(data)
                         });
                         const result = await response.json();
-                        localStorage.setItem('registrationData', JSON.stringify(data));
-                        localStorage.setItem('lastTrackingCode', result.trackingCode);
+                        await window.uploadAttachmentsForTrackingCode(result.trackingCode, uploadAttachments);
+                        if (window.saveAttachmentsForTrackingCode && data.attachments.length > 0) {
+                            await window.saveAttachmentsForTrackingCode(result.trackingCode, uploadAttachments);
+                        }
+                        saveRegistrationData(data, result.trackingCode);
                         window.location.href = 'success.html';
                     } catch (error) {
                         const fallbackCode = 'CFT-' + Date.now().toString().slice(-8);
-                        localStorage.setItem('registrationData', JSON.stringify(data));
-                        localStorage.setItem('lastTrackingCode', fallbackCode);
+                        await window.uploadAttachmentsForTrackingCode(fallbackCode, uploadAttachments);
+                        if (window.saveAttachmentsForTrackingCode && data.attachments.length > 0) {
+                            await window.saveAttachmentsForTrackingCode(fallbackCode, uploadAttachments);
+                        }
+                        saveRegistrationData(data, fallbackCode);
                         window.location.href = 'success.html';
                     }
                 });

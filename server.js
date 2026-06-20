@@ -31,6 +31,26 @@ const isVercel = !!process.env.VERCEL;
 const DB_PATH = isVercel
     ? path.join('/tmp', 'database.json')
     : path.join(rootDir, 'database.json');
+const ATTACHMENTS_DIR = path.join(rootDir, 'public', 'uploads', 'attachments');
+
+fs.mkdirSync(ATTACHMENTS_DIR, { recursive: true });
+
+function sanitizeAttachmentName(name) {
+    const safeName = String(name || 'attachment')
+        .replace(/[\\/:*?"<>|]/g, '_')
+        .replace(/\s+/g, '_')
+        .slice(0, 120);
+    return safeName || 'attachment';
+}
+
+function decodeDataUrl(dataUrl) {
+    const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return null;
+    return {
+        type: match[1],
+        buffer: Buffer.from(match[2], 'base64')
+    };
+}
 
 function readDB() {
     try {
@@ -115,6 +135,54 @@ app.get('/api/order/:trackingCode', async (req, res) => {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
     res.json(order);
+});
+
+app.post('/api/order-attachment', async (req, res) => {
+    const { trackingCode, attachment } = req.body;
+    if (!trackingCode || !/^[A-Za-z0-9-]+$/.test(trackingCode)) {
+        return res.status(400).json({ error: 'کد سفارش نامعتبر است' });
+    }
+    if (!attachment || !attachment.name || !attachment.dataUrl) {
+        return res.status(400).json({ error: 'فایل پیوست نامعتبر است' });
+    }
+
+    const decoded = decodeDataUrl(attachment.dataUrl);
+    if (!decoded || decoded.buffer.length === 0) {
+        return res.status(400).json({ error: 'داده فایل نامعتبر است' });
+    }
+
+    const db = readDB();
+    const order = (db.orders || []).find(o => o.trackingCode === trackingCode);
+    if (!order) {
+        return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+
+    const fileName = sanitizeAttachmentName(attachment.name);
+    const orderDir = path.join(ATTACHMENTS_DIR, trackingCode);
+    fs.mkdirSync(orderDir, { recursive: true });
+    const filePath = path.join(orderDir, fileName);
+    fs.writeFileSync(filePath, decoded.buffer);
+
+    const savedAttachment = {
+        id: attachment.id || ('att_' + Date.now() + '_' + Math.random().toString(16).slice(2)),
+        name: fileName,
+        type: attachment.type || decoded.type,
+        size: decoded.buffer.length,
+        url: '/uploads/attachments/' + encodeURIComponent(trackingCode) + '/' + encodeURIComponent(fileName),
+        uploadedAt: attachment.uploadedAt || new Date().toISOString()
+    };
+
+    order.attachments = order.attachments || [];
+    const existingIndex = order.attachments.findIndex(a => a.id === savedAttachment.id);
+    if (existingIndex >= 0) {
+        order.attachments[existingIndex] = savedAttachment;
+    } else {
+        order.attachments.push(savedAttachment);
+    }
+    order.updated_at = new Date().toISOString();
+    writeDB(db);
+
+    res.json({ success: true, attachment: savedAttachment });
 });
 
 app.post('/api/order/confirm', async (req, res) => {
@@ -209,6 +277,26 @@ app.post('/api/order/price-accept', async (req, res) => {
     }
     order.priceStatus = 'accepted';
     order.cost = 'قیمت توافقی - ' + (order.adminProposedPrice || order.proposedPrice);
+    order.updated_at = new Date().toISOString();
+    writeDB(db);
+    res.json({ success: true });
+});
+
+app.post('/api/order/pay', async (req, res) => {
+    const { trackingCode } = req.body;
+    if (!trackingCode) {
+        return res.status(400).json({ error: 'کد سفارش الزامی است' });
+    }
+    const db = readDB();
+    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    if (!order) {
+        return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    if (order.priceStatus !== 'accepted') {
+        return res.status(400).json({ error: 'قیمت هنوز تایید نشده است' });
+    }
+    order.paid = true;
+    order.paymentStatus = 'paid';
     order.updated_at = new Date().toISOString();
     writeDB(db);
     res.json({ success: true });

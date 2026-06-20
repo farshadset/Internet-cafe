@@ -340,14 +340,14 @@
 
             async function loadAttachmentsForReview() {
                 var attachments = data.attachments || [];
-                var hasDataUrl = attachments.some(function(a) { return a && a.dataUrl; });
+                var hasDataUrl = attachments.some(function(a) { return a && (a.dataUrl || a.url); });
                 if (!hasDataUrl && trackingCode && trackingCode !== '-') {
                     try {
                         var response = await fetch('/api/order/' + encodeURIComponent(trackingCode));
                         if (response.ok) {
                             var order = await response.json();
                             attachments = order.attachments || attachments;
-                            hasDataUrl = attachments.some(function(a) { return a && a.dataUrl; });
+                            hasDataUrl = attachments.some(function(a) { return a && (a.dataUrl || a.url); });
                         }
                     } catch (error) {}
                     if (!hasDataUrl) {
