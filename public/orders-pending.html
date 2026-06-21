@@ -122,8 +122,8 @@ function renderOrders(orders) {
                             priceSection += '<strong style="color:#2196f3;">قیمت پیشنهادی مدیر: </strong><span>' + formatPrice(adminPrice) + ' تومان</span><br>';
                             priceSection += '<button class="accept-admin-price-btn" data-code="' + order.trackingCode + '" style="background:#4caf50;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem;">تایید قیمت مدیر</button> ';
                             priceSection += '<button class="counter-price-btn" data-code="' + order.trackingCode + '" style="background:#ff9800;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem;">پیشنهاد قیمت جدید</button>';
-                        } else if (priceStatus === 'accepted') {
-                            priceSection += '<strong style="color:#4caf50;">قیمت تایید شده: </strong><span>' + formatPrice(adminPrice) + ' تومان</span><br>';
+                         } else if (priceStatus === 'accepted') {
+                             priceSection += '<strong style="color:#4caf50;">قیمت تایید شده: </strong><span>' + formatPrice(adminPrice || proposedPrice) + ' تومان</span><br>';
                             if (!order.paid) {
                                 priceSection += '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-confirm" style="background:#27ae60;color:white;border:none;padding:0.3rem 1rem;border-radius:4px;text-decoration:none;font-size:0.85rem;margin-top:0.5rem;display:inline-block;">پرداخت</a>';
                             }
