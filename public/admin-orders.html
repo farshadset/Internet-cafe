@@ -142,7 +142,7 @@
                         '<button class="status-btn status-btn-processing' + (order.status === 'processing' ? ' active' : '') + '" data-code="' + order.trackingCode + '" data-status="processing" title="در حال انجام"><i class="fas fa-spinner"></i></button>' +
                         '<button class="status-btn status-btn-completed' + (order.status === 'completed' ? ' active' : '') + '" data-code="' + order.trackingCode + '" data-status="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>' +
                         '</div>' +
-                        (isSpecialService(order) ? '<div style="margin-top:0.5rem;text-align:center;">' +
+                        (isSpecialService(order) && !order.paid && order.priceStatus !== 'accepted' ? '<div style="margin-top:0.5rem;text-align:center;">' +
                         '<button class="price-counter-btn" data-code="' + order.trackingCode + '" style="background:#ff9800;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;">ثبت قیمت جدید</button> ' +
                         '<button class="price-accept-btn" data-code="' + order.trackingCode + '" style="background:#4caf50;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;">تایید قیمت کاربر</button>' +
                         '</div>' : '');
