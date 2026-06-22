@@ -66,6 +66,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             var userData = JSON.parse(localStorage.getItem('userData') || 'null');
             var form = document.getElementById('customServicesForm');
+            setupPriceInputFormatting(document.getElementById('proposedPrice'));
             function getAttachmentMetadata() {
                 return (window.currentAttachments || []).map(function(attachment) {
                     return {

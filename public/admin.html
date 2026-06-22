@@ -26,6 +26,11 @@
                     <span>لیست سفارش‌ها</span>
                     <span class="badge" id="ordersBadge" style="display: none;">0</span>
                 </a>
+                <a href="admin-customers.html" class="profile-option" style="display: flex; align-items: center;">
+                    <i class="fas fa-users"></i>
+                    <span>مشتریان</span>
+                    <span class="badge" id="customersBadge" style="display: none;">0</span>
+                </a>
                 <a href="admin-chat.html" class="profile-option" style="display: flex; align-items: center;">
                     <i class="fas fa-comments"></i>
                     <span>چت با مشتری</span>
@@ -47,5 +52,19 @@
         </main>
     </div>
     <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/admin/customers')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var badge = document.getElementById('customersBadge');
+                    if (badge && data.totalCustomers > 0) {
+                        badge.textContent = data.totalCustomers;
+                        badge.style.display = 'inline-block';
+                    }
+                })
+                .catch(function() {});
+        });
+    </script>
 </body>
 </html>

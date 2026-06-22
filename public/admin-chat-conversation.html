@@ -11,283 +11,492 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
     <style>
-        :root {
-            --bg: #f8f9fa;
-            --surface: #ffffff;
-            --border: #e9ecef;
-            --text: #111827;
-            --muted: #6b7280;
-            --accent: #667eea;
-            --admin-bubble: #667eea;
-            --user-bubble: #e8f5e9;
-            --user-border: #c8e6c9;
-            --danger: #ef4444;
-        }
-
         * { box-sizing: border-box; }
 
         body {
-            font-family: 'Vazirmatn', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-            background: var(--bg);
-            color: var(--text);
             margin: 0;
-            min-height: 100vh;
+            padding: 0;
+            font-family: 'Vazirmatn', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background: #f8f9fa;
+            color: #111827;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 1rem;
+        /* ── لایوت اصلی ── */
+        .admin-chat-layout {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        .chat-layout {
+        /* ── سایدبار ── */
+        .admin-sidebar {
+            width: 300px;
+            min-width: 300px;
+            background: #f8f9fa;
+            border-left: 1px solid #e9ecef;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-            height: calc(100vh - 180px);
-            min-height: 520px;
+            overflow: hidden;
         }
 
-        .chat-header {
+        .admin-sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid #e9ecef;
             display: flex;
             align-items: center;
-            gap: 1rem;
-            padding: 1rem 1.25rem;
-            background: var(--surface);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            gap: 0.5rem;
+            flex-shrink: 0;
         }
 
-        .chat-header .back-link {
+        .admin-sidebar-header h3 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #333;
+        }
+
+        .admin-conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .admin-conversation-item {
+            display: block;
+            padding: 0.75rem 0.85rem;
+            background: #fff;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            text-align: right;
+            margin-bottom: 0.35rem;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .admin-conversation-item:hover {
+            border-color: #667eea;
+            background: #eef1ff;
+        }
+
+        .admin-conversation-item.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .admin-conv-title {
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-bottom: 0.15rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .admin-conv-date {
+            font-size: 0.7rem;
+            color: #999;
+        }
+
+        .admin-conversation-item.active .admin-conv-date {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* ── بخش اصلی چت ── */
+        .admin-chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .admin-chat-header {
+            padding: 0.9rem 1.1rem;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-shrink: 0;
+            background: #fff;
+        }
+
+        .admin-chat-header .back-link {
             display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
-            padding: 0.5rem 1rem;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
+            gap: 0.35rem;
+            padding: 0.4rem 0.85rem;
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
             text-decoration: none;
-            color: var(--text);
-            font-size: 0.9rem;
+            color: #111827;
+            font-size: 0.85rem;
             font-weight: 500;
-            transition: all 0.15s ease;
+            transition: all 0.15s;
+            flex-shrink: 0;
         }
 
-        .chat-header .back-link:hover {
+        .admin-chat-header .back-link:hover {
             background: #f3f4f6;
             border-color: #d1d5db;
         }
 
-        .chat-header strong {
+        .admin-chat-header strong {
             font-weight: 700;
-            font-size: 1rem;
-        }
-
-        .chat-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: var(--surface);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            min-width: 0;
+            font-size: 0.95rem;
+            white-space: nowrap;
             overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            text-overflow: ellipsis;
         }
 
-        .chat-messages {
+        /* ── باکس پیام‌ها ── */
+        .admin-chat-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 1.25rem;
+            padding: 1rem 1.1rem;
+            padding-bottom: 80px;
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
+            gap: 0.6rem;
+            min-height: 0;
+            background: #f8f9fa;
         }
 
-        .empty-state {
-            text-align: center;
-            color: var(--muted);
-            margin: auto;
-            font-size: 0.95rem;
-            padding: 2rem;
-        }
-
-        /* Message bubbles */
-        .message {
-            display: flex;
-            flex-direction: column;
-            max-width: 75%;
-            animation: messageIn 0.2s ease-out;
-        }
-
-        @keyframes messageIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Admin messages - LEFT side */
-        .message.user {
-            align-self: flex-start;
-        }
-
-        .message.user .bubble {
-            background: var(--admin-bubble);
-            color: white;
-            border-radius: 16px 16px 16px 4px;
-            box-shadow: 0 1px 2px rgba(102, 126, 234, 0.2);
-        }
-
-        /* Customer messages - RIGHT side */
-        .message.support {
-            align-self: flex-end;
-        }
-
-        .message.support .bubble {
-            background: var(--user-bubble);
-            color: #1f2937;
-            border: 1px solid var(--user-border);
-            border-radius: 16px 16px 4px 16px;
-        }
-
-        .bubble {
-            padding: 0.65rem 1rem;
-            font-size: 0.95rem;
-            line-height: 1.6;
-            word-break: break-word;
-        }
-
-        /* Input area */
-        .chat-input-area {
-            padding: 0.875rem 1rem;
-            border-top: 1px solid var(--border);
-            background: var(--surface);
-        }
-
-        .input-wrapper {
-            display: flex;
-            align-items: flex-end;
-            gap: 0.5rem;
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 16px;
-            padding: 0.5rem 0.5rem 0.5rem 0.75rem;
-            transition: box-shadow 0.15s ease, border-color 0.15s ease;
-        }
-
-        .input-wrapper:focus-within {
-            border-color: #c7d2fe;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .input-wrapper textarea {
-            flex: 1;
-            border: none;
-            outline: none;
-            resize: none;
-            background: transparent;
-            font-family: inherit;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            padding: 0.35rem 0;
-            max-height: 120px;
-            min-height: 24px;
-            color: var(--text);
-        }
-
-        .input-wrapper textarea::placeholder {
-            color: #9ca3af;
-        }
-
-        .send-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            border: none;
-            background: var(--accent);
-            color: white;
-            cursor: pointer;
-            transition: all 0.15s ease;
+        /* ── باکس ورودی ── */
+        .admin-chat-input-area {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid #e9ecef;
+            background: #fff;
             flex-shrink: 0;
         }
 
-        .send-btn:hover {
+        .textarea-wrapper {
+            position: relative;
+            display: block;
+            overflow: visible;
+        }
+
+        .admin-chat-input-area textarea {
+            width: 100%;
+            min-height: 100px;
+            max-height: 300px;
+            display: block;
+            padding: 0.7rem 0.75rem;
+            padding-bottom: 48px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            resize: none;
+            box-sizing: border-box;
+            overflow-y: auto;
+            pointer-events: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .admin-chat-input-area textarea::-webkit-scrollbar {
+            display: none;
+        }
+
+        .admin-chat-input-area textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .pin-attachment {
+            position: absolute;
+            bottom: 8px;
+            left: 54px;
+            width: 38px;
+            height: 38px;
+            background: #667eea;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            font-size: 16px;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+
+        .pin-attachment:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+
+        .char-counter {
+            position: absolute;
+            bottom: 8px;
+            left: 96px;
+            font-size: 0.7rem;
+            color: #6b7280;
+            white-space: nowrap;
+            line-height: 38px;
+        }
+
+        .attachment-preview {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            left: 140px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 6px;
+            z-index: 4;
+        }
+
+        .attachment-preview:not(.hidden) {
+            display: flex;
+        }
+
+        .attachment-thumbnail {
+            position: relative;
+            width: 38px;
+            height: 38px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 2px solid #667eea;
+            background: #fff;
+            flex-shrink: 0;
+        }
+
+        .attachment-thumbnail img,
+        .attachment-thumbnail .pdf-icon {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .attachment-thumbnail .pdf-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f5f5f5;
+            color: #667eea;
+            font-weight: 700;
+            font-size: 0.55rem;
+        }
+
+        .attachment-thumbnail .remove-attachment {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 15px;
+            height: 15px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            line-height: 1;
+        }
+
+        .admin-send-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: none;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            transition: all 0.15s;
+            flex-shrink: 0;
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            z-index: 10;
+        }
+
+        .admin-send-btn:hover {
             background: #5563d6;
             transform: translateY(-1px);
         }
 
-        .send-btn:active {
+        .admin-send-btn:active {
             transform: scale(0.95);
         }
 
-        .send-btn:disabled {
+        .admin-send-btn:disabled {
             background: #d1d5db;
             cursor: not-allowed;
             transform: none;
         }
 
-        /* Scrollbar */
-        .chat-messages::-webkit-scrollbar {
-            width: 5px;
+        /* ── استایل مشترک پیام‌ها ── */
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 75%;
+            animation: msgIn 0.2s ease-out;
         }
 
-        .chat-messages::-webkit-scrollbar-track {
-            background: transparent;
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
-        .chat-messages::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 10px;
+        .message.user {
+            align-self: flex-start;
         }
 
-        .chat-messages::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
+        .message.user .bubble {
+            background: #667eea;
+            color: white;
+            border-radius: 16px 16px 16px 4px;
         }
 
+        .message.support {
+            align-self: flex-end;
+        }
+
+        .message.support .bubble {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+            border-radius: 16px 16px 4px 16px;
+        }
+
+        .bubble {
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        /* ── استایل موبایل ── */
         @media (max-width: 768px) {
-            .chat-layout {
-                height: auto;
-                min-height: calc(100vh - 140px);
+            body {
+                height: 100vh;
+                height: 100dvh;
+            }
+
+            .admin-chat-layout {
+                height: 100vh;
+                height: 100dvh;
+                flex-direction: column;
+            }
+
+            .admin-sidebar {
+                width: 100%;
+                min-width: 100%;
+                max-height: 180px;
+                border-left: none;
+                border-bottom: 1px solid #e9ecef;
             }
 
             .message {
                 max-width: 88%;
             }
 
-            .chat-messages {
-                padding: 1rem;
+            .admin-chat-messages {
+                padding: 0.75rem;
             }
+        }
+
+        /* ── اسکرول بار ── */
+        .admin-chat-messages::-webkit-scrollbar,
+        .admin-conversations-list::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .admin-chat-messages::-webkit-scrollbar-track,
+        .admin-conversations-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .admin-chat-messages::-webkit-scrollbar-thumb,
+        .admin-conversations-list::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+
+        .admin-chat-messages::-webkit-scrollbar-thumb:hover,
+        .admin-conversations-list::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .toast-notification.show {
+            opacity: 1;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="chat-layout">
-            <div class="chat-header">
+    <div class="toast-notification" id="toastNotification"></div>
+    <div class="admin-chat-layout">
+        <!-- ── سایدبار ── -->
+        <div class="admin-sidebar">
+            <div class="admin-sidebar-header">
+                <i class="fas fa-comments" style="color: #667eea;"></i>
+                <h3>گفتگوهای کاربر</h3>
+            </div>
+            <div class="admin-conversations-list" id="adminConversationsList">
+                <div class="admin-empty-state">در حال بارگذاری...</div>
+            </div>
+        </div>
+
+        <!-- ── بخش اصلی چت ── -->
+        <div class="admin-chat-main">
+            <div class="admin-chat-header">
                 <a href="admin-chat.html" class="back-link">
                     <i class="fas fa-arrow-right"></i>
                     بازگشت
                 </a>
                 <strong id="chatPartner">در حال بارگذاری...</strong>
             </div>
-            <div class="chat-main">
-                <div class="chat-messages" id="adminChatMessages">
-                    <div class="empty-state">در حال بارگذاری...</div>
+
+            <div class="admin-chat-messages" id="adminChatMessages">
+                <div class="admin-empty-state">یک گفتگو را انتخاب کنید</div>
+            </div>
+
+            <div class="admin-chat-input-area">
+                <div class="textarea-wrapper">
+                    <textarea id="adminMessageInput" rows="1" maxlength="5000" placeholder="پاسخ خود را اینجا بنویسید..." class="additional-notes"></textarea>
+                    <div class="attachment-preview hidden" id="adminAttachmentPreview"></div>
+                    <button id="adminSendBtn" class="admin-send-btn" aria-label="ارسال پیام" disabled>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="19" x2="12" y2="5"></line>
+                            <polyline points="5 12 12 5 19 12"></polyline>
+                        </svg>
+                    </button>
+                    <button type="button" class="pin-attachment" id="adminPinAttachment" title="افزودن فایل">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <span class="char-counter" id="charCounter">5000/0</span>
                 </div>
-                <div class="chat-input-area">
-                    <div class="input-wrapper">
-                        <textarea id="adminMessageInput" rows="1" placeholder="پاسخ خود را اینجا بنویسید..."></textarea>
-                        <button id="adminSendBtn" class="send-btn" aria-label="ارسال پیام" disabled>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="12" y1="19" x2="12" y2="5"></line>
-                                <polyline points="5 12 12 5 19 12"></polyline>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
+                <input type="file" id="adminAttachmentFile" accept="image/*,.pdf" style="display: none;" multiple>
             </div>
         </div>
     </div>
@@ -301,20 +510,223 @@
                 return;
             }
 
+            var conversationsList = document.getElementById('adminConversationsList');
             var chatMessages = document.getElementById('adminChatMessages');
             var adminMessageInput = document.getElementById('adminMessageInput');
             var adminSendBtn = document.getElementById('adminSendBtn');
             var chatPartner = document.getElementById('chatPartner');
+            var charCounter = document.getElementById('charCounter');
 
             var conversationPolling = null;
             var currentUsername = username;
+            var currentConversationId = null;
             var lastMessageId = null;
+            var conversationsData = [];
+
+            function showToast(message) {
+                var toast = document.getElementById('toastNotification');
+                if (!toast) return;
+                toast.textContent = message;
+                toast.classList.add('show');
+                setTimeout(function() {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            chatPartner.textContent = currentUsername;
 
             function autoResize() {
-                var el = adminMessageInput;
-                el.style.height = '0px';
-                el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-                adminSendBtn.disabled = !el.value.trim();
+                adminMessageInput.style.height = 'auto';
+                adminMessageInput.style.height = Math.min(adminMessageInput.scrollHeight, 300) + 'px';
+                if (charCounter) {
+                    var len = adminMessageInput.value.length;
+                    charCounter.textContent = '5000/' + len;
+                }
+                adminSendBtn.disabled = !adminMessageInput.value.trim() && adminCurrentAttachments.length === 0;
+            }
+
+            var adminCurrentAttachments = [];
+            var adminAttachmentPreview = document.getElementById('adminAttachmentPreview');
+            var adminPinAttachment = document.getElementById('adminPinAttachment');
+            var adminAttachmentFile = document.getElementById('adminAttachmentFile');
+
+            function escapeHtml(value) {
+                return String(value || '').replace(/[&<>"']/g, function(char) {
+                    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
+                });
+            }
+
+            function renderAdminAttachmentPreview(attachment, dataUrl) {
+                if (!adminAttachmentPreview) return;
+                var isImage = attachment.type && attachment.type.startsWith('image/');
+                var html = '<div class="attachment-thumbnail" data-attachment-id="' + escapeHtml(attachment.id) + '">';
+                if (isImage) {
+                    html += '<img src="' + dataUrl + '" alt="' + escapeHtml(attachment.name) + '">';
+                } else {
+                    html += '<div class="pdf-icon">PDF</div>';
+                }
+                html += '<button type="button" class="remove-attachment" onclick="window.removeAdminAttachment(this)"><i class="fas fa-download"></i></button>';
+                html += '</div>';
+                adminAttachmentPreview.insertAdjacentHTML('beforeend', html);
+                adminAttachmentPreview.classList.remove('hidden');
+            }
+
+            function addAdminAttachmentFromFile(file) {
+                if (!file || !adminAttachmentPreview) return;
+                if (adminCurrentAttachments.length >= 4) {
+                    showToast('فقط می توان چهار فایل آپلود کرد');
+                    return;
+                }
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    var attachment = {
+                        id: 'att_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        dataUrl: event.target.result,
+                        uploadedAt: new Date().toISOString()
+                    };
+                    adminCurrentAttachments.push(attachment);
+                    renderAdminAttachmentPreview(attachment, event.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+
+            window.removeAdminAttachment = function(button) {
+                var thumbnail = button.closest('.attachment-thumbnail');
+                if (thumbnail) {
+                    var attachmentId = thumbnail.getAttribute('data-attachment-id');
+                    adminCurrentAttachments = adminCurrentAttachments.filter(function(a) {
+                        return a.id !== attachmentId;
+                    });
+                    thumbnail.remove();
+                }
+                if (adminAttachmentPreview && adminAttachmentPreview.querySelectorAll('.attachment-thumbnail').length === 0) {
+                    adminAttachmentPreview.classList.add('hidden');
+                }
+            };
+
+            function renderMessageAttachments(msg, wrapper) {
+                if (!msg.attachments || msg.attachments.length === 0) return;
+                var attContainer = document.createElement('div');
+                attContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.4rem;';
+                msg.attachments.forEach(function(att) {
+                    var thumb = document.createElement('div');
+                    thumb.className = 'attachment-thumbnail';
+                    thumb.style.cssText = 'width: 70px; height: 70px; cursor: pointer; position: relative;';
+                    if (att.type && att.type.startsWith('image/')) {
+                        var img = document.createElement('img');
+                        img.src = att.dataUrl || att.url || '';
+                        img.alt = att.name;
+                        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 6px;';
+                        thumb.appendChild(img);
+                    } else {
+                        thumb.innerHTML = '<div class="pdf-icon" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f5f5f5; color: #667eea; font-weight: 700; font-size: 0.55rem; border-radius: 6px;">PDF</div>';
+                    }
+                    var dlBtn = document.createElement('button');
+                    dlBtn.type = 'button';
+                    dlBtn.className = 'attachment-download-btn';
+                    dlBtn.innerHTML = '<i class="fas fa-download"></i>';
+                    dlBtn.style.cssText = 'position: absolute; bottom: -6px; right: -6px; width: 20px; height: 20px; background: #667eea; border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);';
+                    dlBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        if (att.dataUrl) {
+                            var a = document.createElement('a');
+                            a.href = att.dataUrl;
+                            a.download = att.name;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        }
+                    });
+                    thumb.appendChild(dlBtn);
+                    thumb.addEventListener('click', function() {
+                        if (att.dataUrl) {
+                            var a = document.createElement('a');
+                            a.href = att.dataUrl;
+                            a.download = att.name;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        }
+                    });
+                    attContainer.appendChild(thumb);
+                });
+                wrapper.appendChild(attContainer);
+            }
+
+            function highlightActiveConversation() {
+                if (!conversationsList) return;
+                var items = conversationsList.querySelectorAll('.admin-conversation-item');
+                items.forEach(function(item) {
+                    item.classList.remove('active');
+                    if (item.getAttribute('data-conv-id') === currentConversationId) {
+                        item.classList.add('active');
+                    }
+                });
+            }
+
+            function loadConversations() {
+                fetch('/api/admin/chat/conversations?username=' + encodeURIComponent(currentUsername))
+                    .then(function(r) { return r.json(); })
+                    .then(function(convs) {
+                        conversationsData = convs || [];
+                        conversationsList.innerHTML = '';
+                        if (!convs || convs.length === 0) {
+                            conversationsList.innerHTML = '<div class="admin-empty-state">هیچ گفتگویی وجود ندارد</div>';
+                            return;
+                        }
+                        convs.forEach(function(c) {
+                            var div = document.createElement('div');
+                            div.className = 'admin-conversation-item';
+                            if (c.id === currentConversationId) div.classList.add('active');
+                            div.setAttribute('data-conv-id', c.id);
+                            var dateStr = c.lastTimestamp ? new Date(c.lastTimestamp).toLocaleDateString('fa-IR') : '';
+                            var preview = c.lastMessage && c.lastMessage.length > 30 ? c.lastMessage.substring(0, 30) + '...' : (c.lastMessage || 'گفتگوی جدید');
+                            div.innerHTML = '<div class="admin-conv-title" title="' + (c.lastMessage || '').replace(/"/g, '&quot;') + '">' + preview + '</div><div class="admin-conv-date">' + dateStr + '</div>';
+                            div.addEventListener('click', function() {
+                                currentConversationId = c.id;
+                                lastMessageId = null;
+                                loadMessages();
+                                highlightActiveConversation();
+                            });
+                            conversationsList.appendChild(div);
+                        });
+
+                        if (!currentConversationId && conversationsData.length > 0) {
+                            currentConversationId = conversationsData[0].id;
+                            loadMessages();
+                            highlightActiveConversation();
+                        }
+                    })
+                    .catch(function() {
+                        conversationsList.innerHTML = '<div class="admin-empty-state" style="color:red;">خطا در بارگذاری</div>';
+                    });
+            }
+
+            function loadMessages() {
+                if (!currentConversationId) {
+                    chatMessages.innerHTML = '<div class="admin-empty-state">یک گفتگو را انتخاب کنید</div>';
+                    return;
+                }
+                fetch('/api/admin/chat/conversation/' + currentConversationId)
+                    .then(function(r) { return r.json(); })
+                    .then(function(messages) {
+                        lastMessageId = null;
+                        chatMessages.innerHTML = '';
+                        if (messages.length === 0) {
+                            chatMessages.innerHTML = '<div class="admin-empty-state">پیامی وجود ندارد</div>';
+                            return;
+                        }
+                        messages.forEach(function(msg) {
+                            appendMessage(msg);
+                        });
+                        lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
+                    })
+                    .catch(function() {
+                        chatMessages.innerHTML = '<div class="admin-empty-state" style="color:red;">خطا در بارگذاری پیام‌ها</div>';
+                    });
             }
 
             function appendMessage(msg) {
@@ -324,6 +736,9 @@
                 bubble.className = 'bubble';
                 bubble.textContent = msg.text;
                 wrapper.appendChild(bubble);
+                if (msg.attachments && msg.attachments.length > 0) {
+                    renderMessageAttachments(msg, wrapper);
+                }
                 wrapper.setAttribute('data-msg-id', msg.id || '');
                 chatMessages.appendChild(wrapper);
                 if (chatMessages.scrollHeight > chatMessages.parentElement.clientHeight) {
@@ -331,75 +746,70 @@
                 }
             }
 
-            function markConversationRead() {
-                var now = new Date();
-                var pad = function (n) { return n < 10 ? '0' + n : n; };
-                var localDateTime =
-                    now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
-                    ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
-                return fetch('/api/admin/chat/read', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lastReadAt: localDateTime })
-                }).catch(function () {});
-            }
-
-            function loadConversation() {
-                fetch('/api/admin/chat/conversation?username=' + encodeURIComponent(currentUsername))
-                    .then(function (r) { return r.json(); })
-                    .then(function (messages) {
-                        if (!lastMessageId) {
-                            chatMessages.innerHTML = '';
-                            if (messages.length === 0) {
-                                chatMessages.innerHTML = '<div class="empty-state">پیامی وجود ندارد</div>';
-                                return;
-                            }
-                            messages.forEach(function (msg) {
-                                appendMessage(msg);
-                            });
-                            lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
-                        } else {
+            function pollMessages() {
+                if (!currentConversationId) return;
+                fetch('/api/admin/chat/conversation/' + currentConversationId)
+                    .then(function(r) { return r.json(); })
+                    .then(function(messages) {
+                        if (!lastMessageId && messages.length > 0) {
+                            lastMessageId = messages[messages.length - 1].id;
+                        }
+                        if (lastMessageId && messages.length > 0) {
                             var newMessages = [];
                             for (var i = messages.length - 1; i >= 0; i--) {
                                 if (messages[i].id === lastMessageId) break;
                                 newMessages.unshift(messages[i]);
                             }
-                            if (newMessages.length > 0 && messages.length > 0) {
-                                if (chatMessages.querySelector('.empty-state')) {
+                            if (newMessages.length > 0) {
+                                if (chatMessages.querySelector('.admin-empty-state')) {
                                     chatMessages.innerHTML = '';
                                 }
-                                newMessages.forEach(function (msg) {
+                                newMessages.forEach(function(msg) {
                                     appendMessage(msg);
                                 });
                                 lastMessageId = messages[messages.length - 1].id;
                             }
                         }
                     })
-                    .catch(function () {
-                        if (!lastMessageId) {
-                            chatMessages.innerHTML = '<div class="empty-state" style="color:#ef4444;">خطا در بارگذاری پیام‌ها</div>';
-                        }
-                    });
+                    .catch(function() {});
             }
 
             function sendMessage() {
                 var text = adminMessageInput.value.trim();
-                if (!text) return;
+                if (text.length > 5000) {
+                    alert('متن پیام نمی‌تواند بیشتر از 5000 کاراکتر باشد.');
+                    return;
+                }
+                if (!text && adminCurrentAttachments.length === 0) return;
                 fetch('/api/admin/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: text })
+                    body: JSON.stringify({ 
+                        text: text, 
+                        username: currentUsername, 
+                        conversationId: currentConversationId,
+                        attachments: adminCurrentAttachments 
+                    })
                 })
-                .then(function (r) { return r.json(); })
-                .then(function (msg) {
+                .then(function(r) { return r.json(); })
+                .then(function(msg) {
                     var wrapper = document.createElement('div');
                     wrapper.className = 'message user';
                     var bubble = document.createElement('div');
                     bubble.className = 'bubble';
                     bubble.textContent = msg.text;
                     wrapper.appendChild(bubble);
+                    if (msg.attachments && msg.attachments.length > 0) {
+                        renderMessageAttachments(msg, wrapper);
+                    }
                     chatMessages.appendChild(wrapper);
+                    lastMessageId = msg.id;
                     adminMessageInput.value = '';
+                    adminCurrentAttachments = [];
+                    if (adminAttachmentPreview) {
+                        adminAttachmentPreview.innerHTML = '';
+                        adminAttachmentPreview.classList.add('hidden');
+                    }
                     autoResize();
                     if (chatMessages.scrollHeight > chatMessages.parentElement.clientHeight) {
                         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -410,10 +820,9 @@
                 });
             }
 
-            chatPartner.textContent = currentUsername;
-            loadConversation();
-            markConversationRead();
-            conversationPolling = setInterval(loadConversation, 2000);
+            loadConversations();
+
+            conversationPolling = setInterval(pollMessages, 2000);
 
             adminSendBtn.addEventListener('click', sendMessage);
             adminMessageInput.addEventListener('input', autoResize);
@@ -423,6 +832,18 @@
                     sendMessage();
                 }
             });
+
+            if (adminPinAttachment && adminAttachmentFile) {
+                adminPinAttachment.addEventListener('click', function() {
+                    adminAttachmentFile.click();
+                });
+                adminAttachmentFile.addEventListener('change', function(e) {
+                    Array.from(e.target.files).forEach(function(file) {
+                        addAdminAttachmentFromFile(file);
+                    });
+                    adminAttachmentFile.value = '';
+                });
+            }
 
             window.addEventListener('beforeunload', function () {
                 if (conversationPolling) clearInterval(conversationPolling);

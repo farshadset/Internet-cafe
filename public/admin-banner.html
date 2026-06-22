@@ -21,9 +21,22 @@
         </header>
         <main>
             <div class="form-card">
-                <button class="btn-confirm" id="addBannerBtn" style="margin-bottom: 20px;">
-                    <i class="fas fa-plus"></i> افزودن بنر جدید
-                </button>
+                <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; width: 100%;">
+                    <label style="font-weight: 700; color: #333; white-space: nowrap;">گروه بنر:</label>
+                    <div id="bannerGroupSelect" style="display: flex; gap: 0.5rem; align-items: center; direction: ltr;">
+                        <button class="btn-confirm" id="addBannerBtn" onclick="openPopup()" style="width: 2.2rem; height: 2.2rem; padding: 0; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; font-weight: 400; line-height: 1; margin: 0; display: inline-flex; align-items: center; justify-content: center;" aria-label="افزودن بنر جدید">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <label class="banner-group-option active" style="width: 2.2rem; height: 2.2rem; padding: 0; border: 1px solid #ddd; border-radius: 8px; background: #667eea; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">
+                            <input type="radio" name="bannerGroup" value="1" checked style="display: none;">
+                            A
+                        </label>
+                        <label class="banner-group-option" style="width: 2.2rem; height: 2.2rem; padding: 0; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">
+                            <input type="radio" name="bannerGroup" value="2" style="display: none;">
+                            B
+                        </label>
+                    </div>
+                </div>
                 <div id="bannersList"></div>
                 <a href="admin.html" class="btn-next">بازگشت</a>
             </div>
@@ -32,9 +45,9 @@
 
     <div class="popup-overlay" id="bannerPopup" style="display: none;">
         <div class="popup-content">
-            <h3 id="popupTitle">افزودن بنر جدید</h3>
+            <h3 id="popupTitle" style="display: none;">افزودن بنر جدید</h3>
             <div class="banner-preview" style="margin: 15px 0;">
-                <p>پیش‌نمایش بنر</p>
+                <p style="display: none;">پیش‌نمایش بنر</p>
                 <img id="popupPreviewImg" src="https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین" alt="بنر" style="max-width: 100%;">
             </div>
             <div class="banner-info">
@@ -47,6 +60,10 @@
             <div class="form-group">
                 <label for="popupBannerLink">لینک بنر (اختیاری)</label>
                 <input type="text" id="popupBannerLink" placeholder="https://example.com">
+            </div>
+            <div class="form-group">
+                <label for="popupBannerDuration">مدت زمان نمایش (ثانیه)</label>
+                <input type="number" id="popupBannerDuration" placeholder="5" value="5" min="1" max="30">
             </div>
             <div class="form-actions">
                 <button class="btn-confirm" id="saveBannerPopupBtn">ذخیره</button>
@@ -76,22 +93,31 @@
         }
 
         function loadBanners() {
+            var selectedGroup = getSelectedBannerGroup();
+            if (!['1', '2'].includes(selectedGroup)) {
+                selectedGroup = '1';
+            }
+
             fetch('/api/banner')
                 .then(r => r.json())
-                .then(banners => {
-                    bannersData = banners;
+                .then(allBanners => {
+                    var groupBanners = allBanners.filter(b => parseInt(b.group || 1, 10) == selectedGroup);
+                    bannersData = groupBanners;
                     var list = document.getElementById('bannersList');
-                    if (banners.length === 0) {
-                        list.innerHTML = '<p style="text-align: center; color: #666;">هیچ بنری ثبت نشده است</p>';
+                    var addBtn = document.getElementById('addBannerBtn');
+                    addBtn.disabled = groupBanners.length >= 3;
+                    addBtn.style.opacity = groupBanners.length >= 3 ? '0.5' : '1';
+                    if (groupBanners.length === 0) {
+                        list.innerHTML = '<p style="text-align: center; color: #666;">هیچ بنری برای این گروه ثبت نشده است</p>';
                         return;
                     }
-                    list.innerHTML = banners.map(function(banner) {
-                        var date = new Date(banner.date).toLocaleDateString('fa-IR');
-                        return '<div class="banner-item" data-id="' + banner.id + '" style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 8px;">' +
+                    list.innerHTML = groupBanners.map(function(banner) {
+                        return '<div class="banner-item" data-id="' + banner.id + '" style="display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 8px;">' +
                             '<img src="' + banner.src + '" style="width: 120px; height: 30px; object-fit: cover; margin-left: 10px; border-radius: 4px;">' +
-                            '<span style="flex: 1; font-size: 14px;">تاریخ: ' + date + '</span>' +
-                            '<button class="edit-banner-btn" data-id="' + banner.id + '" style="background: none; border: none; color: #667eea; margin-left: 10px; cursor: pointer;"><i class="fas fa-edit"></i></button>' +
+                            '<div style="display: flex; align-items: center; gap: 8px; margin-right: auto; direction: ltr;">' +
                             '<button class="delete-banner-btn" data-id="' + banner.id + '" style="background: none; border: none; color: #e74c3c; cursor: pointer;"><i class="fas fa-trash"></i></button>' +
+                            '<button class="edit-banner-btn" data-id="' + banner.id + '" style="background: none; border: none; color: #667eea; cursor: pointer;"><i class="fas fa-edit"></i></button>' +
+                            '</div>' +
                         '</div>';
                     }).join('');
                     
@@ -99,7 +125,7 @@
                         btn.addEventListener('click', function() {
                             var id = this.getAttribute('data-id');
                             var banner = bannersData.find(b => b.id == id);
-                            openEditBanner(banner.id, banner.src, banner.link);
+                            openEditBanner(banner.id, banner.src, banner.link, banner.duration, banner.group || 1);
                         });
                     });
                     document.querySelectorAll('.delete-banner-btn').forEach(function(btn) {
@@ -115,42 +141,53 @@
                 .catch(() => {});
         }
 
+        var addBtn;
         var editingBannerId = null;
+        var editingBannerGroup = null;
+
+        function getSelectedBannerGroup() {
+            var checked = document.querySelector('input[name="bannerGroup"]:checked');
+            return checked ? checked.value : '1';
+        }
+
+        function setSelectedBannerGroup(group) {
+            document.querySelectorAll('.banner-group-option').forEach(function(label) {
+                var input = label.querySelector('input');
+                var active = input.value == group;
+                input.checked = active;
+                label.classList.toggle('active', active);
+                label.style.background = active ? '#667eea' : '#fff';
+                label.style.color = active ? '#fff' : '#333';
+            });
+        }
 
         function openPopup() {
-            document.getElementById('bannerPopup').style.display = 'flex';
-            document.getElementById('popupTitle').textContent = 'افزودن بنر جدید';
-            document.getElementById('popupPreviewImg').src = 'https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین';
-            document.getElementById('popupBannerUpload').value = '';
-            document.getElementById('popupBannerLink').value = '';
-            editingBannerId = null;
-        }
-
-        function openEditBanner(id, src, link) {
-            document.getElementById('bannerPopup').style.display = 'flex';
-            document.getElementById('popupTitle').textContent = 'ویرایش بنر';
-            document.getElementById('popupPreviewImg').src = src;
-            document.getElementById('popupBannerUpload').value = '';
-            document.getElementById('popupBannerLink').value = link || '';
-            editingBannerId = id;
-        }
-
-        function showToast(message) {
-            var toast = document.createElement('div');
-            toast.className = 'toast-success';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(function() { toast.classList.add('show'); }, 10);
-            setTimeout(function() {
-                toast.classList.remove('show');
-                setTimeout(function() { toast.remove(); }, 300);
-            }, 3000);
+            var selectedGroup = getSelectedBannerGroup();
+            // Fetch fresh data to check group limit
+            fetch('/api/banner')
+                .then(r => r.json())
+                .then(allBanners => {
+                    var groupBanners = allBanners.filter(b => (b.group || 1) == selectedGroup);
+                    if (groupBanners.length >= 3) {
+                        alert('حداکثر تعداد بنرهای هر گروه ۳ عدد است. برای افزودن بنر جدید، یکی از بنرهای موجود را حذف کنید.');
+                        return;
+                    }
+                    document.getElementById('bannerPopup').style.display = 'flex';
+                    document.getElementById('popupTitle').textContent = 'افزودن بنر جدید';
+                    document.getElementById('popupPreviewImg').src = 'https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین';
+                    document.getElementById('popupBannerUpload').value = '';
+                    document.getElementById('popupBannerLink').value = '';
+                    document.getElementById('popupBannerDuration').value = '5';
+                    editingBannerId = null;
+                    editingBannerGroup = null;
+                })
+                .catch(() => {});
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            setSelectedBannerGroup(getSelectedBannerGroup());
             loadBanners();
 
-            document.getElementById('addBannerBtn').addEventListener('click', openPopup);
             document.getElementById('cancelBannerPopupBtn').addEventListener('click', function() {
                 document.getElementById('bannerPopup').style.display = 'none';
             });
@@ -171,6 +208,9 @@
             document.getElementById('saveBannerPopupBtn').addEventListener('click', function() {
                 var bannerSrc = document.getElementById('popupPreviewImg').src;
                 var bannerLink = document.getElementById('popupBannerLink').value;
+                var bannerDuration = parseInt(document.getElementById('popupBannerDuration').value, 10) || 5;
+                var selectedGroup = parseInt(getSelectedBannerGroup(), 10) || 1;
+                var bannerGroup = editingBannerId ? (editingBannerGroup || selectedGroup) : selectedGroup;
 
                 function finish() {
                     document.getElementById('bannerPopup').style.display = 'none';
@@ -181,7 +221,7 @@
                     fetch('/api/banner/' + editingBannerId, {
                         method: 'PUT',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ src: bannerSrc, link: bannerLink })
+                        body: JSON.stringify({ src: bannerSrc, link: bannerLink, duration: bannerDuration, group: bannerGroup })
                     }).then(() => {
                         finish();
                         showToast('بنر با موفقیت ویرایش شد');
@@ -190,7 +230,7 @@
                     fetch('/api/banner', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ src: bannerSrc, link: bannerLink })
+                        body: JSON.stringify({ src: bannerSrc, link: bannerLink, duration: bannerDuration, group: bannerGroup })
                     })
                     .then(r => r.json())
                     .then(() => {
@@ -200,7 +240,39 @@
                     .catch(err => alert('خطا در ذخیره بنر: ' + err.message));
                 }
             });
+
+            document.querySelectorAll('input[name="bannerGroup"]').forEach(function(input) {
+                input.addEventListener('change', function() {
+                    if (this.checked) {
+                        setSelectedBannerGroup(this.value);
+                        loadBanners();
+                    }
+                });
+            });
         });
+
+        function openEditBanner(id, src, link, duration, group) {
+            document.getElementById('bannerPopup').style.display = 'flex';
+            document.getElementById('popupTitle').textContent = 'ویرایش بنر';
+            document.getElementById('popupPreviewImg').src = src;
+            document.getElementById('popupBannerUpload').value = '';
+            document.getElementById('popupBannerLink').value = link || '';
+            document.getElementById('popupBannerDuration').value = duration || 5;
+            editingBannerId = id;
+            editingBannerGroup = parseInt(group, 10) || 1;
+        }
+
+        function showToast(message) {
+            var toast = document.createElement('div');
+            toast.className = 'toast-success';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.classList.add('show'); }, 10);
+            setTimeout(function() {
+                toast.classList.remove('show');
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 3000);
+        }
     </script>
 </body>
 </html>
