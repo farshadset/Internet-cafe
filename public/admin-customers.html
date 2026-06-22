@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مشتریان</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="fonts/all.css">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>مشتریان</h1>
+        </header>
+        <main>
+            <div class="form-card" id="adminCustomersList">
+                <p>بارگذاری...</p>
+            </div>
+            <a href="admin.html" class="btn-next">بازگشت</a>
+        </main>
+    </div>
+
+    <div class="popup-overlay" id="customerOrdersPopup">
+        <div class="popup-content" style="max-width: 500px; width: 90%;">
+            <h3>سفارش‌های مشتری</h3>
+            <div id="customerOrdersList" style="max-height: 400px; overflow-y: auto; text-align: right;"></div>
+            <div class="form-actions" style="margin-top: 1rem;">
+                <button class="btn-next" id="closeOrdersPopup" style="background:#999;">بستن</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var container = document.getElementById('adminCustomersList');
+            var ordersPopup = document.getElementById('customerOrdersPopup');
+            var customerOrdersList = document.getElementById('customerOrdersList');
+            var closeOrdersPopup = document.getElementById('closeOrdersPopup');
+            
+            function getServiceTitle(order) {
+                var title = order.title || '';
+                if (!title || title === '-') {
+                    var isFuelCard = order.ownerPhone || order.ownerNationalId || order.vin;
+                    var isMarriageLoan = order.applicantPhone || order.applicantNationalId || order.idNumber;
+                    var isKonkor = order.regionCode || order.educationLevel || order.applicantNationalId;
+                    var isRental = order.contractNumber || order.depositAmount || order.iban;
+                    var isHousing = order.ownershipStatus || order.familyCount;
+                    var isIeltsToefl = order.passportNumber || order.examType;
+                    var isInternet = order.address || order.operator;
+                    var isCriminalRecord = order.birthplace;
+                    var isSmartCard = order.serialNumber;
+                    var isHealthInsurance = order.familyMembers;
+                    
+                    if (isFuelCard) title = 'کارت سوخت';
+                    else if (isMarriageLoan) title = 'وام ازدواج';
+                    else if (isKonkor) title = 'کنکور سراسری';
+                    else if (isRental) title = 'ودیعه مسکن اجاره';
+                    else if (isHousing) title = 'نهضت ملی مسکن';
+                    else if (isIeltsToefl) title = 'ثبت‌نام تافل و آیلتس';
+                    else if (isInternet) title = 'ثبت‌نام اینترنت پرسرعت';
+                    else if (isCriminalRecord) title = 'گواهی عدم سوء پیشینه';
+                    else if (isSmartCard) title = 'کارت ملی هوشمند';
+                    else if (isHealthInsurance) title = 'بیمه سلامت';
+                    else title = 'پیش ثبت نام مدارس';
+                }
+                return title;
+            }
+            
+            function renderCustomerOrders(orders) {
+                customerOrdersList.innerHTML = '';
+                if (orders.length === 0) {
+                    customerOrdersList.innerHTML = '<p style="text-align:center;color:#999;">سفارشی یافت نشد.</p>';
+                    return;
+                }
+                orders.forEach(function(order) {
+                    var dateStr = order.created_at ? new Date(order.created_at).toLocaleDateString('fa-IR') : '-';
+                    var div = document.createElement('div');
+                    div.className = 'order-card';
+                    div.style.marginBottom = '0.5rem';
+                    div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
+                        '<div class="order-title">' + getServiceTitle(order) + '</div>' +
+                        '<small style="color:#666;">' + dateStr + '</small>' +
+                        '</div>' +
+                        '<div style="margin-bottom:0.25rem;text-align:center;">' +
+                        '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
+                        '</div>' +
+                        '<div class="order-actions">' +
+                        '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">جزئیات سفارش</a>' +
+                        '</div>';
+                    customerOrdersList.appendChild(div);
+                });
+            }
+            
+            function renderCustomers(customers) {
+                container.innerHTML = '';
+                if (customers.length === 0) {
+                    container.innerHTML = '<p style="text-align:center;color:#999;">مشتری یافت نشد.</p>';
+                    return;
+                }
+                customers.forEach(function(customer) {
+                    var div = document.createElement('div');
+                    div.className = 'order-card';
+                    var totalSpentFormatted = customer.totalSpent.toLocaleString('fa-IR');
+                    
+                    div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">' +
+                        '<div class="order-title">' + customer.username + '</div>' +
+                        '<a href="#" class="view-orders-btn" data-username="' + customer.username + '" style="color:#667eea;font-size:1.2rem;text-decoration:none;"><i class="fas fa-eye"></i></a>' +
+                        '</div>' +
+                        '<div style="margin-bottom:0.25rem;text-align:center;">' +
+                        '<strong>مجموع پرداختی: </strong>' +
+                        '<span class="cost-value">' + totalSpentFormatted + ' تومان</span>' +
+                        '</div>' +
+                        '<div style="margin-bottom:0.25rem;text-align:center;">' +
+                        '<strong>سفارش‌های تکمیل شده:</strong> ' +
+                        '<span>' + customer.totalOrders + ' سفارش</span>' +
+                        '</div>';
+                    container.appendChild(div);
+                });
+                
+                document.querySelectorAll('.view-orders-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        var username = this.getAttribute('data-username');
+                        var customer = customers.find(function(c) { return c.username === username; });
+                        if (customer) {
+                            renderCustomerOrders(customer.orders);
+                            ordersPopup.classList.add('active');
+                        }
+                    });
+                });
+            }
+            
+            fetch('/api/admin/customers')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var customers = data.customers || [];
+                    renderCustomers(customers);
+                })
+                .catch(function() {
+                    container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری مشتریان.</p>';
+                });
+            
+            closeOrdersPopup.addEventListener('click', function() {
+                ordersPopup.classList.remove('active');
+            });
+            
+            ordersPopup.addEventListener('click', function(e) {
+                if (e.target === ordersPopup) ordersPopup.classList.remove('active');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -11,6 +11,32 @@ function formatPrice(price) {
     return result;
 }
 
+function formatPriceInputValue(value) {
+    var digits = String(value || '')
+        .replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; })
+        .replace(/[٠-٩]/g, function(d) { return d.charCodeAt(0) - 0x0660; })
+        .replace(/\D/g, '');
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function setupPriceInputFormatting(input) {
+    if (!input) return;
+    input.addEventListener('input', function() {
+        var caretFromEnd = input.value.length - input.selectionStart;
+        var formatted = formatPriceInputValue(input.value);
+        if (input.value !== formatted) {
+            input.value = formatted;
+            var newCaret = Math.max(0, formatted.length - caretFromEnd);
+            if (input.setSelectionRange) {
+                input.setSelectionRange(newCaret, newCaret);
+            }
+        }
+    });
+    input.addEventListener('blur', function() {
+        input.value = formatPriceInputValue(input.value);
+    });
+}
+
 function openAttachmentStorage() {
     return new Promise(function(resolve, reject) {
         if (typeof indexedDB === 'undefined') {
@@ -1298,67 +1324,359 @@ document.addEventListener('DOMContentLoaded', () => {
     const inlineChatMessages = document.getElementById('inlineChatMessages');
     const inlineMessageInput = document.getElementById('inlineMessageInput');
     const inlineSendBtn = document.getElementById('inlineSendBtn');
+    const newConversationBtn = document.getElementById('newConversationBtn');
+    const conversationsList = document.getElementById('conversationsList');
+    let currentConversationId = null;
     let inlinePolling = null;
+    let conversationsData = [];
+    let inlineAttachments = [];
+    let inlineAttachmentPreview = null;
+    let inlinePinAttachment = null;
+    let inlineAttachmentFile = null;
 
     function switchTab(tab) {
-        if (tab === 'faq') {
-            faqTab.classList.add('active');
-            chatTab.classList.remove('active');
-            faqPanel.style.display = '';
-            chatPanel.style.display = 'none';
-        } else {
-            chatTab.classList.add('active');
-            faqTab.classList.remove('active');
-            chatPanel.style.display = '';
-            faqPanel.style.display = 'none';
-            loadInlineMessages();
-        }
+        return new Promise(function(resolve) {
+            if (tab === 'faq') {
+                faqTab.classList.add('active');
+                chatTab.classList.remove('active');
+                faqPanel.style.display = '';
+                chatPanel.style.display = 'none';
+                resolve();
+            } else {
+                chatTab.classList.add('active');
+                faqTab.classList.remove('active');
+                chatPanel.style.display = '';
+                faqPanel.style.display = 'none';
+                loadConversations().then(function() {
+                    if (!currentConversationId && conversationsList) {
+                        var firstConv = conversationsList.querySelector('.conversation-item');
+                        if (!firstConv) {
+                            createNewConversation().then(resolve);
+                        } else {
+                            currentConversationId = firstConv.getAttribute('data-conv-id');
+                            loadInlineMessages();
+                            highlightActiveConversation();
+                            resolve();
+                        }
+                    } else {
+                        loadInlineMessages();
+                        resolve();
+                    }
+                });
+            }
+        });
     }
+
+    function createNewConversation() {
+        currentConversationId = 'conv_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        return Promise.resolve({ id: currentConversationId });
+    }
+
+    function loadConversations() {
+        if (!conversationsList) return Promise.resolve();
+        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+        var username = userData ? userData.username : 'مهمان';
+        return fetch('/api/chat/conversations?username=' + encodeURIComponent(username))
+            .then(function(r) {
+                if (r.status === 404) return [];
+                return r.json().catch(function(){ return []; });
+            })
+            .then(function(convs) {
+                conversationsData = convs || [];
+                conversationsList.innerHTML = '';
+                if (convs.length === 0) {
+                    conversationsList.innerHTML = '<div style="color:#999;font-size:0.85rem;text-align:center;padding:1rem;">هیچ گفتگویی وجود ندارد</div>';
+                    return;
+                }
+                convs.forEach(function(c) {
+                    var div = document.createElement('div');
+                    div.className = 'conversation-item';
+                    if (c.id === currentConversationId) div.classList.add('active');
+                    div.setAttribute('data-conv-id', c.id);
+                    var dateStr = c.lastTimestamp ? new Date(c.lastTimestamp).toLocaleDateString('fa-IR') : '';
+                    var preview = c.lastMessage && c.lastMessage.length > 30 ? c.lastMessage.substring(0, 30) + '...' : (c.lastMessage || 'گفتگوی جدید');
+                    div.innerHTML = '<div class="conv-title" title="' + (c.lastMessage || '').replace(/"/g, '&quot;') + '">' + preview + '</div><div class="conv-date">' + dateStr + '</div>';
+                    div.addEventListener('click', function() {
+                        currentConversationId = c.id;
+                        loadInlineMessages();
+                        highlightActiveConversation();
+                    });
+                    conversationsList.appendChild(div);
+                });
+            })
+            .catch(function() {
+                conversationsList.innerHTML = '<div style="color:#999;font-size:0.85rem;text-align:center;padding:1rem;">خطا در بارگذاری</div>';
+            });
+    }
+
+    function highlightActiveConversation() {
+        if (!conversationsList) return;
+        var items = conversationsList.querySelectorAll('.conversation-item');
+        items.forEach(function(item) {
+            item.classList.remove('active');
+            if (item.getAttribute('data-conv-id') === currentConversationId) {
+                item.classList.add('active');
+            }
+        });
+    }
+
+    function setupInlineAttachments() {
+        if (!inlineChatMessages) return;
+        var chatInput = inlineChatMessages.parentElement.querySelector('.chat-input');
+        if (!chatInput) return;
+
+        if (!inlineAttachmentPreview) {
+            inlineAttachmentPreview = document.createElement('div');
+            inlineAttachmentPreview.className = 'attachment-preview hidden';
+            inlineAttachmentPreview.id = 'inlineAttachmentPreview';
+        }
+        if (!inlinePinAttachment) {
+            inlinePinAttachment = document.createElement('button');
+            inlinePinAttachment.type = 'button';
+            inlinePinAttachment.className = 'pin-attachment';
+            inlinePinAttachment.title = 'افزودن فایل';
+            inlinePinAttachment.innerHTML = '<i class="fas fa-paperclip"></i>';
+        }
+        if (!inlineAttachmentFile) {
+            inlineAttachmentFile = document.createElement('input');
+            inlineAttachmentFile.type = 'file';
+            inlineAttachmentFile.id = 'inlineAttachmentFile';
+            inlineAttachmentFile.accept = 'image/*,.pdf';
+            inlineAttachmentFile.style.display = 'none';
+            inlineAttachmentFile.multiple = true;
+        }
+
+        if (!document.getElementById('inlineAttachmentPreview')) {
+            inlineAttachmentPreview.id = 'inlineAttachmentPreview';
+            chatInput.insertBefore(inlineAttachmentPreview, chatInput.firstChild);
+        }
+        if (!document.getElementById('inlinePinAttachment')) {
+            inlinePinAttachment.id = 'inlinePinAttachment';
+            chatInput.appendChild(inlinePinAttachment);
+        }
+        if (!document.getElementById('inlineAttachmentFile')) {
+            inlineAttachmentFile.id = 'inlineAttachmentFile';
+            document.body.appendChild(inlineAttachmentFile);
+        }
+
+        inlinePinAttachment.addEventListener('click', function() {
+            inlineAttachmentFile.click();
+        });
+        inlineAttachmentFile.addEventListener('change', function(e) {
+            var files = Array.from(e.target.files || []);
+            var remaining = 4 - inlineAttachments.length;
+            if (remaining <= 0) {
+                alert('فقط می توان چهار فایل آپلود کرد');
+                inlineAttachmentFile.value = '';
+                return;
+            }
+            var toAdd = files.slice(0, remaining);
+            if (files.length > remaining) {
+                alert('فقط می توان چهار فایل آپلود کرد. ' + (files.length - remaining) + ' فایل حذف شد.');
+            }
+            toAdd.forEach(function(file) {
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    var attachment = {
+                        id: 'att_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        dataUrl: event.target.result,
+                        uploadedAt: new Date().toISOString()
+                    };
+                    inlineAttachments.push(attachment);
+                    renderInlineAttachmentPreview(attachment, event.target.result);
+                };
+                reader.readAsDataURL(file);
+            });
+            inlineAttachmentFile.value = '';
+        });
+    }
+
+    function renderInlineAttachmentPreview(attachment, dataUrl) {
+        if (!inlineAttachmentPreview) return;
+        var isImage = attachment.type && attachment.type.startsWith('image/');
+        var html = '<div class="attachment-thumbnail" data-attachment-id="' + attachment.id + '">';
+        if (isImage) {
+            html += '<img src="' + dataUrl + '" alt="' + attachment.name + '">';
+        } else {
+            html += '<div class="pdf-icon">PDF</div>';
+        }
+        html += '<button type="button" class="remove-attachment" onclick="window.removeInlineAttachment(this)"><i class="fas fa-times"></i></button>';
+        html += '</div>';
+        inlineAttachmentPreview.insertAdjacentHTML('beforeend', html);
+        inlineAttachmentPreview.classList.remove('hidden');
+    }
+
+    window.removeInlineAttachment = function(button) {
+        var thumbnail = button.closest('.attachment-thumbnail');
+        if (thumbnail) {
+            var attachmentId = thumbnail.getAttribute('data-attachment-id');
+            inlineAttachments = inlineAttachments.filter(function(a) {
+                return a.id !== attachmentId;
+            });
+            thumbnail.remove();
+        }
+        if (inlineAttachmentPreview && inlineAttachmentPreview.querySelectorAll('.attachment-thumbnail').length === 0) {
+            inlineAttachmentPreview.classList.add('hidden');
+        }
+    };
 
     function loadInlineMessages() {
         if (!inlineChatMessages) return;
-        const userData = JSON.parse(localStorage.getItem('userData') || 'null');
-        const username = userData ? userData.username : 'مهمان';
-        fetch('/api/chat?username=' + encodeURIComponent(username))
-            .then(function(r) { return r.json(); })
-            .then(function(messages) {
-                inlineChatMessages.innerHTML = '';
-                messages.forEach(function(msg) {
-                    var div = document.createElement('div');
-                    div.className = 'message ' + (msg.role === 'admin' ? 'support' : 'user');
-                    var sender = msg.role === 'admin' ? 'پشتیبانی' : msg.username;
-                    div.textContent = sender + ': ' + msg.text;
-                    inlineChatMessages.appendChild(div);
+        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+        var username = userData ? userData.username : 'مهمان';
+
+        function renderMessages(messages) {
+            if (!messages || messages.length === 0) {
+                messages = [];
+            }
+            inlineChatMessages.innerHTML = '';
+            messages.forEach(function(msg) {
+                var div = document.createElement('div');
+                div.className = 'message ' + (msg.role === 'admin' ? 'support' : 'user');
+                var bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.textContent = msg.text;
+                div.appendChild(bubble);
+                if (msg.attachments && msg.attachments.length > 0) {
+                    var attContainer = document.createElement('div');
+                    attContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem;';
+                    msg.attachments.forEach(function(att) {
+                        var thumb = document.createElement('div');
+                        thumb.className = 'attachment-thumbnail';
+                        thumb.style.cssText = 'width: 80px; height: 80px; cursor: pointer;';
+                        if (att.type && att.type.startsWith('image/')) {
+                            var img = document.createElement('img');
+                            img.src = att.dataUrl || att.url || '';
+                            img.alt = att.name;
+                            img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 8px;';
+                            thumb.appendChild(img);
+                        } else {
+                            thumb.innerHTML = '<div class="pdf-icon" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f5f5f5; color: #667eea; font-weight: 700; font-size: 0.6rem; border-radius: 8px;">PDF</div>';
+                        }
+                        thumb.addEventListener('click', function() {
+                            if (att.dataUrl) {
+                                var a = document.createElement('a');
+                                a.href = att.dataUrl;
+                                a.download = att.name;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                            }
+                        });
+                        attContainer.appendChild(thumb);
+                    });
+                    div.appendChild(attContainer);
+                }
+                inlineChatMessages.appendChild(div);
+            });
+            inlineChatMessages.scrollTop = inlineChatMessages.scrollHeight;
+            if (messages.length === 0) {
+                var emptyDiv = document.createElement('div');
+                emptyDiv.style.cssText = 'text-align:center;color:#999;padding:1rem;';
+                emptyDiv.textContent = 'هیچ پیامی وجود ندارد';
+                inlineChatMessages.appendChild(emptyDiv);
+            }
+        }
+
+        if (currentConversationId) {
+            fetch('/api/chat/conversation/' + currentConversationId + '?username=' + encodeURIComponent(username))
+                .then(function(r) {
+                    if (r.status === 404) return [];
+                    return r.json().catch(function(){ return []; });
+                })
+                .then(function(messages) {
+                    renderMessages(messages);
+                })
+                .catch(function(err) {
+                    console.error('خطا در بارگذاری پیام‌ها:', err);
                 });
-                inlineChatMessages.scrollTop = inlineChatMessages.scrollHeight;
-            })
-            .catch(function() {});
+        } else {
+            fetch('/api/chat?username=' + encodeURIComponent(username))
+                .then(function(r) { return r.json(); })
+                .then(function(messages) {
+                    renderMessages(messages);
+                })
+                .catch(function(err) {
+                    console.error('خطا در بارگذاری پیام‌ها:', err);
+                });
+        }
     }
 
     function sendInlineMessage() {
         if (!inlineMessageInput) return;
         var text = inlineMessageInput.value.trim();
-        if (!text) return;
-        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
-        var username = userData ? userData.username : 'مهمان';
-        fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: username, text: text })
-        }).then(function(r) { return r.json(); })
-          .then(function() {
-              inlineMessageInput.value = '';
-              loadInlineMessages();
-          })
-          .catch(function() {});
+        if (!text && inlineAttachments.length === 0) return;
+
+        function doSend(conversationId) {
+            var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+            var username = userData ? userData.username : 'مهمان';
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: username,
+                    text: text,
+                    conversationId: conversationId,
+                    attachments: inlineAttachments
+                })
+            }).then(function(r) { return r.json(); })
+              .then(function() {
+                  inlineMessageInput.value = '';
+                  inlineAttachments = [];
+                  if (inlineAttachmentPreview) {
+                      inlineAttachmentPreview.innerHTML = '';
+                      inlineAttachmentPreview.classList.add('hidden');
+                  }
+                  loadInlineMessages();
+                  loadConversations();
+              })
+              .catch(function(err) {
+                  console.error('خطا در ارسال پیام:', err);
+                  inlineMessageInput.value = '';
+              });
+        }
+
+        if (!currentConversationId) {
+            createNewConversation().then(function(conv) {
+                doSend(conv.id);
+            });
+        } else {
+            doSend(currentConversationId);
+        }
     }
 
     if (supportBtn && supportModal) {
         supportBtn.addEventListener('click', e => {
             e.preventDefault();
+            if (!isAuthenticated()) {
+                redirectToLogin();
+                return;
+            }
             supportModal.classList.add('active');
             switchTab('faq');
+            setTimeout(setupInlineAttachments, 100);
         });
+
+        if (newConversationBtn) {
+            newConversationBtn.addEventListener('click', function() {
+                if (currentConversationId && conversationsData.some(function(c) { 
+                    return c.id === currentConversationId && c.messageCount === 0; 
+                })) {
+                    loadInlineMessages();
+                    highlightActiveConversation();
+                    return;
+                }
+                createNewConversation().then(function() {
+                    loadConversations().then(function() {
+                        loadInlineMessages();
+                        highlightActiveConversation();
+                    });
+                });
+            });
+        }
 
         if (faqTab && chatTab) {
             faqTab.addEventListener('click', function() { switchTab('faq'); });
@@ -1378,6 +1696,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (closeBtn) {
             closeBtn.addEventListener('click', () => {
                 supportModal.classList.remove('active');
+                currentConversationId = null;
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
             });
         }
@@ -1385,6 +1704,7 @@ document.addEventListener('DOMContentLoaded', () => {
         supportModal.addEventListener('click', e => {
             if (e.target === supportModal) {
                 supportModal.classList.remove('active');
+                currentConversationId = null;
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
             }
         });
@@ -1392,6 +1712,7 @@ document.addEventListener('DOMContentLoaded', () => {
         supportModal.addEventListener('transitionend', function() {
             if (!supportModal.classList.contains('active')) {
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
+                currentConversationId = null;
             } else {
                 if (chatPanel && chatPanel.style.display !== 'none' && !inlinePolling) {
                     inlinePolling = setInterval(loadInlineMessages, 3000);
@@ -1408,15 +1729,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function isAuthenticated() {
+        return !!(localStorage.getItem('adminData') || localStorage.getItem('userData'));
+    }
+
+    function redirectToLogin() {
+        window.location.href = 'login.html';
+    }
+
+    function authGuard(e) {
+        if (!isAuthenticated()) {
+            e.preventDefault();
+            redirectToLogin();
+            return false;
+        }
+        return true;
+    }
+
     const profileBtn = document.getElementById('profileBtn');
     if (profileBtn) {
         profileBtn.addEventListener('click', e => {
             e.preventDefault();
+            if (!isAuthenticated()) {
+                redirectToLogin();
+                return;
+            }
             const adminDataCheck = localStorage.getItem('adminData');
             const userDataCheck = localStorage.getItem('userData');
-            window.location.href = adminDataCheck ? 'admin.html' : (userDataCheck ? 'profile.html' : 'login.html');
+            window.location.href = adminDataCheck ? 'admin.html' : 'profile.html';
         });
     }
+
+    document.addEventListener('click', function(e) {
+        const megaLink = e.target.closest('.mega-dropdown a');
+        if (megaLink) {
+            authGuard(e);
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        const serviceBtn = e.target.closest('.service-btn');
+        if (serviceBtn) {
+            authGuard(e);
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        const bannerLink = e.target.closest('.banner-link');
+        if (bannerLink) {
+            authGuard(e);
+        }
+    });
 
 const bannerUpload = document.getElementById('bannerUpload');
      const previewImg = document.getElementById('previewImg');

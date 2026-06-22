@@ -342,6 +342,60 @@ app.get('/api/orders/user', async (req, res) => {
     res.json(userOrders);
 });
 
+app.get('/api/admin/customers', async (req, res) => {
+    const db = readDB();
+    const completedOrders = (db.orders || []).filter(o => o.status === 'completed');
+    
+    var customerStats = {};
+    var uniqueCustomers = new Set();
+    completedOrders.forEach(function(order) {
+        var username = order.username;
+        if (!username) return;
+        uniqueCustomers.add(username);
+        
+        if (!customerStats[username]) {
+            customerStats[username] = {
+                username: username,
+                totalOrders: 0,
+                totalSpent: 0,
+                orders: []
+            };
+        }
+        
+        customerStats[username].totalOrders += 1;
+        customerStats[username].orders.push({
+            trackingCode: order.trackingCode,
+            title: order.title,
+            created_at: order.created_at,
+            result: order.result
+        });
+        
+        var orderCost = 0;
+        if (order.paid && order.adminProposedPrice) {
+            var priceStr = String(order.adminProposedPrice).replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
+            priceStr = priceStr.replace(/[,٬٫]/g, '').replace(/[^\d]/g, '');
+            if (priceStr) orderCost = parseInt(priceStr, 10);
+        } else if (order.paid && order.proposedPrice) {
+            var priceStr = String(order.proposedPrice).replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
+            priceStr = priceStr.replace(/[,٬٫]/g, '').replace(/[^\d]/g, '');
+            if (priceStr) orderCost = parseInt(priceStr, 10);
+        } else if (order.cost) {
+            var costStr = String(order.cost).replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
+            costStr = costStr.replace(/[,٬٫]/g, '').replace(/[^\d]/g, '');
+            if (costStr) orderCost = parseInt(costStr, 10);
+        }
+        
+        customerStats[username].totalSpent += orderCost;
+    });
+    
+    var customersList = Object.keys(customerStats).map(function(k) { 
+        return customerStats[k]; 
+    });
+    customersList.sort(function(a, b) { return b.totalSpent - a.totalSpent; });
+    
+    res.json({ customers: customersList, totalCustomers: uniqueCustomers.size });
+});
+
 // Pricing routes
 app.get('/api/pricing', async (req, res) => {
     const db = readDB();
@@ -367,13 +421,20 @@ app.post('/api/pricing', async (req, res) => {
 
 // Banner routes
 app.post('/api/banner', async (req, res) => {
-    const { src, link } = req.body;
+    const { src, link, duration, group } = req.body;
     const db = readDB();
     db.banners = db.banners || [];
+    const targetGroup = [1, 2].includes(parseInt(group, 10)) ? parseInt(group, 10) : 1;
+    const groupBanners = db.banners.filter(b => (parseInt(b.group, 10) || 1) == targetGroup);
+    if (groupBanners.length >= 3) {
+        return res.status(400).json({ error: 'حداکثر تعداد بنرهای هر گروه ۳ عدد است' });
+    }
     db.banners.push({
         id: Date.now(),
         src,
         link: link || '',
+        duration: parseInt(duration) || 5,
+        group: targetGroup,
         date: new Date().toISOString()
     });
     writeDB(db);
@@ -381,8 +442,20 @@ app.post('/api/banner', async (req, res) => {
 });
 
 app.get('/api/banner', async (req, res) => {
+    const { group } = req.query;
     const db = readDB();
-    res.json(db.banners || []);
+    var allBanners = db.banners || [];
+    allBanners.forEach(b => {
+        if (!b.group) b.group = 1;
+        if (!b.duration) b.duration = 5;
+    });
+    if (group) {
+        const groupNum = parseInt(group);
+        if (!Number.isNaN(groupNum)) {
+            return res.json(allBanners.filter(b => parseInt(b.group, 10) == groupNum));
+        }
+    }
+    res.json(allBanners);
 });
 
 app.delete('/api/banner/:id', async (req, res) => {
@@ -395,12 +468,21 @@ app.delete('/api/banner/:id', async (req, res) => {
 
 app.put('/api/banner/:id', async (req, res) => {
     const id = parseInt(req.params.id);
-    const { src, link } = req.body;
+    const { src, link, duration, group } = req.body;
     const db = readDB();
     const banner = (db.banners || []).find(b => b.id == id);
     if (banner) {
+        var newGroup = [1, 2].includes(parseInt(group, 10)) ? parseInt(group, 10) : (parseInt(banner.group, 10) || 1);
+        if (newGroup !== parseInt(banner.group, 10)) {
+            var groupBanners = (db.banners || []).filter(b => (parseInt(b.group, 10) || 1) == newGroup);
+            if (groupBanners.length >= 3) {
+                return res.status(400).json({ error: 'حداکثر تعداد بنرهای هر گروه ۳ عدد است' });
+            }
+        }
         banner.src = src;
         banner.link = link || '';
+        banner.duration = parseInt(duration) || 5;
+        banner.group = newGroup;
         banner.date = new Date().toISOString();
         writeDB(db);
         res.json({ success: true });
@@ -426,7 +508,7 @@ app.get('/api/chat', async (req, res) => {
 });
 
 app.post('/api/chat', async (req, res) => {
-    const { username, text } = req.body;
+    const { username, text, conversationId, attachments } = req.body;
     if (!text || !text.trim()) {
         return res.status(400).json({ error: 'متن پیام الزامی است' });
     }
@@ -437,7 +519,9 @@ app.post('/api/chat', async (req, res) => {
         role: 'customer',
         username: username || 'مهمان',
         text: text.trim(),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        conversationId: conversationId || null,
+        attachments: Array.isArray(attachments) ? attachments : []
     };
     db.chat.push(message);
     writeDB(db);
@@ -465,7 +549,7 @@ app.post('/api/admin/chat/read', async (req, res) => {
 });
 
 app.post('/api/admin/chat', async (req, res) => {
-    const { text } = req.body;
+    const { text, username, conversationId, attachments } = req.body;
     if (!text || !text.trim()) {
         return res.status(400).json({ error: 'متن پیام الزامی است' });
     }
@@ -474,9 +558,11 @@ app.post('/api/admin/chat', async (req, res) => {
     const message = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: 'admin',
-        username: null,
+        username: username || null,
         text: text.trim(),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        conversationId: conversationId || null,
+        attachments: Array.isArray(attachments) ? attachments : []
     };
     db.chat.push(message);
     writeDB(db);
@@ -492,6 +578,46 @@ app.get('/api/admin/chat/conversation', async (req, res) => {
     migrateChatData(db);
     var messages = (db.chat || []).filter(function(m) {
         return (m.role === 'customer' && m.username === username) || (m.role === 'admin' && !m.username);
+    });
+    messages.sort(function(a, b) { return new Date(a.timestamp) - new Date(b.timestamp); });
+    res.json(messages);
+});
+
+app.get('/api/admin/chat/conversations', async (req, res) => {
+    const { username } = req.query;
+    if (!username) {
+        return res.status(400).json({ error: 'نام کاربری الزامی است' });
+    }
+    const db = readDB();
+    migrateChatData(db);
+    var convs = {};
+    (db.chat || []).forEach(function(m) {
+        if (m.role === 'customer' && m.username === username && m.conversationId) {
+            if (!convs[m.conversationId]) {
+                convs[m.conversationId] = {
+                    id: m.conversationId,
+                    username: m.username,
+                    createdAt: m.timestamp,
+                    lastMessage: m.text,
+                    lastTimestamp: m.timestamp,
+                    messageCount: 0
+                };
+            }
+            convs[m.conversationId].lastMessage = m.text;
+            convs[m.conversationId].lastTimestamp = m.timestamp;
+            convs[m.conversationId].messageCount++;
+        }
+    });
+    var list = Object.keys(convs).map(function(k) { return convs[k]; });
+    list.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
+    res.json(list);
+});
+
+app.get('/api/admin/chat/conversation/:id', async (req, res) => {
+    const { id } = req.params;
+    const db = readDB();
+    var messages = (db.chat || []).filter(function(m) {
+        return m.conversationId === id;
     });
     messages.sort(function(a, b) { return new Date(a.timestamp) - new Date(b.timestamp); });
     res.json(messages);
@@ -516,12 +642,66 @@ app.get('/api/admin/chat/customers', async (req, res) => {
         var hasAdminReply = (db.chat || []).some(function(m) {
             return m.role === 'admin' && (!m.username || m.username === customer.username) && m.timestamp >= customer.lastTimestamp;
         });
-        customer.unread = hasAdminReply ? 0 : 1;
-        if (lastAdminGlobal && customer.lastTimestamp <= lastAdminGlobal) {
-            customer.unread = 0;
-        }
+        if (!hasAdminReply) customer.unread = 1;
     });
     var list = Object.keys(customers).map(function(k) { return customers[k]; });
+    list.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
+    res.json(list);
+});
+
+app.post('/api/chat/conversation', async (req, res) => {
+    const { username } = req.body;
+    const db = readDB();
+    if (!db.chatConversations) db.chatConversations = [];
+    const conv = {
+        id: 'conv_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        username: username || 'مهمان',
+        createdAt: new Date().toISOString(),
+        status: 'open'
+    };
+    db.chatConversations.push(conv);
+    writeDB(db);
+    res.json(conv);
+});
+
+app.get('/api/chat/conversation/:id', async (req, res) => {
+    const { id } = req.params;
+    const { username } = req.query;
+    const db = readDB();
+    var messages = (db.chat || []).filter(function(m) {
+        return m.conversationId === id;
+    });
+    messages.sort(function(a, b) { return new Date(a.timestamp) - new Date(b.timestamp); });
+    if (username && !messages.some(function(m) { return m.role === 'customer' && m.username === username; })) {
+        messages = messages.filter(function(m) { return m.role === 'admin'; });
+    }
+    res.json(messages);
+});
+
+app.get('/api/chat/conversations', async (req, res) => {
+    const { username } = req.query;
+    const db = readDB();
+    var convs = {};
+    (db.chat || []).forEach(function(m) {
+        if (!m.conversationId) return;
+        if (!convs[m.conversationId]) {
+            convs[m.conversationId] = {
+                id: m.conversationId,
+                username: m.username,
+                createdAt: m.timestamp,
+                lastMessage: m.text,
+                lastTimestamp: m.timestamp,
+                messageCount: 0
+            };
+        }
+        convs[m.conversationId].lastMessage = m.text;
+        convs[m.conversationId].lastTimestamp = m.timestamp;
+        convs[m.conversationId].messageCount++;
+    });
+    var list = Object.keys(convs).map(function(k) { return convs[k]; });
+    if (username) {
+        list = list.filter(function(c) { return c.username === username; });
+    }
     list.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
     res.json(list);
 });
