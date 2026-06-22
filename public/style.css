@@ -1015,7 +1015,7 @@ header h1 {
 .message.user .bubble {
     background: #667eea;
     color: white;
-    border-radius: 16px 16px 4px 16px;
+    border-radius: 16px 4px 16px 16px;
 }
 
 .message.support .bubble {
@@ -2166,11 +2166,6 @@ header h1 {
 
 .chat-messages .message.user {
     align-self: flex-start;
-}
-
-.chat-messages .message.support,
-.chat-messages .message[data-role="customer"] {
-    align-self: flex-end;
 }
 
 .chat-messages .message.support,
