@@ -695,45 +695,56 @@ header h1 {
 }
 
 .modal.active {
-    display: flex;
+    display: block;
 }
 
 .modal.active .modal-content {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
     height: 100%;
+    min-height: 100vh;
     border-radius: 0;
     box-sizing: border-box;
-    overflow-y: auto;
+    overflow: hidden;
     max-width: 100%;
-    padding: 2rem;
-}
-
-.modal.active .support-panel {
-    max-height: none;
-    height: calc(100vh - 180px);
-}
-
-.modal.active .inline-chat {
+    padding: 0;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 280px);
-    flex: 1;
+    background: white;
 }
 
-.modal.active .inline-chat .chat-messages {
-    max-height: none;
+.modal.active .support-layout {
     flex: 1;
+    display: flex;
+    min-height: 0;
+    gap: 0;
+}
+
+.modal.active .support-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
 }
 
 .modal.active .close-btn {
     font-size: 2rem;
     margin-left: 1rem;
+    flex-shrink: 0;
+    float: none;
+    align-self: flex-start;
 }
 
-.modal.active .support-layout {
-    display: flex;
-    height: 100%;
-    gap: 0;
+.modal.active .modal-content > h2 {
+    margin: 0;
+    padding: 1rem;
+    color: #667eea;
+    flex-shrink: 0;
 }
 
 .modal.active .support-sidebar {
@@ -745,6 +756,51 @@ header h1 {
     flex-direction: column;
     padding: 1rem;
     overflow-y: auto;
+}
+
+.modal.active .admin-chat-main {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.modal.active .admin-chat-header {
+    padding: 0.7rem 0.9rem;
+    flex-shrink: 0;
+}
+
+.modal.active .admin-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.1rem;
+    padding-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-height: 0;
+    max-height: none;
+    background: #f8f9fa;
+}
+
+.modal.active .admin-chat-header .back-link {
+    display: none;
+}
+
+.modal.active .admin-chat-messages .message {
+    margin: 0;
+}
+
+.modal.active .admin-chat-input-area {
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid #e9ecef;
+    background: #fff;
+    flex-shrink: 0;
 }
 
 .modal.active .sidebar-header {
@@ -822,13 +878,6 @@ header h1 {
     color: rgba(255, 255, 255, 0.8);
 }
 
-.modal.active .support-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
 .modal.active .support-tabs {
     display: flex;
     gap: 0.5rem;
@@ -837,43 +886,116 @@ header h1 {
 }
 
 .modal.active .support-panel {
-    max-height: none;
-    height: calc(100vh - 260px);
     flex: 1;
-    overflow-y: auto;
-}
-
-.modal.active .inline-chat {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 280px);
-    flex: 1;
+    overflow: hidden;
 }
 
-.modal.active .inline-chat .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    margin-bottom: 0.75rem;
-}
-
-.modal.active .inline-chat .chat-input {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    flex-shrink: 0;
-    padding-bottom: 20px;
-}
-
-.modal.active .inline-chat .chat-input textarea,
-.modal.active .inline-chat .chat-input input {
-    flex: 1;
-    padding: 0.6rem;
+.modal.active .admin-chat-input-area textarea {
+    width: 100%;
+    min-height: 100px;
+    max-height: 300px;
+    display: block;
+    padding: 0.7rem 0.75rem;
+    padding-bottom: 48px;
     border: 1px solid #ddd;
     border-radius: 8px;
-    font-family: inherit;
     font-size: 0.9rem;
-    min-height: 120px;
-    resize: vertical;
+    font-family: inherit;
+    resize: none;
+    box-sizing: border-box;
+    overflow-y: auto;
+    pointer-events: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.modal.active .admin-chat-input-area textarea::-webkit-scrollbar {
+    display: none;
+}
+.modal.active .admin-chat-input-area textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.modal.active .admin-chat-input-area .pin-attachment {
+    position: absolute;
+    bottom: 8px;
+    left: 54px;
+    width: 38px;
+    height: 38px;
+    background: #667eea;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    font-size: 16px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.modal.active .admin-chat-input-area .pin-attachment:hover {
+    background: #5568d3;
+    transform: scale(1.05);
+}
+
+.modal.active .admin-chat-input-area .admin-send-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: none;
+    background: #667eea;
+    color: white;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    z-index: 10;
+}
+.modal.active .admin-chat-input-area .admin-send-btn:hover {
+    background: #5563d6;
+    transform: translateY(-1px);
+}
+.modal.active .admin-chat-input-area .admin-send-btn:active {
+    transform: scale(0.95);
+}
+.modal.active .admin-chat-input-area .admin-send-btn:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.modal.active .admin-chat-input-area .char-counter {
+    position: absolute;
+    bottom: 8px;
+    left: 96px;
+    font-size: 0.7rem;
+    color: #6b7280;
+    white-space: nowrap;
+    line-height: 38px;
+}
+
+.modal.active .admin-chat-input-area .attachment-preview {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    left: 140px;
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    z-index: 4;
+}
+.modal.active .admin-chat-input-area .attachment-preview:not(.hidden) {
+    display: flex;
 }
 
 .modal-content {
@@ -895,7 +1017,6 @@ header h1 {
 }
 
 .close-btn {
-    float: left;
     font-size: 1.5rem;
     cursor: pointer;
     color: #999;
@@ -1908,118 +2029,6 @@ header h1 {
     margin: 0;
 }
 
-.inline-chat {
-    display: flex;
-    flex-direction: column;
-    height: 350px;
-}
-
-.inline-chat .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    margin-bottom: 0.75rem;
-    max-height: 240px;
-}
-
-.inline-chat .chat-input {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    position: relative;
-}
-
-.inline-chat .chat-input button {
-    align-self: flex-start;
-    padding: 0.6rem 1.2rem;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-family: inherit;
-    font-weight: 700;
-}
-
-.inline-chat .pin-attachment {
-    position: absolute;
-    bottom: 6px;
-    right: 6px;
-    width: 28px;
-    height: 28px;
-    background: #667eea;
-    border: none;
-    border-radius: 6px;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    font-size: 14px;
-}
-
-.inline-chat .attachment-preview {
-    position: absolute;
-    bottom: 6px;
-    right: 40px;
-    left: auto;
-    display: none;
-    flex-wrap: wrap;
-    gap: 6px;
-    z-index: 5;
-    max-width: none;
-}
-
-.inline-chat .attachment-preview:not(.hidden) {
-    display: flex;
-}
-
-.inline-chat .attachment-thumbnail {
-    width: 36px;
-    height: 36px;
-    box-sizing: border-box;
-    border-radius: 6px;
-    overflow: hidden;
-    border: 2px solid #667eea;
-    background: white;
-    position: relative;
-}
-
-.inline-chat .attachment-thumbnail img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.inline-chat .attachment-thumbnail .pdf-icon {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f5f5f5;
-    color: #667eea;
-    font-weight: 700;
-    font-size: 0.5rem;
-}
-
-.inline-chat .attachment-thumbnail .remove-attachment {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 14px;
-    height: 14px;
-    background: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 7px;
-}
 
 .modal-content {
     max-width: 420px;
