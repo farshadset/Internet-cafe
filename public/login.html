@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ورود</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=202606230630">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
@@ -53,29 +53,45 @@
     <div class="modal-content">
         <span class="close-btn" id="closeModal">&times;</span>
         <h2>پشتیبانی</h2>
-        <div class="support-tabs">
-            <button class="support-tab active" id="faqTab">
-                <i class="fas fa-question-circle"></i> سوالات متداول
-            </button>
-            <button class="support-tab" id="chatTab">
-                <i class="fas fa-comments"></i> چت با پشتیبانی
-            </button>
-        </div>
-        <div class="support-panel" id="faqPanel">
-            <div class="faq-list">
-                <div class="faq-item"><strong>چگونه می‌توانم ثبت نام کنم؟</strong><p>از صفحه اصلی روی گزینه «پیش ثبت نام مدارس» کلیک کنید.</p></div>
-                <div class="faq-item"><strong>هزینه ثبت نام چقدر است؟</strong><p>هزینه ثبت نام ۵۰,۰۰۰ تومان می‌باشد.</p></div>
-                <div class="faq-item"><strong>زمان تحویل چه زمانی است؟</strong><p>پس از ثبت نام، اطلاعات کامل در ۲۲ روز کاری ارسال می‌شود.</p></div>
+        <div class="support-layout">
+            <div class="support-sidebar" id="supportSidebar">
+                <div class="sidebar-header">
+                    <button class="new-chat-btn" id="newConversationBtn" title="گفتگوی جدید">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <h3>گفتگوها</h3>
+                </div>
+                <div class="conversations-list" id="conversationsList"></div>
             </div>
-        </div>
-        <div class="support-panel" id="chatPanel" style="display:none;">
-            <div class="inline-chat">
-                <div class="chat-messages" id="inlineChatMessages"></div>
-                <div class="chat-input">
-                    <div class="textarea-wrapper">
-                        <textarea id="inlineMessageInput" rows="1" placeholder="پیام خود را اینجا بنویسید..." class="additional-notes" style="height: 150px;"></textarea>
+            <div class="support-main">
+                <div class="support-panel" id="chatPanel">
+                    <div class="admin-chat-main">
+                        <div class="admin-chat-header">
+                            <a href="admin-chat.html" class="back-link" style="display: none;">
+                                <i class="fas fa-arrow-right"></i>
+                                بازگشت
+                            </a>
+                            <strong id="chatPartner">پشتیبانی</strong>
+                        </div>
+                        <div class="admin-chat-messages" id="inlineChatMessages"></div>
+                        <div class="admin-chat-input-area">
+                            <div class="textarea-wrapper">
+                                <textarea id="inlineMessageInput" rows="1" maxlength="5000" placeholder="پیام خود را اینجا بنویسید..." class="additional-notes"></textarea>
+                                <div class="attachment-preview hidden" id="inlineAttachmentPreview"></div>
+                                <button id="inlineSendBtn" class="admin-send-btn" aria-label="ارسال پیام">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="12" y1="19" x2="12" y2="5"></line>
+                                        <polyline points="5 12 12 5 19 12"></polyline>
+                                    </svg>
+                                </button>
+                                <button type="button" class="pin-attachment" id="inlinePinAttachment" title="افزودن فایل">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <span class="char-counter" id="charCounter">5000/0</span>
+                            </div>
+                            <input type="file" id="inlineAttachmentFile" accept="image/*,.pdf" style="display: none;" multiple>
+                        </div>
                     </div>
-                    <button id="inlineSendBtn">ارسال</button>
                 </div>
             </div>
         </div>
