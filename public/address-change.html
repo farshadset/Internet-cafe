@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تغییر نشانی</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>تغییر نشانی</h1>
+            <p style="text-align: center; color: #666; margin-top: 0.3rem;">تغییر نشانی در系统中的 ثبت احوال</p>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="addressChange">
+                <div class="form-group">
+      <label for="phone">شماره تلفن همراه</label>
+      <input type="tel" id="phone" name="phone"  placeholder="09xx-xxx-xxxx" required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="nationalId">کد ملی</label>
+      <input type="text" id="nationalId" name="nationalId" maxlength="10"  required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="birthYear">سال تولد</label>
+      <input type="number" id="birthYear" name="birthYear"   required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="birthMonth">ماه تولد</label>
+      <input type="number" id="birthMonth" name="birthMonth"   required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="birthDay">روز تولد</label>
+      <input type="number" id="birthDay" name="birthDay"   required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="oldAddress">آدرس قبلی</label>
+      <textarea id="oldAddress" name="oldAddress" required class="additional-notes"></textarea>
+      
+    </div>
+
+<div class="form-group">
+      <label for="newAddress">آدرس جدید</label>
+      <textarea id="newAddress" name="newAddress" required class="additional-notes"></textarea>
+      
+    </div>
+
+<div class="form-group">
+      <label for="postalCode">کد پستی</label>
+      <input type="text" id="postalCode" name="postalCode" maxlength="10"  >
+      
+    </div>
+
+<div class="form-group">
+      <label for="notes">توضیحات اضافی</label>
+      <textarea id="notes" name="notes"  class="additional-notes"></textarea>
+      <small></small>
+    </div>
+                <button type="submit" class="btn-next">ثبت درخواست</button>
+            </form>
+            
+        </main>
+    </div>
+    <link rel="stylesheet" href="fonts/all.css">
+    <script src="app.js"></script>
+</body>
+</html>

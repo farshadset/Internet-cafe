@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت نام گذرنامه</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>ثبت نام گذرنامه الکترونیکی</h1>
+            <p style="text-align: center; color: #666; margin-top: 0.3rem;">ثبت نام اینترنتی گذرنامه از طریق سامانه پلیس مهاجرت</p>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="passportRegistration">
+                <div class="form-group">
+      <label for="phone">شماره تلفن همراه</label>
+      <input type="tel" id="phone" name="phone"  placeholder="09xx-xxx-xxxx" required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="nationalId">کد ملی</label>
+      <input type="text" id="nationalId" name="nationalId" maxlength="10"  required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="birthYear">سال تولد</label>
+      <input type="number" id="birthYear" name="birthYear"   required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="birthMonth">ماه تولد</label>
+      <input type="number" id="birthMonth" name="birthMonth"   required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="birthDay">روز تولد</label>
+      <input type="number" id="birthDay" name="birthDay"   required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="passportType">نوع گذرنامه</label>
+      <select id="passportType" name="passportType" required>
+        <option value="">انتخاب کنید</option>
+        <option value="regular">عادی</option>
+        <option value="diplomatic">دیپلماتیک</option>
+        <option value="service">خدماتی</option>
+        <option value="temporary">موقت</option>
+      </select>
+      
+    </div>
+
+<div class="form-group">
+      <label for="previousPassport">شماره گذرنامه قبلی (در صورت وجود)</label>
+      <input type="text" id="previousPassport" name="previousPassport"   >
+      
+    </div>
+
+<div class="form-group">
+      <label for="issueProvince">استان محل صدور</label>
+      <input type="text" id="issueProvince" name="issueProvince"   >
+      
+    </div>
+
+<div class="form-group">
+      <label for="travelReason">هدف از سفر</label>
+      <select id="travelReason" name="travelReason" >
+        <option value="">انتخاب کنید</option>
+        <option value="tourism">گردشگری</option>
+        <option value="business">تجاری</option>
+        <option value="study">تحصیلی</option>
+        <option value="medical">درمانی</option>
+        <option value="official">رسمی</option>
+        <option value="other">سایر</option>
+      </select>
+      
+    </div>
+
+<div class="form-group">
+      <label for="destination">کشب/منطقه مقصد</label>
+      <input type="text" id="destination" name="destination"   >
+      
+    </div>
+
+<div class="form-group">
+      <label for="notes">توضیحات اضافی</label>
+      <textarea id="notes" name="notes"  class="additional-notes"></textarea>
+      <small></small>
+    </div>
+                <button type="submit" class="btn-next">ثبت درخواست</button>
+            </form>
+            
+        </main>
+    </div>
+    <link rel="stylesheet" href="fonts/all.css">
+    <script src="app.js"></script>
+</body>
+</html>

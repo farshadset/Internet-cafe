@@ -363,6 +363,83 @@ const EXTRA_SERVICE_CONFIGS = {
         ],
         transform: data => ({ ...EXTRA_COMMON_IDENTITY_TRANSFORM(data), title: EXTRA_OPTION_LABEL(data.serviceType, EXTRA_SERVICE_OPTIONS.identity), verificationService: EXTRA_OPTION_LABEL(data.verificationService, { mygov: 'دولت من', bank: 'بانک', sejam: 'سجام', other: 'سایر' }), trackingCode: data.trackingCode, bankName: data.bankName, iban: data.iban, notes: data.notes })
     }
+,
+    addressChange: {
+        title: 'تغییر نشانی',
+        cost: 50000,
+        transform: data => ({ ...data, title: 'تغییر نشانی' })
+    },
+    idDuplicate: {
+        title: 'شناسنامه المثنی',
+        cost: 100000,
+        transform: data => ({ ...data, title: 'شناسنامه المثنی' })
+    },
+    infoCorrection: {
+        title: 'اصلاح مشخصات',
+        cost: 80000,
+        transform: data => ({ ...data, title: 'اصلاح مشخصات' })
+    },
+    passportRegistration: {
+        title: 'ثبت نام گذرنامه',
+        cost: 150000,
+        transform: data => ({ ...data, title: 'ثبت نام گذرنامه' })
+    },
+    passportRenewal: {
+        title: 'تمدید پاسپورت',
+        cost: 120000,
+        transform: data => ({ ...data, title: 'تمدید پاسپورت' })
+    },
+    passportDuplicate: {
+        title: 'المثنی گذرنامه',
+        cost: 120000,
+        transform: data => ({ ...data, title: 'المثنی گذرنامه' })
+    },
+    migrationForm: {
+        title: 'فرم مهاجرت',
+        cost: 200000,
+        transform: data => ({ ...data, title: 'فرم مهاجرت' })
+    },
+    sanaRegistration: {
+        title: 'ثبت نام ثنا',
+        cost: 50000,
+        transform: data => ({ ...data, title: 'ثبت نام ثنا' })
+    },
+    electronicNotification: {
+        title: 'ابلاغ الکترونیک',
+        cost: 30000,
+        transform: data => ({ ...data, title: 'ابلاغ الکترونیک' })
+    },
+    caseTracking: {
+        title: 'پیگیری پرونده',
+        cost: 30000,
+        transform: data => ({ ...data, title: 'پیگیری پرونده' })
+    },
+    idInquiry: {
+        title: 'استعلام کد ملی',
+        cost: 20000,
+        transform: data => ({ ...data, title: 'استعلام کد ملی' })
+    },
+    birthCertificateInquiry: {
+        title: 'استعلام شناسنامه',
+        cost: 20000,
+        transform: data => ({ ...data, title: 'استعلام شناسنامه' })
+    },
+    plateReplacement: {
+        title: 'نوبت تعویض پلاک',
+        cost: 50000,
+        transform: data => ({ ...data, title: 'نوبت تعویض پلاک' })
+    },
+    violationInquiry: {
+        title: 'استعلام خلافی',
+        cost: 15000,
+        transform: data => ({ ...data, title: 'استعلام خلافی خودرو' })
+    },
+    electionInfo: {
+        title: 'خدمات انتخاباتی',
+        cost: 0,
+        transform: data => ({ ...data, title: 'خدمات انتخاباتی' })
+    }
+
 };
 
 window.EXTRA_SERVICE_CONFIGS = EXTRA_SERVICE_CONFIGS;

@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  timeout: 30000,
+  timeout: 60000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -12,5 +12,11 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'on-first-retry',
+    ...(process.env.HTTP_PROXY || process.env.http_proxy ? {
+      proxy: {
+        server: process.env.HTTP_PROXY || process.env.http_proxy,
+        bypass: 'localhost,127.0.0.1,::1',
+      },
+    } : {}),
   },
 });

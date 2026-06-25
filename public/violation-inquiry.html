@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>استعلام خلافی خودرو</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>استعلام خلافی خودرو</h1>
+            <p style="text-align: center; color: #666; margin-top: 0.3rem;">استعلام و پرداخت خلافی خودرو با شماره پلاک</p>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="violationInquiry">
+                <div class="form-group">
+                    <label for="plateNumber">شماره پلاک خودرو</label>
+                    <input type="text" id="plateNumber" name="plateNumber" placeholder="مثال: ایران-۱۲-ب-۳۴۵-۶۷" required>
+                </div>
+                <div class="form-group">
+                    <label for="ownerNationalId">کد ملی مالک خودرو</label>
+                    <input type="text" id="ownerNationalId" name="ownerNationalId" maxlength="10" required>
+                </div>
+                <div class="form-group">
+                    <label>نوع استعلام</label>
+                    <select name="inquiryType" required>
+                        <option value="">انتخاب کنید</option>
+                        <option value="summary">خلافی کلی (مجموع جرایم)</option>
+                        <option value="detail">خلافی جزئی</option>
+                        <option value="photo">استعلام با عکس دوربین</option>
+                        <option value="payment">پرداخت آنلاین خلافی</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="vin">شماره شاسی (VIN) - اختیاری</label>
+                    <input type="text" id="vin" name="vin" maxlength="17">
+                    <small>برای استعلام دقیق‌تر</small>
+                </div>
+                <div class="form-group">
+                    <label for="notes">توضیحات اضافی</label>
+                    <textarea id="notes" name="notes" class="additional-notes"></textarea>
+                </div>
+                <button type="submit" class="btn-next">ثبت درخواست استعلام</button>
+            </form>
+        </main>
+    </div>
+    <link rel="stylesheet" href="fonts/all.css">
+    <script src="app.js"></script>
+</body>
+</html>
