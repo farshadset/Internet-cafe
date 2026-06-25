@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اصلاح مشخصات</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>اصلاح مشخصات هویتی</h1>
+            <p style="text-align: center; color: #666; margin-top: 0.3rem;">اصلاح اطلاعات ثبت شده در شناسنامه</p>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="infoCorrection">
+                <div class="form-group">
+      <label for="phone">شماره تلفن همراه</label>
+      <input type="tel" id="phone" name="phone"  placeholder="09xx-xxx-xxxx" required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="nationalId">کد ملی</label>
+      <input type="text" id="nationalId" name="nationalId" maxlength="10"  required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="birthYear">سال تولد</label>
+      <input type="number" id="birthYear" name="birthYear"   required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="birthMonth">ماه تولد</label>
+      <input type="number" id="birthMonth" name="birthMonth"   required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="birthDay">روز تولد</label>
+      <input type="number" id="birthDay" name="birthDay"   required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="serialNumber">سریال شناسنامه</label>
+      <input type="text" id="serialNumber" name="serialNumber" maxlength="6"  required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="currentInfo">اطلاعات فعلی (غیرصحیح)</label>
+      <textarea id="currentInfo" name="currentInfo" required class="additional-notes"></textarea>
+      
+    </div>
+
+<div class="form-group">
+      <label for="correctInfo">اطلاعات صحیح</label>
+      <textarea id="correctInfo" name="correctInfo" required class="additional-notes"></textarea>
+      
+    </div>
+
+<div class="form-group">
+      <label for="correctionReason">دلیل اصلاح</label>
+      <select id="correctionReason" name="correctionReason" required>
+        <option value="">انتخاب کنید</option>
+        <option value="typo">اشتباه تایپی</option>
+        <option value="administrative">اشتباه اداری</option>
+        <option value="legal">قضایی</option>
+        <option value="other">سایر</option>
+      </select>
+      
+    </div>
+
+<div class="form-group">
+      <label for="documents">مدارك مثبته</label>
+      <textarea id="documents" name="documents"  class="additional-notes"></textarea>
+      
+    </div>
+
+<div class="form-group">
+      <label for="notes">توضیحات اضافی</label>
+      <textarea id="notes" name="notes"  class="additional-notes"></textarea>
+      <small></small>
+    </div>
+                <button type="submit" class="btn-next">ثبت درخواست</button>
+            </form>
+            
+        </main>
+    </div>
+    <link rel="stylesheet" href="fonts/all.css">
+    <script src="app.js"></script>
+</body>
+</html>

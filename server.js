@@ -115,9 +115,9 @@ app.post('/api/admin/login', (req, res) => {
 app.post('/api/order', async (req, res) => {
     const trackingCode = 'CFT-' + Date.now().toString().slice(-8);
     const order = {
-        trackingCode,
         username: (req.body.username || '').trim() || null,
         ...req.body,
+        trackingCode,
         created_at: new Date()
     };
     const db = readDB();

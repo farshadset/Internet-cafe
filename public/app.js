@@ -986,6 +986,92 @@ document.addEventListener('DOMContentLoaded', () => {
 
     buildMegaMenu();
 
+    let activeMegaItem = null;
+    let hoverCloseTimer = null;
+
+    function positionMegaDropdown(dropdown, item) {
+        const rect = item.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        let top = rect.bottom + 8;
+        let left = rect.left + rect.width / 2 - dropdown.offsetWidth / 2;
+
+        if (left + dropdown.offsetWidth > vw - 16) left = vw - dropdown.offsetWidth - 16;
+        if (left < 16) left = 16;
+
+        if (top + dropdown.offsetHeight > vh - 8) top = vh - dropdown.offsetHeight - 8;
+        if (top < 8) top = 8;
+
+        dropdown.style.top = top + 'px';
+        dropdown.style.left = left + 'px';
+    }
+
+    function openMegaPortal(item) {
+        const dropdown = item.querySelector('.mega-dropdown');
+        if (!dropdown) return;
+
+        // Close all other open dropdowns
+        document.querySelectorAll('.menu-item.mega-open').forEach(function(openItem) {
+            if (openItem !== item) {
+                openItem.classList.remove('mega-open');
+            }
+        });
+
+        // First, make it visible with position:fixed so dimensions are correct
+        item.classList.add('mega-open');
+
+        // Now position it (in fixed context)
+        positionMegaDropdown(dropdown, item);
+
+        activeMegaItem = item;
+    }
+
+    function closeMegaPortal(item) {
+        const target = item || activeMegaItem;
+        if (!target) return;
+        target.classList.remove('mega-open');
+        activeMegaItem = null;
+    }
+
+    function setupMegaMenuHover() {
+        document.querySelectorAll('.menu-item').forEach(function(item) {
+            const dropdown = item.querySelector('.mega-dropdown');
+            if (!dropdown) return;
+
+            item.addEventListener('mouseenter', function() {
+                clearTimeout(hoverCloseTimer);
+                openMegaPortal(item);
+            });
+
+            item.addEventListener('mouseleave', function() {
+                hoverCloseTimer = setTimeout(function() { closeMegaPortal(item); }, 80);
+            });
+
+            dropdown.addEventListener('mouseenter', function() {
+                clearTimeout(hoverCloseTimer);
+            });
+
+            dropdown.addEventListener('mouseleave', function() {
+                hoverCloseTimer = setTimeout(function() { closeMegaPortal(item); }, 80);
+            });
+        });
+    }
+
+    setupMegaMenuHover();
+
+
+
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.menu-item')) return;
+        closeMegaPortal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeMegaPortal();
+    });
+
+
     function renderServiceForm(formElement, serviceKey) {
         const config = SERVICE_CONFIGS[serviceKey];
         if (!config || !config.dynamicForm) return;

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نوبت تعویض پلاک</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo-icon" title="صفحه اصلی">
+            <i class="fas fa-mug-hot"></i>
+        </a>
+        <header>
+            <h1>رزرو نوبت تعویض پلاک</h1>
+            <p style="text-align: center; color: #666; margin-top: 0.3rem;">گرفتن نوبت اینترنتی تعویض پلاک خودرو</p>
+        </header>
+        <main>
+            <form id="serviceForm" class="form-card" data-service="plateReplacement">
+                <div class="form-group">
+      <label for="phone">شماره تلفن همراه</label>
+      <input type="tel" id="phone" name="phone"  placeholder="09xx-xxx-xxxx" required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="nationalId">کد ملی</label>
+      <input type="text" id="nationalId" name="nationalId" maxlength="10"  required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="plateNumber">شماره پلاک فعلی</label>
+      <input type="text" id="plateNumber" name="plateNumber"   required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="vin">شماره شاسی (VIN)</label>
+      <input type="text" id="vin" name="vin" maxlength="17"  required>
+      
+    </div>
+
+<div class="form-group">
+      <label for="replacementType">نوع تعویض</label>
+      <select id="replacementType" name="replacementType" required>
+        <option value="">انتخاب کنید</option>
+        <option value="damage">خرابی</option>
+        <option value="lost">مفقودی</option>
+        <option value="transfer">نقل وانتقال</option>
+        <option value="renewal">تمدید</option>
+        <option value="design">تغییر طرح</option>
+      </select>
+      
+    </div>
+
+<div class="form-group">
+      <label for="preferredDate">تاریخ و زمان مورد نظر</label>
+      <input type="text" id="preferredDate" name="preferredDate"  placeholder="مثلاً ۱۴۰۴/۰۳/۱۵ ساعت ۱۰:۰۰" >
+      
+    </div>
+
+<div class="form-group">
+      <label for="city">شهر</label>
+      <input type="text" id="city" name="city"   >
+      
+    </div>
+
+<div class="form-group">
+      <label for="center">مرکز تعویض پلاک</label>
+      <input type="text" id="center" name="center"   >
+      
+    </div>
+
+<div class="form-group">
+      <label for="notes">توضیحات اضافی</label>
+      <textarea id="notes" name="notes"  class="additional-notes"></textarea>
+      <small></small>
+    </div>
+                <button type="submit" class="btn-next">ثبت درخواست</button>
+            </form>
+            
+        </main>
+    </div>
+    <link rel="stylesheet" href="fonts/all.css">
+    <script src="app.js"></script>
+</body>
+</html>
