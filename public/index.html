@@ -11,8 +11,8 @@
     <style>
     .search-results {
         position: absolute;
-        background: white;
-        border: 1px solid #ddd;
+        background: #366549;
+        border: 1px solid #366549;
         border-radius: 8px;
         margin-top: 4px;
         width: 100%;
@@ -20,17 +20,34 @@
         overflow-y: auto;
         z-index: 1000;
         display: none;
+        scrollbar-width: thin;
+        scrollbar-color: #366549 #2a4d3a;
+    }
+    .search-results::-webkit-scrollbar {
+        width: 6px;
+    }
+    .search-results::-webkit-scrollbar-track {
+        background: #2a4d3a;
+        border-radius: 3px;
+    }
+    .search-results::-webkit-scrollbar-thumb {
+        background: #366549;
+        border-radius: 3px;
+    }
+    .search-results::-webkit-scrollbar-thumb:hover {
+        background: #4a8a6a;
     }
     .search-results div {
         padding: 0.75rem 1rem;
         cursor: pointer;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid #2a4d3a;
+        color: #e4e4e7;
     }
     .search-results div:last-child {
         border-bottom: none;
     }
     .search-results div:hover {
-        background: #f5f5f5;
+        background: #2a4d3a;
     }
     </style>
     <script>
@@ -134,9 +151,7 @@
         </header>
         <div class="suggestive-search">
             <div class="search-wrapper">
-                <i data-lucide="search" class="w-5 h-5 text-gray-500 shrink-0"></i>
                 <input type="text" id="searchInput" class="search-input" autocomplete="off">
-                <i data-lucide="search" class="w-4 h-4 text-gray-500 shrink-0" style="margin-right:auto;"></i>
             </div>
             <div class="search-overlay" id="searchOverlay">
                 <span class="search-placeholder" id="searchPlaceholder"></span>
@@ -225,9 +240,16 @@
         document.addEventListener('DOMContentLoaded', function() {
             var searchInput = document.getElementById('searchInput');
             var searchResults = document.getElementById('searchResults');
-            var cards = document.querySelectorAll('.card');
+            var searchIndex = window.megaMenuSearchIndex || [];
+            var debounceTimer = null;
 
-            function showResults(matches) {
+            function highlightText(text, query) {
+                if (!query) return text;
+                var regex = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                return text.replace(regex, '<mark style="background:#3f3f46;color:#fff;border-radius:2px;padding:0 1px;">$1</mark>');
+            }
+
+            function showResults(matches, query) {
                 searchResults.innerHTML = '';
                 if (matches.length === 0 || searchInput.value.trim() === '') {
                     searchResults.style.display = 'none';
@@ -238,7 +260,7 @@
 
                 limitedMatches.forEach(function(match) {
                     var div = document.createElement('div');
-                    div.textContent = match.title;
+                    div.innerHTML = highlightText(match.title, query);
                     div.addEventListener('click', function() {
                         window.location.href = match.link;
                         searchInput.value = '';
@@ -250,30 +272,31 @@
                 searchResults.style.display = 'block';
             }
 
-            searchInput.addEventListener('input', function() {
-                var searchTerm = this.value.toLowerCase().trim();
-                var matches = [];
+            function performSearch(query) {
+                var searchTerm = query.toLowerCase().trim();
 
                 if (searchTerm === '') {
                     searchResults.style.display = 'none';
                     return;
                 }
 
-                cards.forEach(function(card) {
-                    var title = card.querySelector('h2').textContent.toLowerCase();
-                    if (title.includes(searchTerm)) {
-                        matches.push({
-                            title: card.querySelector('h2').textContent,
-                            link: card.href
-                        });
-                    }
+                var matches = searchIndex.filter(function(item) {
+                    return item.title.toLowerCase().includes(searchTerm);
                 });
 
-                showResults(matches);
+                showResults(matches, searchTerm);
+            }
+
+            searchInput.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                var query = this.value;
+                debounceTimer = setTimeout(function() {
+                    performSearch(query);
+                }, 120);
             });
 
             document.addEventListener('click', function(e) {
-                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                if (searchInput && searchResults && !searchInput.contains(e.target) && !searchResults.contains(e.target)) {
                     searchResults.style.display = 'none';
                 }
             });

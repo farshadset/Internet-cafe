@@ -55,22 +55,15 @@ header h1 {
     width: 100%;
     padding: 0.75rem 1rem;
     border-radius: 9999px;
-    border: 1px solid #3f3f46;
-    background: #18181b;
+    border: 1px solid #1a5c40;
+    background: #103732;
     transition: border-color 0.3s;
     min-height: 2.5rem;
     box-sizing: border-box;
 }
 
 .search-wrapper:focus-within {
-    border-color: #52525b;
-}
-
-.search-wrapper i {
-    width: 1.25rem;
-    height: 1.25rem;
-    color: #6b7280;
-    flex-shrink: 0;
+    border-color: #4a8a6a;
 }
 
 .search-input {
@@ -176,21 +169,39 @@ header h1 {
 
 .search-results {
     position: absolute;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+    background: #366549;
+    border: 1px solid #366549;
+    border-radius: 12px;
     margin-top: 4px;
     width: 100%;
-    max-height: 200px;
+    max-height: 300px;
     overflow-y: auto;
     z-index: 1000;
     display: none;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+    scrollbar-width: thin;
+    scrollbar-color: #366549 #2a4d3a;
+}
+.search-results::-webkit-scrollbar {
+    width: 6px;
+}
+.search-results::-webkit-scrollbar-track {
+    background: #2a4d3a;
+    border-radius: 3px;
+}
+.search-results::-webkit-scrollbar-thumb {
+    background: #366549;
+    border-radius: 3px;
+}
+.search-results::-webkit-scrollbar-thumb:hover {
+    background: #4a8a6a;
 }
 
 .search-results div {
     padding: 0.75rem 1rem;
     cursor: pointer;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #2a4d3a;
+    color: #e4e4e7;
 }
 
 .search-results div:last-child {
@@ -198,7 +209,7 @@ header h1 {
 }
 
 .search-results div:hover {
-    background: #f5f5f5;
+    background: #2a4d3a;
 }
 
 .mega-menu {
