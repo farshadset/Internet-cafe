@@ -986,6 +986,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     buildMegaMenu();
 
+    window.megaMenuSearchIndex = [];
+    Object.keys(MEGA_MENU_DATA).forEach(function(key) {
+        var sections = MEGA_MENU_DATA[key];
+        sections.forEach(function(section) {
+            window.megaMenuSearchIndex.push({ title: section.title, link: section.link });
+            if (section.subItems) {
+                section.subItems.forEach(function(sub) {
+                    window.megaMenuSearchIndex.push({ title: sub.title, link: sub.link });
+                });
+            }
+        });
+    });
+
     let activeMegaItem = null;
     let hoverCloseTimer = null;
 
@@ -1231,7 +1244,7 @@ document.addEventListener('DOMContentLoaded', () => {
               : form.id === 'resumeEmploymentForm' ? 'resumeEmployment'
               : form.id === 'customServicesForm' ? 'customServices'
               : form.id === 'articlesResearchForm' ? 'articlesResearch'
-              : normalizeServiceKey(form.dataset.service || new URLSearchParams(window.location.search).get('service'));
+              : form.dataset.service || new URLSearchParams(window.location.search).get('service') || null;
         if (key) {
             renderServiceForm(form, key);
             setupServiceForm(form, key);
@@ -1497,18 +1510,25 @@ document.addEventListener('DOMContentLoaded', () => {
         var chatInput = inlineChatMessages.parentElement.querySelector('.admin-chat-input-area');
         if (!chatInput) return;
 
+        inlineAttachmentPreview = document.getElementById('inlineAttachmentPreview') || inlineAttachmentPreview;
         if (!inlineAttachmentPreview) {
             inlineAttachmentPreview = document.createElement('div');
             inlineAttachmentPreview.className = 'attachment-preview hidden';
             inlineAttachmentPreview.id = 'inlineAttachmentPreview';
+            chatInput.insertBefore(inlineAttachmentPreview, chatInput.firstChild);
         }
+
+        inlinePinAttachment = document.getElementById('inlinePinAttachment') || inlinePinAttachment;
         if (!inlinePinAttachment) {
             inlinePinAttachment = document.createElement('button');
             inlinePinAttachment.type = 'button';
             inlinePinAttachment.className = 'pin-attachment';
             inlinePinAttachment.title = 'افزودن فایل';
             inlinePinAttachment.innerHTML = '<i class="fas fa-paperclip"></i>';
+            chatInput.appendChild(inlinePinAttachment);
         }
+
+        inlineAttachmentFile = document.getElementById('inlineAttachmentFile') || inlineAttachmentFile;
         if (!inlineAttachmentFile) {
             inlineAttachmentFile = document.createElement('input');
             inlineAttachmentFile.type = 'file';
@@ -1516,18 +1536,6 @@ document.addEventListener('DOMContentLoaded', () => {
             inlineAttachmentFile.accept = 'image/*,.pdf';
             inlineAttachmentFile.style.display = 'none';
             inlineAttachmentFile.multiple = true;
-        }
-
-        if (!document.getElementById('inlineAttachmentPreview')) {
-            inlineAttachmentPreview.id = 'inlineAttachmentPreview';
-            chatInput.insertBefore(inlineAttachmentPreview, chatInput.firstChild);
-        }
-        if (!document.getElementById('inlinePinAttachment')) {
-            inlinePinAttachment.id = 'inlinePinAttachment';
-            chatInput.appendChild(inlinePinAttachment);
-        }
-        if (!document.getElementById('inlineAttachmentFile')) {
-            inlineAttachmentFile.id = 'inlineAttachmentFile';
             document.body.appendChild(inlineAttachmentFile);
         }
 
@@ -1576,6 +1584,7 @@ document.addEventListener('DOMContentLoaded', () => {
             html += '<div class="pdf-icon">PDF</div>';
         }
         html += '<button type="button" class="remove-attachment" onclick="window.removeInlineAttachment(this)"><i class="fas fa-times"></i></button>';
+        html += '<button type="button" class="download-attachment" onclick="window.downloadInlineAttachment(\'' + attachment.id + '\')"><i class="fas fa-download"></i></button>';
         html += '</div>';
         inlineAttachmentPreview.insertAdjacentHTML('beforeend', html);
         inlineAttachmentPreview.classList.remove('hidden');
@@ -1593,6 +1602,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (inlineAttachmentPreview && inlineAttachmentPreview.querySelectorAll('.attachment-thumbnail').length === 0) {
             inlineAttachmentPreview.classList.add('hidden');
         }
+    };
+
+    window.downloadInlineAttachment = function(attachmentId) {
+        var attachment = inlineAttachments.find(function(a) { return a.id === attachmentId; });
+        if (!attachment) return;
+        var a = document.createElement('a');
+        a.href = attachment.dataUrl;
+        a.download = attachment.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     };
 
     function loadInlineMessages() {
