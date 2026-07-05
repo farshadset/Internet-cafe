@@ -466,6 +466,18 @@ app.delete('/api/banner/:id', async (req, res) => {
     res.json({ success: true });
 });
 
+// Mega menu API
+app.get('/api/mega-menu', async (req, res) => {
+  const menuPath = path.join(rootDir, 'public', 'mega-menu.html');
+  try {
+    const html = fs.readFileSync(menuPath, 'utf8');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch {
+    res.status(500).json({ error: 'مگا منو یافت نشد' });
+  }
+});
+
 app.put('/api/banner/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const { src, link, duration, group } = req.body;
