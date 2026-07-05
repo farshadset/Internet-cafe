@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ثبت درخواست | پیشخوان ۲۴</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&family=Markazi+Text:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#122A33;
+  --deep:#0B3B4A;
+  --deep-2:#0E4657;
+  --firouzeh:#17A2A6;
+  --firouzeh-dark:#0E7E82;
+  --firouzeh-soft:#E4F3F3;
+  --gold:#E2A93B;
+  --paper:#F4F8F8;
+  --card:#FFFFFF;
+  --line:#D8E4E4;
+  --muted:#5B7078;
+  --err:#C9463D;
+  --radius:14px;
+  --shadow:0 18px 40px -18px rgba(11,59,74,.25);
+  --font-body:"Vazirmatn",Tahoma,sans-serif;
+  --font-display:"Markazi Text","Vazirmatn",serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font-body);background:var(--paper);color:var(--ink);line-height:1.9;font-size:15px}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;background:none;border:none;color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px;border-radius:6px}
+.container{max-width:720px;margin-inline:auto;padding-inline:24px}
+
+/* ---------- header ---------- */
+header.site{background:var(--card);border-bottom:1px solid var(--line)}
+.header-row{display:flex;align-items:center;gap:28px;min-height:76px}
+.brand{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.brand-mark{width:46px;height:46px;border-radius:12px;background:var(--deep);display:grid;place-items:center;overflow:hidden}
+.brand-mark svg{width:30px;height:30px}
+.brand-name{font-family:var(--font-display);font-size:27px;font-weight:700;line-height:1.1;color:var(--deep)}
+.brand-name small{display:block;font-family:var(--font-body);font-size:10.5px;font-weight:400;color:var(--muted);letter-spacing:.06em}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:9px 18px;font-weight:700;font-size:13.5px;transition:transform .15s ease, box-shadow .15s ease}
+.btn-primary{background:var(--firouzeh);color:#fff;box-shadow:0 8px 18px -8px rgba(23,162,166,.7)}
+.btn-primary:hover{background:var(--firouzeh-dark);transform:translateY(-1px)}
+.btn-ghost{border:1.5px solid var(--line);color:var(--deep)}
+.btn-ghost:hover{border-color:var(--firouzeh);color:var(--firouzeh-dark)}
+.back-link{margin-inline-start:auto}
+
+/* ---------- form card ---------- */
+main{padding:40px 0 70px}
+.form-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.card-strip{height:5px;background:repeating-linear-gradient(90deg,var(--firouzeh) 0 34px,var(--gold) 34px 44px,var(--deep) 44px 78px)}
+.card-head{padding:28px 30px 6px}
+.card-head .kicker{color:var(--firouzeh-dark);font-weight:800;font-size:12px;letter-spacing:.08em}
+.card-head h1{font-family:var(--font-display);font-size:32px;font-weight:700;color:var(--deep);line-height:1.3;margin-top:2px}
+.card-head .cat-tag{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted);background:var(--firouzeh-soft);border-radius:99px;padding:3px 12px}
+.card-head .cat-tag::before{content:"✦";color:var(--gold);font-size:10px}
+.order-form{padding:20px 30px 30px}
+.f-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.f-field{display:flex;flex-direction:column;gap:5px}
+.f-field.full{grid-column:1/-1}
+.f-field label{font-size:12.5px;font-weight:800;color:var(--deep)}
+.f-field label .opt{font-weight:400;color:var(--muted);font-size:11.5px}
+.f-field input,.f-field textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;transition:border-color .15s,background .15s}
+.f-field textarea{resize:vertical;min-height:84px;line-height:1.8}
+.f-field input:focus,.f-field textarea:focus{outline:none;border-color:var(--firouzeh);background:#fff}
+.f-field.has-err input,.f-field.has-err textarea{border-color:var(--err)}
+.f-field .err{font-size:11.5px;color:var(--err);display:none}
+.f-field.has-err .err{display:block}
+.form-hint{display:flex;gap:9px;align-items:flex-start;background:var(--firouzeh-soft);border:1px dashed var(--firouzeh);border-radius:10px;padding:11px 14px;font-size:12.5px;color:var(--firouzeh-dark);margin-top:16px;line-height:1.9}
+.form-hint svg{width:17px;height:17px;flex-shrink:0;stroke:var(--firouzeh-dark);margin-top:3px}
+.order-form .btn-primary{width:100%;justify-content:center;margin-top:16px;padding-block:12px;font-size:14.5px}
+
+/* ---------- success ---------- */
+.order-done{padding:38px 30px 34px;text-align:center}
+.done-icon{width:62px;height:62px;border-radius:50%;background:var(--firouzeh-soft);display:grid;place-items:center;margin:0 auto 14px}
+.done-icon svg{width:30px;height:30px;stroke:var(--firouzeh-dark)}
+.order-done h2{font-family:var(--font-display);font-size:28px;color:var(--deep);font-weight:700}
+.order-done p{font-size:13px;color:var(--muted);margin-top:4px}
+.track-code{margin:18px auto 6px;display:inline-block;background:var(--deep);color:var(--gold);font-family:var(--font-display);font-size:30px;font-weight:700;letter-spacing:.06em;border-radius:12px;padding:8px 26px;direction:ltr}
+.track-note{font-size:12px;color:var(--muted)}
+.done-summary{margin:20px 0 4px;text-align:right;border:1px dashed var(--line);border-radius:12px;padding:14px 18px;font-size:13px}
+.done-summary div{display:flex;justify-content:space-between;gap:14px;padding:4px 0}
+.done-summary span{color:var(--muted)}
+.done-summary b{color:var(--deep);font-weight:700}
+.done-actions{display:flex;gap:10px;margin-top:18px}
+.done-actions .btn{flex:1;justify-content:center}
+.btn-wa{background:#12934E;color:#fff}
+.btn-wa:hover{background:#0E7A40;transform:translateY(-1px)}
+
+@media (max-width:640px){
+  .f-grid{grid-template-columns:1fr}
+  .card-head{padding-inline:20px}
+  .order-form,.order-done{padding-inline:20px}
+  .done-actions{flex-direction:column}
+  .back-link span{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="container header-row">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-5h4v5"/></svg>
+      </span>
+      <span class="brand-name">پیشخوان ۲۴<small>کافی‌نت آنلاین خدمات دولتی</small></span>
+    </a>
+    <a class="btn btn-ghost back-link" href="index.html">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      <span>بازگشت به صفحه اصلی</span>
+    </a>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    <div class="form-card">
+      <div class="card-strip"></div>
+
+      <div class="card-head">
+        <div class="kicker">ثبت درخواست</div>
+        <h1 id="omTitle">—</h1>
+        <span class="cat-tag" id="omCat">—</span>
+      </div>
+
+      <form class="order-form" id="orderForm" novalidate>
+        <div class="f-grid" id="omFields"></div>
+        <div class="form-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+          <span>پس از ثبت، کد رهگیری می‌گیرید. تصویر مدارک لازم را با همان کد از طریق واتساپ برای کارشناس بفرستید تا درخواست در سامانه رسمی ثبت شود.</span>
+        </div>
+        <button class="btn btn-primary" type="submit">ثبت درخواست</button>
+      </form>
+
+      <div class="order-done" id="orderDone" hidden>
+        <div class="done-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <h2>درخواست شما ثبت شد</h2>
+        <p>کارشناس ما حداکثر تا ۱۵ دقیقه دیگر با شما تماس می‌گیرد.</p>
+        <div class="track-code" id="omCode">—</div>
+        <div class="track-note">کد رهگیری را برای پیگیری نگه دارید.</div>
+        <div class="done-summary" id="omSummary"></div>
+        <div class="done-actions">
+          <a class="btn btn-wa" id="omWa" href="#" target="_blank" rel="noopener">ارسال مدارک در واتساپ</a>
+          <a class="btn btn-ghost" href="index.html">بازگشت به صفحه اصلی</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+// --- field templates -------------------------------------------------
+var F = {
+  birth:    {key:'birth',    label:'تاریخ تولد',                      ph:'مثلاً ۱۳۷۰/۰۵/۱۲'},
+  father:   {key:'father',   label:'نام پدر'},
+  postal:   {key:'postal',   label:'کد پستی',                         ph:'۱۰ رقم', digits:10},
+  address:  {key:'address',  label:'نشانی جدید',                      type:'textarea', full:true},
+  plate:    {key:'plate',    label:'شماره پلاک',                      ph:'مثلاً ۱۲ب۳۴۵ ایران ۶۸'},
+  car:      {key:'car',      label:'نوع خودرو',                       ph:'مثلاً پژو ۲۰۶'},
+  passport: {key:'passport', label:'شماره گذرنامه قبلی',              opt:true},
+  sheba:    {key:'sheba',    label:'شماره شبا',                       ph:'۲۴ رقم، بدون IR', digits:24},
+  taxcode:  {key:'taxcode',  label:'کد اقتصادی',                      opt:true},
+  activity: {key:'activity', label:'نوع فعالیت / شغل'},
+  biz:      {key:'biz',      label:'نام پیشنهادی شرکت / برند'},
+  bank:     {key:'bank',     label:'بانک موردنظر',                    opt:true},
+  amount:   {key:'amount',   label:'مبلغ درخواستی (تومان)'},
+  grade:    {key:'grade',    label:'مقطع / رشته تحصیلی'},
+  exam:     {key:'exam',     label:'عنوان آزمون / دانشگاه'},
+  workshop: {key:'workshop', label:'کد کارگاه بیمه',                  opt:true}
+};
+
+// --- extra fields for specific services ------------------------------
+var BY_SERVICE = {
+  'ثبت نام ثنا':[F.birth,F.postal], 'بازیابی رمز ثنا':[F.birth,F.postal],
+  'کارت ملی هوشمند':[F.birth,F.postal], 'المثنی کارت ملی':[F.birth,F.postal],
+  'تغییر نشانی':[F.postal,F.address],
+  'شناسنامه المثنی':[F.birth,F.father], 'اصلاح مشخصات':[F.birth,F.father],
+  'ثبت نام گذرنامه':[F.birth,F.postal], 'تمدید پاسپورت':[F.birth,F.passport], 'المثنی گذرنامه':[F.birth,F.passport],
+  'صدور کارت سوخت':[F.plate,F.car], 'المثنی کارت سوخت':[F.plate,F.car], 'انتقال کارت سوخت':[F.plate,F.car],
+  'نوبت تعویض پلاک':[F.plate,F.car], 'نقل و انتقال خودرو':[F.plate,F.car], 'مالیات نقل و انتقال':[F.plate,F.car],
+  'استعلام خلافی':[F.plate], 'پرداخت جریمه':[F.plate], 'اعتراض جریمه':[F.plate], 'نوبت معاینه فنی':[F.plate,F.car],
+  'اظهارنامه مالیاتی':[F.taxcode,F.activity], 'تبصره ۱۰۰':[F.taxcode,F.activity], 'ارزش افزوده':[F.taxcode,F.activity],
+  'اعتراض مالیاتی':[F.taxcode], 'کد اقتصادی':[F.activity],
+  'ثبت شرکت':[F.biz], 'ثبت برند':[F.biz], 'تغییرات شرکت':[F.biz],
+  'سهام عدالت':[F.sheba], 'فروش سهام':[F.sheba],
+  'ثبت سجام':[F.sheba], 'احراز هویت بورسی':[F.sheba], 'افتتاح کد بورسی':[F.sheba],
+  'وام ازدواج':[F.bank,F.amount], 'وام ودیعه مسکن':[F.bank,F.amount], 'وام ضروری':[F.bank,F.amount],
+  'تسهیلات خرید مسکن':[F.bank,F.amount], 'وام دانشجویی':[F.exam,F.amount],
+  'نام نویسی کارفرما':[F.workshop,F.activity], 'ثبت نیروی کار':[F.workshop], 'ارسال لیست بیمه':[F.workshop]
+};
+
+// --- fallback fields per top-level category --------------------------
+var BY_CATEGORY = {
+  'خدمات هویتی و قضایی':[F.birth,F.father],
+  'بانکی، مالی و بورسی':[F.sheba],
+  'خودرو و حمل و نقل':[F.plate,F.car],
+  'آموزش و آزمون‌ها':[F.grade,F.exam],
+  'مالیات، مجوز و کسب‌وکار':[F.activity],
+  'سامانه‌های دولتی':[]
+};
+
+var omForm   = document.getElementById('orderForm'),
+    omDone   = document.getElementById('orderDone'),
+    omFields = document.getElementById('omFields');
+
+function faDigits(s){ return String(s).replace(/\d/g, function(d){ return '۰۱۲۳۴۵۶۷۸۹'[d]; }); }
+function enDigits(s){
+  return String(s).replace(/[۰-۹]/g, function(d){ return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d); })
+                  .replace(/[٠-٩]/g, function(d){ return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); });
+}
+
+function fieldHTML(f){
+  var input = f.type === 'textarea'
+    ? '<textarea id="f_'+f.key+'" name="'+f.key+'"'+(f.opt?'':' required')+'></textarea>'
+    : '<input id="f_'+f.key+'" name="'+f.key+'" type="text"'+(f.ph?' placeholder="'+f.ph+'"':'')+(f.opt?'':' required')+(f.digits?' inputmode="numeric" data-digits="'+f.digits+'"':'')+'>';
+  return '<div class="f-field'+(f.full||f.type==='textarea'?' full':'')+'">'
+       +   '<label for="f_'+f.key+'">'+f.label+(f.opt?' <span class="opt">(اختیاری)</span>':'')+'</label>'
+       +   input + '<span class="err"></span></div>';
+}
+
+// --- read service from the URL and build the form ---------------------
+(function(){
+  var params  = new URLSearchParams(window.location.search);
+  var service = (params.get('service') || '').trim() || 'درخواست سفارشی';
+  var cat     = (params.get('cat') || '').trim() || 'درخواست سفارشی';
+
+  document.getElementById('omTitle').textContent = service;
+  document.getElementById('omCat').textContent = cat;
+  document.title = 'ثبت درخواست ' + service + ' | پیشخوان ۲۴';
+
+  var extra = BY_SERVICE[service] || BY_CATEGORY[cat] || [];
+  var html = ''
+    + fieldHTML({key:'name',   label:'نام و نام خانوادگی'})
+    + fieldHTML({key:'melli',  label:'کد ملی', ph:'۱۰ رقم', digits:10})
+    + fieldHTML({key:'mobile', label:'شماره موبایل', ph:'۰۹۱۲۳۴۵۶۷۸۹', digits:11});
+  extra.forEach(function(f){ html += fieldHTML(f); });
+  html += fieldHTML({key:'note', label:'توضیحات', type:'textarea', opt:true, full:true});
+  omFields.innerHTML = html;
+
+  var first = omFields.querySelector('input');
+  if (first) first.focus();
+})();
+
+// --- validation -------------------------------------------------------
+function validMelli(code){
+  if (!/^\d{10}$/.test(code) || /^(\d)\1{9}$/.test(code)) return false;
+  var sum = 0;
+  for (var i = 0; i < 9; i++) sum += (+code[i]) * (10 - i);
+  var r = sum % 11, c = +code[9];
+  return (r < 2 && c === r) || (r >= 2 && c === 11 - r);
+}
+function setErr(input, msg){
+  var wrap = input.closest('.f-field');
+  wrap.classList.toggle('has-err', !!msg);
+  wrap.querySelector('.err').textContent = msg || '';
+}
+
+omForm.addEventListener('submit', function(e){
+  e.preventDefault();
+  var ok = true, firstBad = null, data = {};
+
+  omForm.querySelectorAll('input, textarea').forEach(function(inp){
+    var val = inp.value.trim(), msg = '';
+    if (inp.dataset.digits) { val = enDigits(val).replace(/[\s-]/g, ''); }
+
+    if (inp.required && !val) msg = 'این فیلد را کامل کنید.';
+    else if (val && inp.name === 'melli' && !validMelli(val)) msg = 'کد ملی معتبر نیست.';
+    else if (val && inp.name === 'mobile' && !/^09\d{9}$/.test(val)) msg = 'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد.';
+    else if (val && inp.dataset.digits && inp.name !== 'melli' && inp.name !== 'mobile' && !new RegExp('^\\d{'+inp.dataset.digits+'}$').test(val)) msg = 'باید ' + faDigits(inp.dataset.digits) + ' رقم باشد.';
+
+    setErr(inp, msg);
+    if (msg && !firstBad) firstBad = inp;
+    if (msg) ok = false;
+    data[inp.name] = val;
+  });
+
+  if (!ok) { firstBad.focus(); return; }
+
+  // success
+  var code = 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
+  var service = document.getElementById('omTitle').textContent;
+  document.getElementById('omCode').textContent = code;
+  document.getElementById('omSummary').innerHTML =
+      '<div><span>خدمت</span><b>' + service + '</b></div>'
+    + '<div><span>نام</span><b>' + data.name + '</b></div>'
+    + '<div><span>موبایل</span><b>' + faDigits(data.mobile) + '</b></div>';
+
+  var waText = 'سلام، درخواست «' + service + '» را ثبت کردم.\nکد رهگیری: ' + code + '\nنام: ' + data.name + '\nمدارک را همین‌جا ارسال می‌کنم.';
+  document.getElementById('omWa').href = 'https://wa.me/989120000000?text=' + encodeURIComponent(waText);
+
+  omForm.hidden = true;
+  omDone.hidden = false;
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+</script>
+</body>
+</html>
