@@ -169,6 +169,11 @@
         <i class="fas fa-user"></i>
     </a>
     <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn"><i class="fas fa-headset"></i></a>
+    <nav class="bottom-nav">
+        <a href="index.html"><i class="fas fa-home"></i><span>خانه</span></a>
+        <a href="#" id="supportBtnBottom"><i class="fas fa-headset"></i><span>پشتیبانی</span></a>
+        <a href="#" id="profileBtnBottom"><i class="fas fa-user"></i><span>پروفایل</span></a>
+    </nav>
     
     <div class="modal" id="supportModal">
         <div class="modal-content">
@@ -373,6 +378,15 @@
                     searchResults.style.display = 'none';
                 }
             });
+        });
+
+        document.getElementById('supportBtnBottom')?.addEventListener('click', function(e){
+            e.preventDefault();
+            document.getElementById('supportBtn')?.click();
+        });
+        document.getElementById('profileBtnBottom')?.addEventListener('click', function(e){
+            e.preventDefault();
+            document.getElementById('profileBtn')?.click();
         });
     </script>
 </body>

@@ -22,6 +22,9 @@
 /* Mobile nav — hidden on desktop, shown on mobile via .show */
 .mobile-nav{display:none;background:var(--card);border-bottom:1px solid var(--line);max-height:calc(100vh - 76px);overflow:auto;text-align:right}
 
+/* Bottom nav — hidden on desktop, shown on mobile */
+.bottom-nav{display:none}
+
 /* Mobile responsive */
 @media (max-width:1023px){
   nav.main{display:none}
@@ -34,4 +37,10 @@
   .accordion-body .m-group{padding:2px 24px 16px}
   .accordion-body .m-group h5{font-size:12.5px;color:var(--gold);font-weight:800;margin:12px 0 4px}
   .accordion-body .m-group a{display:block;font-size:14px;font-weight:700;color:var(--muted);padding:5px 10px 5px 0;border-inline-start:2px solid var(--line);text-decoration:none}
+  .logo-icon,.profile-icon,.support-icon{display:none}
+  .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;height:64px;background:rgba(22,74,65,.85);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);justify-content:space-around;align-items:center;z-index:999;border-top:1px solid rgba(255,255,255,.08)}
+  .bottom-nav a{display:flex;flex-direction:column;align-items:center;gap:3px;color:rgba(255,255,255,.7);text-decoration:none;font-size:11px;font-weight:500;padding:6px 12px;border-radius:8px;transition:color .15s}
+  .bottom-nav a i{font-size:20px}
+  .bottom-nav a:hover,.bottom-nav a:active{color:#fff}
+  body{padding-bottom:64px}
 }
