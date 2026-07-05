@@ -1431,13 +1431,16 @@ header h1 {
 
 .banner {
     position: relative;
-    display: inline-block;
+    display: block;
     margin: 0 auto 1rem;
+    width: 100%;
+    max-width: 600px;
 }
 
 .banner img {
-    width: 600px;
-    height: 300px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 1;
     object-fit: cover;
     display: block;
     border-radius: 16px;
@@ -1454,16 +1457,9 @@ header h1 {
 
 .banner-link {
     display: block;
-    width: fit-content;
+    width: 100%;
+    max-width: 600px;
     margin: 0 auto;
-}
-
-@media (max-width: 768px) {
-    .banner img {
-        width: 100%;
-        max-width: 100%;
-        height: auto;
-    }
 }
 
 .banner-preview {
@@ -2244,13 +2240,10 @@ header h1 {
     flex-direction: column;
     align-items: center;
     text-decoration: none;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .service-btn:hover {
     transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
 }
 
 .service-btn img {
@@ -2265,7 +2258,7 @@ header h1 {
     width: 170px;
     padding: 0.5rem 0;
     text-align: center;
-    color: #667eea;
+    color: #FFFFFF;
     font-weight: 500;
     font-size: 1rem;
     background: transparent;
@@ -2273,19 +2266,21 @@ header h1 {
 
 @media (max-width: 768px) {
     .service-buttons {
-        gap: 0.75rem;
+        gap: 0.5rem;
         margin-bottom: 1rem;
     }
-    
+    .service-btn{flex:1;min-width:0}
     .service-btn img {
-        width: 150px;
-        height: 150px;
+        width: 100%;
+        height: auto;
+        aspect-ratio:1;
+        max-width:120px;
     }
-    
     .service-label {
-        width: 150px;
-        font-size: 0.9rem;
-        padding: 0.4rem 0;
+        width: 100%;
+        max-width:120px;
+        font-size: 0.8rem;
+        padding: 0.3rem 0;
     }
 }
 
