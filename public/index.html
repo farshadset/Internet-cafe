@@ -5,8 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>کافینت آنلاین</title>
     <link rel="stylesheet" href="style.css?v=202606230630">
+    <link rel="stylesheet" href="mega-menu.css?v=1">
     <link rel="stylesheet" href="fonts/all.css">
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&family=Markazi+Text:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root{--ink:#122A33;--deep:#0B3B4A;--deep-2:#0E4657;--firouzeh:#17A2A6;--firouzeh-dark:#0E7E82;--firouzeh-soft:#E4F3F3;--gold:#E2A93B;--paper:#F4F8F8;--card:#FFFFFF;--line:#D8E4E4;--muted:#5B7078;--radius:14px;--shadow:0 18px 40px -18px rgba(11,59,74,.25);--font-body:"Vazirmatn",Tahoma,sans-serif;--font-display:"Markazi Text","Vazirmatn",serif}
+      .mega-menu-wrap{position:relative;border-top:1px solid var(--line);background:var(--card)}
+      .mega-menu-wrap > .container{display:flex;justify-content:center;position:relative;z-index:auto;text-align:initial;padding:0;max-width:100%}
+      .mega-menu-wrap nav.main{border-top:none}
+      .mega-menu-wrap .main .container{display:flex;justify-content:center;position:relative;z-index:auto;text-align:initial;padding:0}
+      .menu-toggle-btn{display:none;width:44px;height:44px;border:1.5px solid var(--line);border-radius:10px;place-items:center;background:var(--card);cursor:pointer;margin-right:auto}
+      .menu-toggle-btn svg{width:22px;height:22px;stroke:var(--deep)}
+      @media (max-width:1023px){.menu-toggle-btn{display:grid}}
+    </style>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
     .search-results {
@@ -120,34 +131,10 @@
         </a>
         <header>
             <h1>کافینت آنلاین</h1>
-            <nav class="mega-menu">
-                <ul class="menu-list">
-                    <li class="menu-item" data-menu="identity-judicial">
-                        <a href="#"><i class="fas fa-id-card"></i> خدمات هویتی و قضایی</a>
-                        <div class="mega-dropdown"></div>
-                    </li>
-                    <li class="menu-item" data-menu="finance">
-                        <a href="#"><i class="fas fa-wallet"></i> خدمات بانکی، مالی و بورسی</a>
-                        <div class="mega-dropdown"></div>
-                    </li>
-                    <li class="menu-item" data-menu="automotive">
-                        <a href="#"><i class="fas fa-car"></i> خودرو و حمل و نقل</a>
-                        <div class="mega-dropdown"></div>
-                    </li>
-                    <li class="menu-item" data-menu="education">
-                        <a href="#"><i class="fas fa-graduation-cap"></i> آموزش، دانشگاه و آزمون‌ها</a>
-                        <div class="mega-dropdown"></div>
-                    </li>
-                    <li class="menu-item" data-menu="business-tax">
-                        <a href="#"><i class="fas fa-briefcase"></i> مالیات، مجوز و کسب‌وکار</a>
-                        <div class="mega-dropdown"></div>
-                    </li>
-                    <li class="menu-item" data-menu="government-services">
-                        <a href="#"><i class="fas fa-landmark"></i> سامانه‌های دولتی</a>
-                        <div class="mega-dropdown"></div>
-                    </li>
-                </ul>
-            </nav>
+            <div class="mega-menu-wrap" id="megaMenuWrap">
+                <div class="container" id="megaMenuContainer"></div>
+            </div>
+            <div class="mobile-nav" id="mobileNav"></div>
         </header>
         <div class="suggestive-search">
             <div class="search-wrapper">
@@ -237,6 +224,92 @@
         lucide.createIcons();
     </script>
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/mega-menu').then(function(r){return r.text()}).then(function(html){
+                document.getElementById('megaMenuContainer').innerHTML = html;
+                initMegaMenu();
+            }).catch(function(){});
+        });
+
+        function initMegaMenu(){
+            var wrap = document.getElementById('megaMenuWrap');
+            var nav = wrap.querySelector('.main');
+            if(!nav) return;
+            var toggleBtn = document.createElement('button');
+            toggleBtn.className = 'menu-toggle-btn';
+            toggleBtn.setAttribute('aria-label', 'باز و بسته کردن منو');
+            toggleBtn.setAttribute('aria-expanded', 'false');
+            toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+            toggleBtn.addEventListener('click', function(){
+                var mn = document.getElementById('mobileNav');
+                var open = mn.classList.toggle('show');
+                toggleBtn.setAttribute('aria-expanded', open);
+            });
+            wrap.insertBefore(toggleBtn, wrap.firstChild);
+            document.querySelectorAll('.nav-item > .nav-link').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    var li = btn.parentElement;
+                    var wasOpen = li.classList.contains('open');
+                    document.querySelectorAll('.nav-item.open').forEach(function(o){o.classList.remove('open')});
+                    if(!wasOpen) li.classList.add('open');
+                });
+            });
+            document.addEventListener('click', function(e){
+                if(!e.target.closest('.nav-item')){
+                    document.querySelectorAll('.nav-item.open').forEach(function(o){o.classList.remove('open')});
+                }
+            });
+            document.addEventListener('keydown', function(e){
+                if(e.key === 'Escape'){
+                    document.querySelectorAll('.nav-item.open').forEach(function(o){o.classList.remove('open')});
+                }
+            });
+            (function(){
+                var mobile = document.getElementById('mobileNav');
+                if(!mobile) return;
+                mobile.innerHTML = '';
+                document.querySelectorAll('.mega-menu-wrap .nav-item').forEach(function(item){
+                    var title = item.querySelector('.nav-link').textContent.trim();
+                    var accordionItem = document.createElement('div');
+                    accordionItem.className = 'accordion-item';
+                    var header = document.createElement('button');
+                    header.className = 'accordion-header';
+                    header.setAttribute('aria-expanded', 'false');
+                    header.textContent = title;
+                    var body = document.createElement('div');
+                    body.className = 'accordion-body';
+                    var wrap = document.createElement('div');
+                    wrap.className = 'm-group';
+                    item.querySelectorAll('.mega-col').forEach(function(col){
+                        var h = document.createElement('h5');
+                        h.textContent = col.querySelector('h4').textContent.trim();
+                        wrap.appendChild(h);
+                        col.querySelectorAll('a').forEach(function(a){
+                            var link = document.createElement('a');
+                            link.href = a.getAttribute('href');
+                            link.textContent = a.textContent;
+                            wrap.appendChild(link);
+                        });
+                    });
+                    body.appendChild(wrap);
+                    accordionItem.appendChild(header);
+                    accordionItem.appendChild(body);
+                    mobile.appendChild(accordionItem);
+                    header.addEventListener('click', function(){
+                        var isOpen = header.getAttribute('aria-expanded') === 'true';
+                        mobile.querySelectorAll('.accordion-header[aria-expanded="true"]').forEach(function(h){
+                            h.setAttribute('aria-expanded', 'false');
+                            h.nextElementSibling.style.maxHeight = '0';
+                        });
+                        if(!isOpen){
+                            header.setAttribute('aria-expanded', 'true');
+                            body.style.maxHeight = body.scrollHeight + 'px';
+                        }
+                    });
+                });
+            })();
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             var searchInput = document.getElementById('searchInput');
             var searchResults = document.getElementById('searchResults');
