@@ -4,31 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>جزئیات سفارش</title>
-    <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&family=Markazi+Text:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="fonts/all.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+:root{--ink:#122A33;--deep:#0B3B4A;--firouzeh:#17A2A6;--firouzeh-dark:#0E7E82;--firouzeh-soft:#E4F3F3;--gold:#E2A93B;--paper:#F4F8F8;--card:#FFFFFF;--line:#D8E4E4;--muted:#5B7078;--radius:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Vazirmatn",Tahoma,sans-serif;background:var(--paper);color:var(--ink);line-height:1.9;font-size:15px}
+a{color:inherit;text-decoration:none}
+.container{max-width:720px;margin-inline:auto;padding:2rem;text-align:center}
+header h1{color:var(--deep);font-family:"Markazi Text","Vazirmatn",serif;font-size:24px;margin-bottom:1.5rem}
+.order-summary{padding:30px}
+.order-summary h2{font-family:"Markazi Text","Vazirmatn",serif;font-size:24px;color:var(--deep);font-weight:700;margin-bottom:20px;text-align:center}
+.summary-card{background:var(--card);border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 2px 12px rgba(11,59,74,.08)}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line)}
+.summary-row:last-child{border-bottom:none}
+.summary-row .label{color:var(--muted);font-size:13px}
+.summary-row .value{color:var(--deep);font-weight:700;font-size:14px;text-align:right}
+.summary-row.total{background:var(--firouzeh-soft);margin:15px -20px -20px;padding:15px 20px;border-radius:0 0 12px 12px;border-top:2px solid var(--firouzeh)}
+.summary-row.total .label{color:var(--deep);font-weight:800;font-size:15px}
+.summary-row.total .value{color:var(--firouzeh-dark);font-weight:800;font-size:18px}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;padding:14px;border-radius:var(--radius);font-family:inherit;font-size:15px;font-weight:700;border:none;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--firouzeh);color:#fff}
+.btn-primary:hover{background:var(--firouzeh-dark)}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--firouzeh);color:var(--firouzeh)}
+.status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700}
+.status-pending{background:#FFF3CD;color:#856404}
+.status-processing{background:#D1ECF1;color:#0C5460}
+.status-completed{background:#D4EDDA;color:#155724}
+.status-rejected{background:#F8D7DA;color:#721C24}
+.paid-badge{background:#D4EDDA;color:#155724}
+.detail-attachment-btn{background:var(--line);border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;color:var(--deep);margin-top:4px}
+.detail-attachment-btn:hover{background:var(--firouzeh);color:#fff}
+@media(max-width:600px){.order-summary{padding:20px}.summary-row{flex-direction:column;align-items:flex-start;gap:4px}.summary-row .value{text-align:right}}
+    </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="logo-icon" title="صفحه اصلی">
-            <i class="fas fa-mug-hot"></i>
-        </a>
         <header>
             <h1>جزئیات سفارش</h1>
         </header>
         <main>
-            <div class="order-detail-card" id="orderDetail">
-                <p>بارگذاری...</p>
+            <div class="order-summary" id="orderDetail">
+                <div class="summary-card">
+                    <p style="text-align:center;color:var(--muted)">بارگذاری...</p>
+                </div>
             </div>
-            <a href="orders-pending.html" class="btn-next" style="margin-top:1rem;display:inline-block;">بازگشت</a>
         </main>
     </div>
+    <script src="app.js?v=20260707"></script>
     <script src="service-extra-configs.js"></script>
-    <script src="app.js"></script>
+    <script>
+        var FIELD_LABELS = {
+            name: 'نام و نام خانوادگی', phone: 'شماره تلفن', nationalId: 'کد ملی', note: 'توضیحات',
+            birthYear: 'سال تولد', birthMonth: 'ماه تولد', birthDay: 'روز تولد', email: 'ایمیل',
+            ownerPhone: 'شماره تلفن', ownerNationalId: 'کد ملی', vin: 'شماره VIN',
+            applicantPhone: 'شماره تلفن', applicantNationalId: 'کد ملی', idNumber: 'شماره شناسنامه',
+            regionCode: 'کد منطقه', educationLevel: 'سطح تحصیلی', contractNumber: 'شماره قرارداد',
+            depositAmount: 'مبلغ ودیعه', iban: 'شماره شبا', ownershipStatus: 'وضعیت مالکیت',
+            familyCount: 'تعداد افراد', passportNumber: 'شماره پاسپورت', examType: 'نوع آزمون',
+            address: 'آدرس', operator: 'اپراتور', birthplace: 'محل تولد',
+            serialNumber: 'سریال', familyMembers: 'تعداد افراد خانواده'
+        };
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var params = new URLSearchParams(window.location.search);
@@ -90,8 +130,10 @@
                 var merged = [];
                 var seen = {};
                 (apiAttachments || []).concat(savedAttachments || []).forEach(function(attachment) {
-                    if (!attachment || !attachment.id || seen[attachment.id]) return;
-                    seen[attachment.id] = true;
+                    if (!attachment) return;
+                    var key = attachment.id || (attachment.name + '|' + attachment.type + '|' + attachment.size);
+                    if (seen[key]) return;
+                    seen[key] = true;
                     merged.push(attachment);
                 });
                 return merged;
@@ -107,72 +149,57 @@
                 var html = '';
                 var serviceKey = order.serviceKey;
                 
+                function addRow(label, val) {
+                    if (!val) return;
+                    html += '<div class="summary-row"><span class="label">' + escapeOrderHtml(label) + '</span><span class="value">' + escapeOrderHtml(val) + '</span></div>';
+                }
+
                 if (serviceKey === 'resumeEmployment') {
                     var resumeServiceType = { resume: 'نوشتن رزومه', coverLetter: 'نامه توصیه', linkedin: 'بهینه‌سازی لینکدین', interview: 'مشاوره مصاحبه' };
-                    var v = formatValue(order.serviceType, resumeServiceType);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">نوع خدمات:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.jobField);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">رشته شغلی:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.experienceYears);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">سال‌های تجربه:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.skills);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">مهارت‌ها:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.targetJob);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">سمت شغل مورد نظر:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.customerName);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">نام و نام خانوادگی:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.customerPhone);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + v + '</span></div>';
+                    addRow('نوع خدمات', formatValue(order.serviceType, resumeServiceType));
+                    addRow('رشته شغلی', order.jobField);
+                    addRow('سال‌های تجربه', order.experienceYears);
+                    addRow('مهارت‌ها', order.skills);
+                    addRow('سمت شغل مورد نظر', order.targetJob);
+                    addRow('نام و نام خانوادگی', order.customerName);
+                    addRow('شماره تلفن', order.customerPhone);
                 } else if (serviceKey === 'articlesResearch') {
                     var researchTypeOpts = { article: 'نوشتن مقاله', research: 'تحقیق علمی', translation: 'ترجمه مقالات', editing: 'ویرایش مقالات' };
                     var academicLevelOpts = { bachelor: 'کارشناسی', master: 'کارشناسی ارشد', phd: 'دکتری' };
-                    
-                    v = formatValue(order.researchType, researchTypeOpts);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">نوع خدمات:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.subject);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">رشته / موضوع:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.academicLevel, academicLevelOpts);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">سطح تحصیلی:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.pagesCount);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">تعداد صفحات:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.deadline);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">مهلت تحویل:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.customerName);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">نام و نام خانوادگی:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.customerPhone);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + v + '</span></div>';
+                    addRow('نوع خدمات', formatValue(order.researchType, researchTypeOpts));
+                    addRow('رشته / موضوع', order.subject);
+                    addRow('سطح تحصیلی', formatValue(order.academicLevel, academicLevelOpts));
+                    addRow('تعداد صفحات', order.pagesCount);
+                    addRow('مهلت تحویل', order.deadline);
+                    addRow('نام و نام خانوادگی', order.customerName);
+                    addRow('شماره تلفن', order.customerPhone);
                 } else if (serviceKey === 'customServices') {
                     var customServiceOpts = { document: 'تدوین سند', translation: 'ترجمه مدارک', consultation: 'مشاوره', other: 'سایر خدمات' };
-                    
-                    v = formatValue(order.serviceType, customServiceOpts);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">نوع خدمت:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.customerName);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">نام و نام خانوادگی:</span><span class="detail-value">' + v + '</span></div>';
-                    
-                    v = formatValue(order.customerPhone);
-                    if (v) html += '<div class="detail-row"><span class="detail-label">شماره تلفن:</span><span class="detail-value">' + v + '</span></div>';
+                    addRow('نوع خدمت', formatValue(order.serviceType, customServiceOpts));
+                    addRow('نام و نام خانوادگی', order.customerName);
+                    addRow('شماره تلفن', order.customerPhone);
                 } else {
-                    var otherFields = ['phone', 'nationalId', 'birthYear', 'birthMonth', 'birthDay', 'email', 
+                    addRow('نام و نام خانوادگی', order.name);
+                    addRow('شماره تلفن', order.phone);
+                    addRow('کد ملی', order.nationalId);
+                    addRow('دسته‌بندی', order.category);
+                    
+                    if (order.extraFields && typeof order.extraFields === 'object') {
+                        Object.keys(order.extraFields).forEach(function(key) {
+                            var val = order.extraFields[key];
+                            if (!val) return;
+                            var label = FIELD_LABELS[key] || key;
+                            addRow(label, val);
+                        });
+                    }
+                    
+                    var otherFields = ['birthYear', 'birthMonth', 'birthDay', 'email', 
                         'ownerPhone', 'ownerNationalId', 'vin', 'applicantPhone', 'applicantNationalId', 
                         'idNumber', 'regionCode', 'educationLevel', 'contractNumber', 'depositAmount', 
                         'iban', 'ownershipStatus', 'familyCount', 'passportNumber', 'examType', 
                         'address', 'operator', 'birthplace', 'serialNumber', 'familyMembers'];
                     var labels = {
-                        phone: 'شماره تلفن همراه', nationalId: 'کد ملی', birthYear: 'سال تولد',
-                        birthMonth: 'ماه تولد', birthDay: 'روز تولد', email: 'ایمیل',
+                        birthYear: 'سال تولد', birthMonth: 'ماه تولد', birthDay: 'روز تولد', email: 'ایمیل',
                         ownerPhone: 'شماره تلفن', ownerNationalId: 'کد ملی', vin: 'شماره VIN',
                         applicantPhone: 'شماره تلفن', applicantNationalId: 'کد ملی', idNumber: 'شماره شناسنامه',
                         regionCode: 'کد منطقه', educationLevel: 'سطح تحصیلی', contractNumber: 'شماره قرارداد',
@@ -182,13 +209,9 @@
                         serialNumber: 'سریال', familyMembers: 'تعداد افراد خانواده'
                     };
                     otherFields.forEach(function(field) {
-                        var v = formatValue(order[field]);
-                        if (v) html += '<div class="detail-row"><span class="detail-label">' + labels[field] + ':</span><span class="detail-value">' + v + '</span></div>';
+                        addRow(labels[field], order[field]);
                     });
                 }
-                
-                v = formatValue(order.serviceDescription);
-                if (v) html += '<div class="detail-row"><span class="detail-label">توضیحات خدمات:</span><span class="detail-value">' + v + '</span></div>';
                 
                 return html;
             }
@@ -219,21 +242,21 @@
                         ? 'status-pending'
                         : order.paid ? 'paid-badge' : order.status === 'pending' ? 'paid-badge' : 'order-status status-' + order.status;
                     
-                    var paymentRow = '<div class="detail-row"><span class="detail-label">وضعیت پرداخت:</span><span class="detail-value"><span class="' + paymentClass + '">' + paymentLabel + '</span></span></div>';
+                    var paymentRow = '<div class="summary-row"><span class="label">وضعیت پرداخت</span><span class="value"><span class="' + paymentClass + '">' + paymentLabel + '</span></span></div>';
                     
                     var priceRow = '';
                     if (isSpecialService(order)) {
                         if (['pending', 'countersent', 'usercounter'].includes(order.priceStatus)) {
                             var displayedPrice = order.priceStatus === 'countersent' ? order.adminProposedPrice : order.proposedPrice;
-                            priceRow = '<div class="detail-row"><span class="detail-label">قیمت پیشنهادی:</span><span class="detail-value price-value">' + formatPrice(displayedPrice) + '&nbsp;&nbsp;تومان</span></div>';
+                            priceRow = '<div class="summary-row"><span class="label">قیمت پیشنهادی</span><span class="value">' + formatPrice(displayedPrice) + ' تومان</span></div>';
                         } else if (order.priceStatus === 'accepted') {
-                            priceRow = '<div class="detail-row"><span class="detail-label">قیمت نهایی:</span><span class="detail-value price-value">' + formatPrice(order.adminProposedPrice || order.proposedPrice) + '&nbsp;&nbsp;تومان</span></div>';
+                            priceRow = '<div class="summary-row"><span class="label">قیمت نهایی</span><span class="value">' + formatPrice(order.adminProposedPrice || order.proposedPrice) + ' تومان</span></div>';
                         }
                     }
                     
                     var paymentButton = '';
                     if (isSpecialService(order) && order.priceStatus === 'accepted' && !order.paid) {
-                        paymentButton = '<div class="detail-row" style="text-align:center;margin-top:1rem;"><button id="confirmPaymentStatusBtn" class="btn-confirm" style="background:#27ae60;color:white;border:none;padding:0.5rem 1.5rem;border-radius:4px;cursor:pointer;font-size:1rem;">تایید پرداخت</button></div>';
+                        paymentButton = '<button id="confirmPaymentStatusBtn" class="btn btn-primary" style="margin-top:10px">تایید پرداخت</button>';
                     }
                     
 var formFieldsHtml = renderFormFields(order);
@@ -250,28 +273,49 @@ var formFieldsHtml = renderFormFields(order);
                             }
                         }
                         var allAttachments = mergeAttachments(order.attachments, savedAttachments);
-                        var notesText = additionalNotes || 'ندارد';
-                        var notesValueHtml = '<span class="detail-value"><span class="detail-notes-text">' + escapeOrderHtml(notesText) + '</span></span>';
-                        if (allAttachments.length > 0) {
-                            notesValueHtml = '<span class="detail-value detail-value-with-attachment"><span class="detail-notes-text">' + escapeOrderHtml(notesText) + '</span><button type="button" class="detail-attachment-button" data-code="' + escapeOrderHtml(order.trackingCode) + '" title="مشاهده فایل‌های پیوست"><i class="fas fa-paperclip"></i></button></span>';
-                        }
-                       
-                        container.innerHTML = '<h2 style="text-align:center;margin-bottom:1rem;">' + (order.username || 'کاربر') + '</h2>' +
-                            '<div class="detail-row"><span class="detail-label">کد سفارش:</span><span class="detail-value">' + order.trackingCode + '</span></div>' +
-                            '<div class="detail-row"><span class="detail-label">نوع سرویس:</span><span class="detail-value">' + serviceTitle + '</span></div>' +
-                            formFieldsHtml +
-                            '<div class="detail-row"><span class="detail-label">توضیحات:</span>' + notesValueHtml + '</div>' +
-                            priceRow +
-                            paymentRow +
-                            paymentButton;
                         
-                        var notesAttachmentBtn = document.querySelector('.detail-attachment-button');
-                        if (notesAttachmentBtn) {
-                            notesAttachmentBtn.addEventListener('click', function(event) {
-                                event.stopPropagation();
-                                window.openAttachmentPopup(allAttachments, { adminMode: false, code: order.trackingCode });
+                        // Build file previews
+                        var filesHtml = '';
+                        if (allAttachments.length > 0) {
+                            filesHtml = '<div class="summary-row"><span class="label">فایل‌های پیوست</span><span class="value"><div style="display:flex;flex-wrap:wrap;gap:8px">';
+                            allAttachments.forEach(function(att) {
+                                var fileName = att.name || att.fileName || 'فایل';
+                                var isImage = att.type && att.type.startsWith('image/') || (att.dataUrl && att.dataUrl.startsWith('data:image'));
+                                var src = att.dataUrl || att.url || '';
+                                if (isImage && src) {
+                                    filesHtml += '<div style="position:relative;width:100px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)"><img src="' + src + '" style="width:100%;height:80px;object-fit:cover;display:block"><div style="font-size:9px;text-align:center;padding:2px;background:rgba(0,0,0,.05)">' + escapeOrderHtml(fileName) + '</div><a href="' + src + '" download="' + escapeOrderHtml(fileName) + '" style="position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:var(--firouzeh);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;text-decoration:none" title="دانلود"><i class="fas fa-download"></i></a></div>';
+                                } else {
+                                    filesHtml += '<div style="width:100px;height:100px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8f8f8;position:relative"><i class="fas fa-file" style="font-size:24px;color:var(--muted);margin-bottom:4px"></i><div style="font-size:9px;text-align:center;padding:2px 4px;word-break:break-all">' + escapeOrderHtml(fileName) + '</div>' + (src ? '<a href="' + src + '" download="' + escapeOrderHtml(fileName) + '" style="position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:var(--firouzeh);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;text-decoration:none" title="دانلود"><i class="fas fa-download"></i></a>' : '') + '</div>';
+                                }
                             });
+                            filesHtml += '</div></span></div>';
                         }
+                        
+                        var notesText = order.note || order.additionalNotes || '';
+                        
+                        // Build summary in form order
+                        var summaryHtml = '<div class="summary-card">' +
+                            '<div class="summary-row"><span class="label">نوع خدمت</span><span class="value">' + serviceTitle + '</span></div>';
+                        
+                        if (order.category) {
+                            summaryHtml += '<div class="summary-row"><span class="label">دسته‌بندی</span><span class="value">' + escapeOrderHtml(order.category) + '</span></div>';
+                        }
+                        
+                        summaryHtml += formFieldsHtml;
+                        
+                        if (notesText) {
+                            summaryHtml += '<div class="summary-row"><span class="label">توضیحات</span><span class="value">' + escapeOrderHtml(notesText) + '</span></div>';
+                        }
+                        
+                        summaryHtml += filesHtml;
+                        summaryHtml += priceRow;
+                        summaryHtml += paymentRow;
+                        summaryHtml += '<div class="summary-row total"><span class="label">مبلغ قابل پرداخت</span><span class="value">۵۰۰,۰۰۰ تومان</span></div>';
+                        summaryHtml += '</div>';
+                        
+                        container.innerHTML = summaryHtml +
+                            paymentButton +
+                            '<a href="orders-pending.html" class="btn btn-ghost" style="margin-top:10px">بازگشت</a>';
                         
                         var priceSnapshot = JSON.stringify({
                             status: order.status,
@@ -330,8 +374,9 @@ var formFieldsHtml = renderFormFields(order);
                         }
                     })()
                 })
-                .catch(function() {
-                    container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری جزئیات.</p>';
+                .catch(function(err) {
+                    console.error('Order detail error:', err);
+                    container.innerHTML = '<div class="summary-card"><p style="text-align:center;color:red;">خطا در بارگذاری جزئیات. لطفاً دوباره تلاش کنید.</p></div>';
                 });
         });
     </script>
