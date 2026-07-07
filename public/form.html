@@ -65,6 +65,15 @@ main{padding:40px 0 70px}
 .f-field label .opt{font-weight:400;color:var(--muted);font-size:11.5px}
 .f-field input,.f-field textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;transition:border-color .15s,background .15s}
 .f-field textarea{resize:vertical;min-height:84px;line-height:1.8}
+.f-field .textarea-wrap{position:relative}
+.f-field .textarea-wrap textarea{width:100%;padding-left:40px;box-sizing:border-box}
+.f-field .attach-btn{position:absolute;bottom:10px;left:10px;width:32px;height:32px;border-radius:8px;border:none;background:var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--deep);font-size:16px;transition:background .15s}
+.f-field .attach-btn:hover{background:var(--firouzeh);color:#fff}
+.f-field .file-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.f-field .file-preview .file-thumb{position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)}
+.f-field .file-preview .file-thumb img{width:100%;height:100%;object-fit:cover}
+.f-field .file-preview .file-thumb .file-name{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:2px 4px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.f-field .file-preview .file-thumb .file-remove{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:rgba(220,50,50,.85);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
 .f-field input:focus,.f-field textarea:focus{outline:none;border-color:var(--firouzeh);background:#fff}
 .f-field.has-err input,.f-field.has-err textarea{border-color:var(--err)}
 .f-field .err{font-size:11.5px;color:var(--err);display:none}
@@ -133,6 +142,7 @@ main{padding:40px 0 70px}
   .done-actions,.payment-confirm .actions,.order-pending .actions{flex-direction:column}
   .back-link span{display:none}
 }
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 </style>
 </head>
 <body>
@@ -312,10 +322,19 @@ function enDigits(s){
 }
 
 function fieldHTML(f){
-  var input = f.type === 'textarea'
-    ? '<textarea id="f_'+f.key+'" name="'+f.key+'"'+(f.opt?'':' required')+'></textarea>'
-    : '<input id="f_'+f.key+'" name="'+f.key+'" type="text"'+(f.ph?' placeholder="'+f.ph+'"':'')+(f.opt?'':' required')+(f.digits?' inputmode="numeric" data-digits="'+f.digits+'"':'')+'>';
-  return '<div class="f-field'+(f.full||f.type==='textarea'?' full':'')+'">'
+  if(f.type === 'textarea'){
+    return '<div class="f-field full">'
+         +   '<label for="f_'+f.key+'">'+f.label+(f.opt?' <span class="opt">(اختیاری)</span>':'')+'</label>'
+         +   '<div class="textarea-wrap">'
+         +     '<textarea id="f_'+f.key+'" name="'+f.key+'"'+(f.opt?'':' required')+'></textarea>'
+         +     '<button type="button" class="attach-btn" onclick="document.getElementById(\'f_attachInput\').click()" title="افزودن فایل"><i class="fas fa-paperclip"></i></button>'
+         +   '</div>'
+         +   '<div class="file-preview" id="f_filePreview"></div>'
+         +   '<input type="file" id="f_attachInput" accept="image/*,.pdf,.doc,.docx" style="display:none" multiple>'
+         +   '<span class="err"></span></div>';
+  }
+  var input = '<input id="f_'+f.key+'" name="'+f.key+'" type="text"'+(f.ph?' placeholder="'+f.ph+'"':'')+(f.opt?'':' required')+(f.digits?' inputmode="numeric" data-digits="'+f.digits+'"':'')+'>';
+  return '<div class="f-field'+(f.full?' full':'')+'">'
        +   '<label for="f_'+f.key+'">'+f.label+(f.opt?' <span class="opt">(اختیاری)</span>':'')+'</label>'
        +   input + '<span class="err"></span></div>';
 }
@@ -342,6 +361,63 @@ function fieldHTML(f){
   var first = omFields.querySelector('input');
   if (first) first.focus();
 })();
+
+// --- toast notification ---------------------------------------------------
+function showToast(msg) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a73e8;color:#fff;padding:12px 28px;border-radius:10px;font-size:14px;font-family:Vazirmatn,sans-serif;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:toastIn .3s ease';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2500);
+  setTimeout(function(){ t.remove(); }, 3000);
+}
+
+// --- file attachment ---------------------------------------------------
+window._attachedFiles = [];
+(function(){
+  var fileInput = document.getElementById('f_attachInput');
+  var preview = document.getElementById('f_filePreview');
+  if(!fileInput || !preview) return;
+  fileInput.addEventListener('change', function(e){
+    var files = Array.from(e.target.files);
+    var remaining = 4 - window._attachedFiles.length;
+    if (remaining <= 0) {
+      showToast('حداکثر می‌توانید ۴ فایل آپلود کنید.');
+      fileInput.value = '';
+      return;
+    }
+    if (files.length > remaining) {
+      showToast('حداکثر می‌توانید ۴ فایل آپلود کنید.');
+      files = files.slice(0, remaining);
+    }
+    files.forEach(function(file){
+      var id = 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+      window._attachedFiles.push({id:id, file:file});
+      var thumb = document.createElement('div');
+      thumb.className = 'file-thumb';
+      thumb.dataset.id = id;
+      if(file.type.startsWith('image/')){
+        var reader = new FileReader();
+        reader.onload = function(ev){
+          thumb.innerHTML = '<img src="'+ev.target.result+'">'
+            + '<div class="file-name">'+file.name+'</div>'
+            + '<button type="button" class="file-remove" onclick="window._removeAttach(\''+id+'\')">&times;</button>';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f0f0f0;font-size:10px;color:#666;text-align:center;padding:4px">'+file.name+'</div>'
+          + '<button type="button" class="file-remove" onclick="window._removeAttach(\''+id+'\')">&times;</button>';
+      }
+      preview.appendChild(thumb);
+    });
+    fileInput.value = '';
+  });
+})();
+window._removeAttach = function(id){
+  window._attachedFiles = window._attachedFiles.filter(function(f){return f.id !== id});
+  var thumb = document.querySelector('.file-thumb[data-id="'+id+'"]');
+  if(thumb) thumb.remove();
+};
 
 // --- validation -------------------------------------------------------
 function validMelli(code){
@@ -398,6 +474,24 @@ omForm.addEventListener('submit', function(e){
   });
   if (data.note) {
     fieldsHtml += '<div class="summary-row"><span class="label">توضیحات</span><span class="value">' + data.note + '</span></div>';
+  }
+  if (window._attachedFiles && window._attachedFiles.length > 0) {
+    var filesHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">';
+    window._attachedFiles.forEach(function(f){
+      if(f.file.type.startsWith('image/')){
+        var reader = new FileReader();
+        reader.onload = function(ev){
+          var img = document.querySelector('[data-thumb-id="'+f.id+'"] img');
+          if(img) img.src = ev.target.result;
+        };
+        reader.readAsDataURL(f.file);
+        filesHtml += '<div data-thumb-id="'+f.id+'" style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)"><img src="" style="width:100%;height:100%;object-fit:cover"><div style="font-size:9px;text-align:center;padding:2px;background:rgba(0,0,0,.05)">'+f.file.name+'</div></div>';
+      } else {
+        filesHtml += '<div style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;background:#f8f8f8;font-size:10px;color:#666;text-align:center;padding:4px">'+f.file.name+'</div>';
+      }
+    });
+    filesHtml += '</div>';
+    fieldsHtml += '<div class="summary-row"><span class="label">فایل‌ها</span><span class="value">'+filesHtml+'</span></div>';
   }
   document.getElementById('summaryFields').innerHTML = fieldsHtml;
 
@@ -460,23 +554,66 @@ document.getElementById('btnConfirmPay').addEventListener('click', function(){
     }
   });
 
-  fetch('/api/order', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(body)
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(result){
-    var code = result.trackingCode || 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
-    localStorage.setItem('lastTrackingCode', code);
-    showPendingPage(code, service, cat, data);
-  })
-  .catch(function(){
-    var code = 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
-    localStorage.setItem('lastTrackingCode', code);
-    showPendingPage(code, service, cat, data);
-  });
+  // Collect attached files (read as dataUrl so they're stored server-side)
+  var attachFiles = (window._attachedFiles && window._attachedFiles.length > 0) ? window._attachedFiles : [];
+  if (attachFiles.length > 0) {
+    var attPromises = attachFiles.map(function(f) {
+      return new Promise(function(resolve) {
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          resolve({id: f.id, name: f.file.name, type: f.file.type, size: f.file.size, dataUrl: ev.target.result});
+        };
+        reader.onerror = function() {
+          resolve({id: f.id, name: f.file.name, type: f.file.type, size: f.file.size, dataUrl: ''});
+        };
+        reader.readAsDataURL(f.file);
+      });
+    });
+    Promise.all(attPromises).then(function(attList) {
+      body.attachments = attList;
+      sendOrder();
+    });
+  } else {
+    sendOrder();
+  }
+
+  function sendOrder() {
+    fetch('/api/order', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(result){
+      var code = result.trackingCode || 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
+      localStorage.setItem('lastTrackingCode', code);
+      saveAttachmentsToDB(code);
+      showPendingPage(code, service, cat, data);
+    })
+    .catch(function(){
+      var code = 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
+      localStorage.setItem('lastTrackingCode', code);
+      saveAttachmentsToDB(code);
+      showPendingPage(code, service, cat, data);
+    });
+  }
 });
+
+function saveAttachmentsToDB(code) {
+  if (!window._attachedFiles || window._attachedFiles.length === 0) return;
+  var atts = [];
+  var pending = window._attachedFiles.length;
+  window._attachedFiles.forEach(function(f) {
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      atts.push({ id: f.id, name: f.file.name, type: f.file.type, size: f.file.size, dataUrl: ev.target.result });
+      if (atts.length === pending && window.saveAttachmentsForTrackingCode) {
+        window.saveAttachmentsForTrackingCode(code, atts);
+      }
+    };
+    reader.readAsDataURL(f.file);
+  });
+}
 
 function showPendingPage(code, service, cat, data){
   document.getElementById('pendingCode').textContent = code;
@@ -492,6 +629,24 @@ function showPendingPage(code, service, cat, data){
     pendingHtml += '<div><span>' + label + '</span><b>' + displayVal + '</b></div>';
   });
   pendingHtml += '<div><span>مبلغ پرداختی</span><b>۵۰۰,۰۰۰ تومان</b></div>';
+  if(window._attachedFiles && window._attachedFiles.length > 0){
+    var pFiles = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">';
+    window._attachedFiles.forEach(function(f){
+      if(f.file.type.startsWith('image/')){
+        var reader = new FileReader();
+        reader.onload = function(ev){
+          var img = document.querySelector('#orderPending [data-thumb-id="'+f.id+'"] img');
+          if(img) img.src = ev.target.result;
+        };
+        reader.readAsDataURL(f.file);
+        pFiles += '<div data-thumb-id="'+f.id+'" style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)"><img src="" style="width:100%;height:100%;object-fit:cover"><div style="font-size:9px;text-align:center;padding:2px;background:rgba(0,0,0,.05)">'+f.file.name+'</div></div>';
+      } else {
+        pFiles += '<div style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;background:#f8f8f8;font-size:10px;color:#666;text-align:center;padding:4px">'+f.file.name+'</div>';
+      }
+    });
+    pFiles += '</div>';
+    pendingHtml += '<div><span>فایل‌ها</span><b>'+pFiles+'</b></div>';
+  }
   document.getElementById('pendingSummary').innerHTML = pendingHtml;
 
   var waText = 'سلام، درخواست «' + service + '» را ثبت کردم.\nکد رهگیری: ' + code + '\nنام: ' + data.name + '\nمدارک را همین‌جا ارسال می‌کنم.';
