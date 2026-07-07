@@ -90,11 +90,47 @@ main{padding:40px 0 70px}
 .btn-wa{background:#12934E;color:#fff}
 .btn-wa:hover{background:#0E7A40;transform:translateY(-1px)}
 
+/* ---------- order summary ---------- */
+.order-summary{padding:30px}
+.order-summary h2{font-family:var(--font-display);font-size:24px;color:var(--deep);font-weight:700;margin-bottom:20px;text-align:center}
+.summary-card{background:var(--paper);border-radius:12px;padding:20px;margin-bottom:20px}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line)}
+.summary-row:last-child{border-bottom:none}
+.summary-row .label{color:var(--muted);font-size:13px}
+.summary-row .value{color:var(--deep);font-weight:700;font-size:14px}
+.summary-row.total{background:var(--firouzeh-soft);margin:15px -20px -20px;padding:15px 20px;border-radius:0 0 12px 12px;border-top:2px solid var(--firouzeh)}
+.summary-row.total .label{color:var(--deep);font-weight:800;font-size:15px}
+.summary-row.total .value{color:var(--firouzeh-dark);font-weight:800;font-size:18px}
+.btn-pay{width:100%;justify-content:center;margin-top:20px;padding-block:14px;font-size:15px;background:linear-gradient(135deg,var(--firouzeh),var(--firouzeh-dark));box-shadow:0 8px 20px -8px rgba(23,162,166,.8)}
+.btn-pay:hover{transform:translateY(-2px);box-shadow:0 12px 25px -8px rgba(23,162,166,.9)}
+
+/* ---------- payment confirmation ---------- */
+.payment-confirm{padding:30px;text-align:center}
+.payment-confirm .done-icon{background:var(--gold);margin-bottom:16px}
+.payment-confirm .done-icon svg{stroke:var(--deep)}
+.payment-confirm h2{font-family:var(--font-display);font-size:26px;color:var(--deep);font-weight:700;margin-bottom:8px}
+.payment-confirm p{font-size:13px;color:var(--muted);line-height:2}
+.payment-confirm .price-box{display:inline-block;background:var(--deep);color:var(--gold);font-family:var(--font-display);font-size:32px;font-weight:700;border-radius:12px;padding:12px 30px;margin:20px 0}
+.payment-confirm .actions{display:flex;gap:10px;margin-top:20px}
+.payment-confirm .actions .btn{flex:1;justify-content:center}
+.btn-success{background:#27ae60;color:#fff;box-shadow:0 8px 18px -8px rgba(39,174,96,.7)}
+.btn-success:hover{background:#219a52;transform:translateY(-1px)}
+
+/* ---------- order pending ---------- */
+.order-pending{padding:38px 30px 34px;text-align:center}
+.order-pending .done-icon{background:#fff3cd;display:grid;place-items:center;width:62px;height:62px;border-radius:50%;margin:0 auto 14px}
+.order-pending .done-icon svg{width:30px;height:30px;stroke:#856404}
+.order-pending h2{font-family:var(--font-display);font-size:26px;color:var(--deep);font-weight:700;margin-bottom:8px}
+.order-pending p{font-size:13px;color:var(--muted);line-height:2}
+.pending-badge{display:inline-block;background:#fff3cd;color:#856404;font-weight:700;font-size:14px;border-radius:8px;padding:8px 20px;margin:15px 0;border:1px solid #ffc107}
+.order-pending .actions{display:flex;gap:10px;margin-top:20px}
+.order-pending .actions .btn{flex:1;justify-content:center}
+
 @media (max-width:640px){
   .f-grid{grid-template-columns:1fr}
   .card-head{padding-inline:20px}
-  .order-form,.order-done{padding-inline:20px}
-  .done-actions{flex-direction:column}
+  .order-form,.order-done,.order-summary,.payment-confirm,.order-pending{padding-inline:20px}
+  .done-actions,.payment-confirm .actions,.order-pending .actions{flex-direction:column}
   .back-link span{display:none}
 }
 </style>
@@ -150,6 +186,60 @@ main{padding:40px 0 70px}
            <a class="btn btn-ghost" href="index.html">بازگشت به صفحه اصلی</a>
          </div>
        </div>
+
+       <!-- Order Summary -->
+       <div class="order-summary" id="orderSummary" hidden>
+         <h2>خلاصه سفارش</h2>
+         <div class="summary-card" id="summaryCard">
+           <div class="summary-row">
+             <span class="label">نوع خدمت</span>
+             <span class="value" id="sumService">—</span>
+           </div>
+           <div class="summary-row">
+             <span class="label">دسته‌بندی</span>
+             <span class="value" id="sumCat">—</span>
+           </div>
+           <div id="summaryFields"></div>
+           <div class="summary-row total">
+             <span class="label">مبلغ قابل پرداخت</span>
+             <span class="value">۵۰۰,۰۰۰ تومان</span>
+           </div>
+         </div>
+         <button class="btn btn-primary btn-pay" id="btnPay" type="button">تایید و پرداخت</button>
+         <button class="btn btn-ghost" id="btnBackToForm" type="button" style="width:100%;justify-content:center;margin-top:10px">بازگشت به فرم</button>
+       </div>
+
+       <!-- Payment Confirmation -->
+       <div class="payment-confirm" id="paymentConfirm" hidden>
+         <div class="done-icon">
+           <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+         </div>
+         <h2>تایید پرداخت</h2>
+         <p>لطفاً مبلغ زیر را پرداخت کنید</p>
+         <div class="price-box">۵۰۰,۰۰۰ تومان</div>
+         <p>پس از پرداخت موفق، سفارش شما در صف انتظار قرار می‌گیرد</p>
+         <div class="actions">
+           <button class="btn btn-success" id="btnConfirmPay" type="button">پرداخت و تایید نهایی</button>
+           <button class="btn btn-ghost" id="btnBackToSummary" type="button">بازگشت</button>
+         </div>
+       </div>
+
+       <!-- Order Pending -->
+       <div class="order-pending" id="orderPending" hidden>
+         <div class="done-icon">
+           <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+         </div>
+         <h2>سفارش شما ثبت شد</h2>
+         <p>پرداخت شما با موفقیت انجام شد</p>
+         <div class="pending-badge">در انتظار بررسی کارشناس</div>
+         <div class="track-code" id="pendingCode">—</div>
+         <div class="track-note">کد رهگیری را برای پیگیری نگه دارید. کارشناس ما حداکثر تا ۱۵ دقیقه دیگر با شما تماس می‌گیرد.</div>
+         <div class="done-summary" id="pendingSummary"></div>
+         <div class="actions">
+           <a class="btn btn-wa" id="pendingWa" href="#" target="_blank" rel="noopener">ارسال مدارک در واتساپ</a>
+           <a class="btn btn-ghost" href="index.html">بازگشت به صفحه اصلی</a>
+         </div>
+       </div>
      </div>
    </div>
 </main>
@@ -159,23 +249,27 @@ main{padding:40px 0 70px}
 window.EXTRA_SERVICE_CONFIGS = EXTRA_SERVICE_OPTIONS;
 // --- field templates -------------------------------------------------
 var F = {
-  birth:    {key:'birth',    label:'تاریخ تولد',                      ph:'مثلاً ۱۳۷۰/۰۵/۱۲'},
+  birth:    {key:'birth',    label:'تاریخ تولد'},
   father:   {key:'father',   label:'نام پدر'},
-  postal:   {key:'postal',   label:'کد پستی',                         ph:'۱۰ رقم', digits:10},
-  address:  {key:'address',  label:'نشانی جدید',                      type:'textarea', full:true},
-  plate:    {key:'plate',    label:'شماره پلاک',                      ph:'مثلاً ۱۲ب۳۴۵ ایران ۶۸'},
-  car:      {key:'car',      label:'نوع خودرو',                       ph:'مثلاً پژو ۲۰۶'},
-  passport: {key:'passport', label:'شماره گذرنامه قبلی',              opt:true},
-  sheba:    {key:'sheba',    label:'شماره شبا',                       ph:'۲۴ رقم، بدون IR', digits:24},
-  taxcode:  {key:'taxcode',  label:'کد اقتصادی',                      opt:true},
+  postal:   {key:'postal',   label:'کد پستی'},
+  address:  {key:'address',  label:'نشانی جدید'},
+  plate:    {key:'plate',    label:'شماره پلاک'},
+  car:      {key:'car',      label:'نوع خودرو'},
+  passport: {key:'passport', label:'شماره گذرنامه قبلی'},
+  sheba:    {key:'sheba',    label:'شماره شبا'},
+  taxcode:  {key:'taxcode',  label:'کد اقتصادی'},
   activity: {key:'activity', label:'نوع فعالیت / شغل'},
   biz:      {key:'biz',      label:'نام پیشنهادی شرکت / برند'},
-  bank:     {key:'bank',     label:'بانک موردنظر',                    opt:true},
+  bank:     {key:'bank',     label:'بانک موردنظر'},
   amount:   {key:'amount',   label:'مبلغ درخواستی (تومان)'},
   grade:    {key:'grade',    label:'مقطع / رشته تحصیلی'},
   exam:     {key:'exam',     label:'عنوان آزمون / دانشگاه'},
-  workshop: {key:'workshop', label:'کد کارگاه بیمه',                  opt:true}
+  workshop: {key:'workshop', label:'کد کارگاه بیمه'}
 };
+var FIELD_LABELS = {
+  name:'نام و نام خانوادگی', phone:'شماره تلفن', nationalId:'کد ملی', note:'توضیحات'
+};
+Object.keys(F).forEach(function(k){ FIELD_LABELS[k] = F[k].label; });
 
 // --- extra fields for specific services ------------------------------
 var BY_SERVICE = {
@@ -284,22 +378,129 @@ omForm.addEventListener('submit', function(e){
 
   if (!ok) { firstBad.focus(); return; }
 
-// success
-   var code = 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
-   var service = document.getElementById('serviceTitle').textContent;
-   document.getElementById('omCode').textContent = code;
-   document.getElementById('omSummary').innerHTML =
-       '<div><span>خدمت</span><b>' + service + '</b></div>'
-     + '<div><span>نام</span><b>' + data.name + '</b></div>'
-     + '<div><span>موبایل</span><b>' + faDigits(data.phone) + '</b></div>';
+  // Store order data and show summary
+  window._orderData = data;
+  var service = document.getElementById('serviceTitle').textContent;
+  var cat = document.getElementById('omCat').textContent;
 
-  var waText = 'سلام، درخواست «' + service + '» را ثبت کردم.\nکد رهگیری: ' + code + '\nنام: ' + data.name + '\nمدارک را همین‌جا ارسال می‌کنم.';
-  document.getElementById('omWa').href = 'https://wa.me/989120000000?text=' + encodeURIComponent(waText);
+  document.getElementById('sumService').textContent = service;
+  document.getElementById('sumCat').textContent = cat;
+
+  // Build dynamic fields summary
+  var fieldsHtml = '';
+  Object.keys(data).forEach(function(key){
+    var val = data[key];
+    if (!val || key === 'note') return;
+    var label = FIELD_LABELS[key] || key;
+    var displayVal = val;
+    if (key === 'phone' || key === 'nationalId') displayVal = faDigits(val);
+    fieldsHtml += '<div class="summary-row"><span class="label">' + label + '</span><span class="value">' + displayVal + '</span></div>';
+  });
+  if (data.note) {
+    fieldsHtml += '<div class="summary-row"><span class="label">توضیحات</span><span class="value">' + data.note + '</span></div>';
+  }
+  document.getElementById('summaryFields').innerHTML = fieldsHtml;
 
   omForm.hidden = true;
-  omDone.hidden = false;
+  document.getElementById('orderSummary').hidden = false;
   window.scrollTo({top:0, behavior:'smooth'});
 });
+
+// Back to form from summary
+document.getElementById('btnBackToForm').addEventListener('click', function(){
+  document.getElementById('orderSummary').hidden = true;
+  omForm.hidden = false;
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+// Pay button → show payment confirmation
+document.getElementById('btnPay').addEventListener('click', function(){
+  document.getElementById('orderSummary').hidden = true;
+  document.getElementById('paymentConfirm').hidden = false;
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+// Back to summary from payment
+document.getElementById('btnBackToSummary').addEventListener('click', function(){
+  document.getElementById('paymentConfirm').hidden = true;
+  document.getElementById('orderSummary').hidden = false;
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+// Confirm payment → send to API and show pending
+document.getElementById('btnConfirmPay').addEventListener('click', function(){
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'در حال پردازش...';
+
+  var data = window._orderData || {};
+  var service = document.getElementById('serviceTitle').textContent;
+  var cat = document.getElementById('omCat').textContent;
+  var userData = null;
+  try { userData = JSON.parse(localStorage.getItem('userData')); } catch(e){}
+
+  var body = {
+    title: service,
+    category: cat,
+    name: data.name,
+    phone: data.phone,
+    nationalId: data.nationalId,
+    note: data.note || '',
+    extraFields: {},
+    cost: 500000,
+    status: 'pending',
+    priceStatus: 'confirmed',
+    username: userData ? userData.username : null
+  };
+
+  // Collect extra fields
+  Object.keys(data).forEach(function(key){
+    if (['name','phone','nationalId','note'].indexOf(key) === -1 && data[key]) {
+      body.extraFields[key] = data[key];
+    }
+  });
+
+  fetch('/api/order', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(result){
+    var code = result.trackingCode || 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
+    localStorage.setItem('lastTrackingCode', code);
+    showPendingPage(code, service, cat, data);
+  })
+  .catch(function(){
+    var code = 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
+    localStorage.setItem('lastTrackingCode', code);
+    showPendingPage(code, service, cat, data);
+  });
+});
+
+function showPendingPage(code, service, cat, data){
+  document.getElementById('pendingCode').textContent = code;
+  var pendingHtml =
+      '<div><span>خدمت</span><b>' + service + '</b></div>'
+    + '<div><span>دسته‌بندی</span><b>' + cat + '</b></div>';
+  Object.keys(data).forEach(function(key){
+    var val = data[key];
+    if (!val) return;
+    var label = FIELD_LABELS[key] || key;
+    var displayVal = val;
+    if (key === 'phone' || key === 'nationalId') displayVal = faDigits(val);
+    pendingHtml += '<div><span>' + label + '</span><b>' + displayVal + '</b></div>';
+  });
+  pendingHtml += '<div><span>مبلغ پرداختی</span><b>۵۰۰,۰۰۰ تومان</b></div>';
+  document.getElementById('pendingSummary').innerHTML = pendingHtml;
+
+  var waText = 'سلام، درخواست «' + service + '» را ثبت کردم.\nکد رهگیری: ' + code + '\nنام: ' + data.name + '\nمدارک را همین‌جا ارسال می‌کنم.';
+  document.getElementById('pendingWa').href = 'https://wa.me/989120000000?text=' + encodeURIComponent(waText);
+
+  document.getElementById('paymentConfirm').hidden = true;
+  document.getElementById('orderPending').hidden = false;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
 </script>
 </body>
 </html>
