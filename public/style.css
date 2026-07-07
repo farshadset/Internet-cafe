@@ -240,18 +240,15 @@ header h1 {
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.25rem;
-    background: rgba(255, 255, 255, 0.1);
+    background: transparent;
     border-radius: 12px;
     text-decoration: none;
-    color: white;
+    color: #FFFFFF;
     font-weight: 500;
-    transition: all 0.3s;
-    backdrop-filter: blur(10px);
 }
 
 .mega-menu .menu-item > a:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
+    background: #227164;
 }
 
 .mega-menu .menu-item a i {
