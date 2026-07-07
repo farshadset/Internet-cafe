@@ -766,9 +766,11 @@ header h1 {
 .modal.active .close-btn {
     font-size: 2rem;
     margin-left: 1rem;
+    margin-top: 0.5rem;
     flex-shrink: 0;
     float: none;
     align-self: flex-start;
+    padding: 0.5rem;
 }
 
 .modal.active .modal-content > h2 {
@@ -779,14 +781,99 @@ header h1 {
 }
 
 .modal.active .support-sidebar {
-    width: 280px;
-    min-width: 280px;
+    width: 100px;
+    min-width: 100px;
     background: #f8f9fa;
     border-left: 1px solid #e9ecef;
     display: flex;
     flex-direction: column;
-    padding: 1rem;
+    padding: 0.5rem 0;
     overflow-y: auto;
+    overflow-x: hidden;
+    transition: width .15s ease, min-width .15s ease, padding .15s ease;
+    align-items: center;
+}
+.modal.active .support-sidebar.expanded {
+    width: 280px;
+    min-width: 280px;
+    padding: 1rem;
+    align-items: stretch;
+}
+.modal.active .support-sidebar .sidebar-header {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+.modal.active .support-sidebar.expanded .sidebar-header {
+    justify-content: space-between;
+}
+.modal.active .support-sidebar .sidebar-header h3 {
+    display: none;
+}
+.modal.active .support-sidebar.expanded .sidebar-header h3 {
+    display: block;
+}
+.modal.active .support-sidebar .conversation-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 6px 8px;
+    margin: 2px 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+    border-radius: 6px;
+}
+.modal.active .support-sidebar .conv-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.modal.active .support-sidebar .conv-date {
+    display: none;
+}
+.modal.active .support-sidebar.expanded .conversation-item {
+    padding: 8px 10px;
+}
+.modal.active .support-sidebar.expanded .conv-date {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+}
+.sidebar-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: none;
+    background: #e9ecef;
+    cursor: pointer;
+    font-size: 12px;
+    color: #333;
+    transition: background .15s;
+    flex-shrink: 0;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+.sidebar-toggle-btn:hover {
+    background: #dee2e6;
+}
+.sidebar-toggle-btn i {
+    transition: transform .15s;
+}
+.support-sidebar.expanded .sidebar-toggle-btn i {
+    transform: rotate(180deg);
 }
 
 .modal.active .admin-chat-main {
@@ -836,7 +923,9 @@ header h1 {
 
 .modal.active .sidebar-header {
     display: flex;
+    flex-direction: row-reverse;
     align-items: center;
+    justify-content: flex-start;
     gap: 0.75rem;
     margin-bottom: 1rem;
 }
@@ -2295,4 +2384,28 @@ header h1 {
 
 .btn-back:hover {
     background: #777;
+}
+
+/* Desktop Sidebar */
+.desktop-sidebar{display:none}
+
+@media (min-width:1024px){
+  .desktop-sidebar{display:flex;flex-direction:column;align-items:center;gap:6px;position:fixed;top:0;left:0;height:100vh;background:rgba(34,113,100,.9);padding:12px 8px;z-index:1001;transition:width .12s ease-out,padding .12s ease-out;overflow:hidden;width:80px;will-change:width}
+  .desktop-sidebar.expanded{width:220px;padding:14px;align-items:flex-start}
+  .desktop-sidebar a,.desktop-sidebar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#fff;text-decoration:none;font-size:11px;font-weight:600;padding:8px;border-radius:10px;border:none;background:none;cursor:pointer;font-family:inherit;width:100%;text-align:center;transition:background .1s}
+  .desktop-sidebar a:hover,.desktop-sidebar button:hover{background:rgba(255,255,255,.15)}
+  .desktop-sidebar a i,.desktop-sidebar button i{font-size:22px;min-width:22px;text-align:center}
+  .desktop-sidebar a span,.desktop-sidebar button span{opacity:0;height:0;overflow:hidden;margin:0}
+  .desktop-sidebar.expanded a,.desktop-sidebar.expanded button{flex-direction:row;justify-content:flex-start;gap:12px;font-size:15px;padding:12px 14px}
+  .desktop-sidebar.expanded a span,.desktop-sidebar.expanded button span{opacity:1;height:auto}
+  .desktop-sidebar-toggle{position:absolute;top:50%;right:-14px;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:#227164;border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:12px;transition:background .2s}
+  .desktop-sidebar-toggle:hover{background:#1C5E52}
+  .desktop-sidebar-toggle i{transition:transform .3s}
+  .desktop-sidebar.expanded .desktop-sidebar-toggle i{transform:rotate(180deg)}
+  .container{transition:none}
+  .mega-menu-wrap{margin-left:80px}
+  .desktop-sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000}
+  .desktop-sidebar-overlay.show{display:block}
+  .logo-icon{display:none !important}
+  .profile-icon,.support-icon{display:none !important}
 }

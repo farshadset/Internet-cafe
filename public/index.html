@@ -20,12 +20,6 @@
       .menu-toggle-btn{display:none;width:44px;height:44px;border:1.5px solid var(--line);border-radius:10px;place-items:center;background:var(--card);cursor:pointer;margin-right:auto}
       .menu-toggle-btn svg{width:22px;height:22px;stroke:var(--deep)}
       @media (max-width:1023px){.mega-menu-wrap{border-top:none;background:transparent}.mega-menu-wrap > .container{display:none}.menu-toggle-btn{display:none}.bottom-menu-btn{display:flex;flex-direction:column;align-items:center;gap:3px;color:rgba(255,255,255,.7);text-decoration:none;font-size:11px;font-weight:500;padding:6px 12px;border-radius:8px;transition:color .15s;background:none;border:none;cursor:pointer;font-family:inherit}.bottom-menu-btn i{font-size:20px}.bottom-menu-btn:hover,.bottom-menu-btn:active{color:#fff}}
-      /* Desktop sidebar */
-      .desktop-sidebar{display:none;position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:100;background:rgba(22,74,65,.9);backdrop-filter:blur(12px);border-radius:0 14px 14px 0;padding:10px 8px;display:flex;flex-direction:column;gap:4px;border:1px solid rgba(255,255,255,.1);border-left:none}
-      .desktop-sidebar a,.desktop-sidebar button{display:flex;flex-direction:column;align-items:center;gap:3px;color:rgba(255,255,255,.7);text-decoration:none;font-size:10px;font-weight:500;padding:10px 8px;border-radius:10px;transition:all .15s;background:none;border:none;cursor:pointer;font-family:inherit}
-      .desktop-sidebar a i,.desktop-sidebar button i{font-size:18px}
-      .desktop-sidebar a:hover,.desktop-sidebar button:hover{color:#fff;background:rgba(255,255,255,.1)}
-      @media (min-width:1024px){.desktop-sidebar{display:flex}.profile-icon,.support-icon{display:none}}
     </style>
     <style>
     .search-results {
@@ -134,10 +128,12 @@
 </head>
 <body>
     <!-- Desktop Sidebar -->
-    <nav class="desktop-sidebar">
+    <div class="desktop-sidebar-overlay" id="sidebarOverlay"></div>
+    <nav class="desktop-sidebar" id="desktopSidebar">
         <a href="index.html" title="خانه"><i class="fas fa-home"></i><span>خانه</span></a>
         <button id="sidebarSupportBtn" title="پشتیبانی"><i class="fas fa-headset"></i><span>پشتیبانی</span></button>
         <button id="sidebarProfileBtn" title="پروفایل"><i class="fas fa-user"></i><span>پروفایل</span></button>
+        <div class="desktop-sidebar-toggle" id="sidebarToggle"><i class="fas fa-chevron-left"></i></div>
     </nav>
 
     <div class="container">
@@ -196,14 +192,14 @@
     <div class="modal" id="supportModal">
         <div class="modal-content">
             <span class="close-btn" id="closeModal">&times;</span>
-            <h2>پشتیبانی</h2>
+            <h2>پشتیبانی <button class="sidebar-toggle-btn" id="sidebarConvToggle"><i class="fas fa-chevron-left"></i></button></h2>
             <div class="support-layout">
                 <div class="support-sidebar" id="supportSidebar">
                     <div class="sidebar-header">
                         <button class="new-chat-btn" id="newConversationBtn" title="گفتگوی جدید">
                             <i class="fas fa-plus"></i>
                         </button>
-                        <h3>گفتگوها</h3>
+                        <h3>چت جدید</h3>
                     </div>
                     <div class="conversations-list" id="conversationsList"></div>
                 </div>
@@ -411,6 +407,36 @@
         document.getElementById('sidebarProfileBtn')?.addEventListener('click', function(){
             document.getElementById('profileBtn')?.click();
         });
+
+        // Support sidebar toggle
+        (function(){
+            var toggle = document.getElementById('sidebarConvToggle');
+            var sidebar = document.getElementById('supportSidebar');
+            var icon = toggle?.querySelector('i');
+            if(!toggle || !sidebar) return;
+            toggle.addEventListener('click', function(){
+                sidebar.classList.toggle('expanded');
+                if(icon) icon.className = sidebar.classList.contains('expanded') ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+            });
+        })();
+
+        // Sidebar toggle
+        (function(){
+            var sidebar = document.getElementById('desktopSidebar');
+            var toggle = document.getElementById('sidebarToggle');
+            var overlay = document.getElementById('sidebarOverlay');
+            if(!sidebar || !toggle) return;
+            toggle.addEventListener('click', function(){
+                var isOpen = sidebar.classList.toggle('expanded');
+                if(overlay) overlay.classList.toggle('show', isOpen);
+                document.body.classList.toggle('sidebar-open', isOpen);
+            });
+            if(overlay) overlay.addEventListener('click', function(){
+                sidebar.classList.remove('expanded');
+                overlay.classList.remove('show');
+                document.body.classList.remove('sidebar-open');
+            });
+        })();
     </script>
     <div class="menu-overlay" id="menuOverlay"></div>
     <div class="menu-sheet" id="menuSheet">
