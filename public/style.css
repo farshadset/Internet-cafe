@@ -2396,8 +2396,14 @@ header h1 {
   .desktop-sidebar a:hover,.desktop-sidebar button:hover{background:rgba(255,255,255,.15)}
   .desktop-sidebar a i,.desktop-sidebar button i{font-size:22px;min-width:22px;text-align:center}
   .desktop-sidebar a span,.desktop-sidebar button span{opacity:0;height:0;overflow:hidden;margin:0}
-  .desktop-sidebar.expanded a,.desktop-sidebar.expanded button{flex-direction:row;justify-content:flex-start;gap:12px;font-size:15px;padding:12px 14px}
+  .desktop-sidebar.expanded a,.desktop-sidebar.expanded button{flex-direction:row-reverse;justify-content:space-between;gap:12px;font-size:15px;padding:12px 14px}
   .desktop-sidebar.expanded a span,.desktop-sidebar.expanded button span{opacity:1;height:auto}
+  .desktop-sidebar .sidebar-social{display:none !important}
+  .desktop-sidebar.expanded .sidebar-social{display:flex !important;flex-direction:row;justify-content:center;align-items:center;gap:16px;padding:0 14px;margin-top:auto}
+  .desktop-sidebar .sidebar-social a{padding:0 !important;border-radius:0 !important;background:none !important;width:auto !important;gap:0 !important;font-size:inherit !important}
+  .desktop-sidebar .sidebar-brand{padding:0;margin:0;width:100%;text-align:center}
+  .desktop-sidebar.expanded .sidebar-brand{text-align:center;padding:8px 14px}
+  .desktop-sidebar .sidebar-divider{border:none;border-top:1px solid rgba(255,255,255,.2);margin:0 0 4px;width:100%}
   .desktop-sidebar-toggle{position:absolute;top:50%;right:-14px;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:#227164;border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:12px;transition:background .2s}
   .desktop-sidebar-toggle:hover{background:#1C5E52}
   .desktop-sidebar-toggle i{transition:transform .3s}
