@@ -9,18 +9,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&family=Markazi+Text:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="fonts/all.css">
     <style>
-:root{--ink:#122A33;--deep:#0B3B4A;--firouzeh:#17A2A6;--firouzeh-dark:#0E7E82;--firouzeh-soft:#E4F3F3;--gold:#E2A93B;--paper:#F4F8F8;--card:#FFFFFF;--line:#D8E4E4;--muted:#5B7078;--radius:14px}
+:root{--ink:#122A33;--deep:#0B3B4A;--firouzeh:#17A2A6;--firouzeh-dark:#0E7E82;--firouzeh-soft:#E4F3F3;--gold:#E2A93B;--paper:#227164;--card:#FEFFF7;--line:#D8E4E4;--muted:#5B7078;--radius:14px}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Vazirmatn",Tahoma,sans-serif;background:var(--paper);color:var(--ink);line-height:1.9;font-size:15px}
 a{color:inherit;text-decoration:none}
 .container{max-width:720px;margin-inline:auto;padding:2rem;text-align:center}
-header h1{color:var(--deep);font-family:"Markazi Text","Vazirmatn",serif;font-size:24px;margin-bottom:1.5rem}
+header h1{color:#fff;font-family:"Markazi Text","Vazirmatn",serif;font-size:24px;margin-bottom:1.5rem}
 .order-summary{padding:30px}
 .order-summary h2{font-family:"Markazi Text","Vazirmatn",serif;font-size:24px;color:var(--deep);font-weight:700;margin-bottom:20px;text-align:center}
 .summary-card{background:var(--card);border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 2px 12px rgba(11,59,74,.08)}
 .summary-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line)}
 .summary-row:last-child{border-bottom:none}
-.summary-row .label{color:var(--muted);font-size:13px}
+.summary-row .label{color:#333;font-size:14px;font-weight:700}
 .summary-row .value{color:var(--deep);font-weight:700;font-size:14px;text-align:right}
 .summary-row.total{background:var(--firouzeh-soft);margin:15px -20px -20px;padding:15px 20px;border-radius:0 0 12px 12px;border-top:2px solid var(--firouzeh)}
 .summary-row.total .label{color:var(--deep);font-weight:800;font-size:15px}
@@ -28,8 +28,8 @@ header h1{color:var(--deep);font-family:"Markazi Text","Vazirmatn",serif;font-si
 .btn{display:flex;align-items:center;justify-content:center;width:100%;padding:14px;border-radius:var(--radius);font-family:inherit;font-size:15px;font-weight:700;border:none;cursor:pointer;transition:all .15s}
 .btn-primary{background:var(--firouzeh);color:#fff}
 .btn-primary:hover{background:var(--firouzeh-dark)}
-.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--line)}
-.btn-ghost:hover{border-color:var(--firouzeh);color:var(--firouzeh)}
+.btn-ghost{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.4)}
+.btn-ghost:hover{border-color:rgba(255,255,255,.8);color:#fff}
 .status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700}
 .status-pending{background:#FFF3CD;color:#856404}
 .status-processing{background:#D1ECF1;color:#0C5460}
@@ -63,10 +63,15 @@ header h1{color:var(--deep);font-family:"Markazi Text","Vazirmatn",serif;font-si
             ownerPhone: 'شماره تلفن', ownerNationalId: 'کد ملی', vin: 'شماره VIN',
             applicantPhone: 'شماره تلفن', applicantNationalId: 'کد ملی', idNumber: 'شماره شناسنامه',
             regionCode: 'کد منطقه', educationLevel: 'سطح تحصیلی', contractNumber: 'شماره قرارداد',
-            depositAmount: 'مبلغ ودیعه', iban: 'شماره شبا', ownershipStatus: 'وضعیت مالکیت',
+            depositAmount: 'مبلغ ودیعه', iban: 'شماره شبا', sheba: 'شماره شبا', ownershipStatus: 'وضعیت مالکیت',
             familyCount: 'تعداد افراد', passportNumber: 'شماره پاسپورت', examType: 'نوع آزمون',
             address: 'آدرس', operator: 'اپراتور', birthplace: 'محل تولد',
-            serialNumber: 'سریال', familyMembers: 'تعداد افراد خانواده'
+            serialNumber: 'سریال', familyMembers: 'تعداد افراد خانواده',
+            birth: 'تاریخ تولد', father: 'نام پدر', postal: 'کد پستی',
+            plate: 'شماره پلاک', car: 'نوع خودرو', passport: 'شماره گذرنامه قبلی',
+            taxcode: 'کد اقتصادی', activity: 'نوع فعالیت / شغل', biz: 'نام پیشنهادی شرکت / برند',
+            bank: 'بانک موردنظر', amount: 'مبلغ درخواستی (تومان)', grade: 'مقطع / رشته تحصیلی',
+            exam: 'عنوان آزمون / دانشگاه', workshop: 'کد کارگاه بیمه'
         };
     </script>
     <script>
@@ -203,7 +208,7 @@ header h1{color:var(--deep);font-family:"Markazi Text","Vazirmatn",serif;font-si
                         ownerPhone: 'شماره تلفن', ownerNationalId: 'کد ملی', vin: 'شماره VIN',
                         applicantPhone: 'شماره تلفن', applicantNationalId: 'کد ملی', idNumber: 'شماره شناسنامه',
                         regionCode: 'کد منطقه', educationLevel: 'سطح تحصیلی', contractNumber: 'شماره قرارداد',
-                        depositAmount: 'مبلغ ودیعه', iban: 'شماره شبا', ownershipStatus: 'وضعیت مالکیت',
+            depositAmount: 'مبلغ ودیعه', iban: 'شماره شبا', sheba: 'شماره شبا', ownershipStatus: 'وضعیت مالکیت',
                         familyCount: 'تعداد افراد', passportNumber: 'شماره پاسپورت', examType: 'نوع آزمون',
                         address: 'آدرس', operator: 'اپراتور', birthplace: 'محل تولد',
                         serialNumber: 'سریال', familyMembers: 'تعداد افراد خانواده'
@@ -232,15 +237,17 @@ header h1{color:var(--deep);font-family:"Markazi Text","Vazirmatn",serif;font-si
                     var isPricePending = order.status === 'pending' && isSpecialService(order) && ['pending', 'countersent', 'usercounter'].includes(order.priceStatus);
                     var isPriceAccepted = order.status === 'pending' && isSpecialService(order) && order.priceStatus === 'accepted' && !order.paid;
                     
+                    var statusLabels = { pending: 'در صف انتظار', processing: 'در حال انجام', completed: 'انجام شده', rejected: 'رد شده' };
+                    
                     var paymentLabel = isPricePending 
                         ? 'در انتظار تایید قیمت' 
                         : isPriceAccepted
                         ? 'در انتظار پرداخت'
-                        : order.paid ? 'پرداخت شده' : order.status === 'pending' ? 'پرداخت شده' : order.status;
+                        : order.paid ? 'پرداخت شده' : order.status === 'pending' ? 'پرداخت شده' : statusLabels[order.status] || order.status;
                     
                     var paymentClass = isPricePending || isPriceAccepted
                         ? 'status-pending'
-                        : order.paid ? 'paid-badge' : order.status === 'pending' ? 'paid-badge' : 'order-status status-' + order.status;
+                        : order.paid ? 'paid-badge' : order.status === 'pending' ? 'paid-badge' : 'status-completed';
                     
                     var paymentRow = '<div class="summary-row"><span class="label">وضعیت پرداخت</span><span class="value"><span class="' + paymentClass + '">' + paymentLabel + '</span></span></div>';
                     
@@ -315,7 +322,7 @@ var formFieldsHtml = renderFormFields(order);
                         
                         container.innerHTML = summaryHtml +
                             paymentButton +
-                            '<a href="orders-pending.html" class="btn btn-ghost" style="margin-top:10px">بازگشت</a>';
+                            '<a href="javascript:history.back()" class="btn btn-ghost" style="margin-top:10px">بازگشت</a>';
                         
                         var priceSnapshot = JSON.stringify({
                             status: order.status,

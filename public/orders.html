@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سفارش‌های من</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="fonts/all.css">
+    <style>
+        :root{--ink:#122A33;--deep:#0B3B4A;--firouzeh:#17A2A6;--firouzeh-dark:#0E7E82;--firouzeh-soft:#E4F3F3;--gold:#E2A93B;--paper:#F4F8F8;--card:#FFFFFF;--line:#D8E4E4;--muted:#5B7078;--radius:14px}
+        .orders-page{padding:20px;background:#fdffe8;border-radius:var(--radius)}
+        .orders-page h1{font-family:var(--font-display);font-size:22px;color:var(--deep);text-align:center;margin-bottom:20px}
+        .order-card{background:var(--paper);border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid var(--line)}
+        .order-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+        .order-card-title{font-weight:700;font-size:14px;color:var(--deep)}
+        .order-status{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}
+        .status-pending{background:#fff3cd;color:#856404}
+        .status-processing{background:#d1ecf1;color:#0c5460}
+        .status-completed{background:#d4edda;color:#155724}
+        .order-card-body{font-size:12px;color:var(--muted);line-height:2}
+        .order-card-body span{display:block}
+        .order-card-body span:first-child{font-weight:700;color:var(--deep);font-size:13px}
+        .order-date{font-size:11px;color:var(--muted);display:block;margin-top:2px;font-weight:700}
+        .order-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+        .order-card-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px}
+        .order-code{font-weight:700;color:#17A2A6;direction:ltr}
+        .order-category{font-weight:700;color:var(--ink);font-size:13px}
+        .order-date{color:var(--muted)}
+        .btn-view-detail{display:inline-flex!important;align-items:center;background:#17A2A6!important;color:#fff!important;border:none!important;font-size:11px!important;font-weight:600!important;padding:4px 10px!important;border-radius:20px!important;cursor:pointer;font-family:inherit;text-decoration:none!important}
+        .btn-view-detail:hover{background:#0E7E82!important}
+        .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
+        .empty-state i{font-size:48px;color:var(--line);margin-bottom:12px}
+        .empty-state p{font-size:14px}
+        .btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:9px 18px;font-weight:700;font-size:13.5px;transition:transform .15s ease,box-shadow .15s ease;text-decoration:none;cursor:pointer;font-family:inherit}
+        .btn-ghost{border:1.5px solid rgba(255,255,255,.5);color:#fff;background:transparent}
+        .btn-ghost:hover{border-color:#fff;color:#fff}
+        @media(max-width:600px){.back-link span{display:none}}
+        .back-link{display:block!important;margin-bottom:1rem;width:fit-content;margin-right:auto}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a class="btn btn-ghost back-link" href="profile.html">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+            <span>بازگشت به پروفایل</span>
+        </a>
+        <header>
+            <h1>سفارش‌های من</h1>
+        </header>
+        <main>
+            <div class="form-card orders-page" id="ordersContainer">
+                <div class="empty-state" id="emptyState">
+                    <i class="fas fa-inbox"></i>
+                    <p>سفارش فعالی وجود ندارد</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>
+    function normalizeOrder(o) {
+        var normalized = Object.assign({}, o);
+        if (!normalized.name && o.customerName) normalized.name = o.customerName;
+        if (!normalized.phone && o.customerPhone) normalized.phone = o.customerPhone;
+        if (!normalized.name && o.parentPhone) normalized.name = o.parentPhone;
+        if (!normalized.phone && o.parentPhone) normalized.phone = o.parentPhone;
+        if (!normalized.phone && o.applicantPhone) normalized.phone = o.applicantPhone;
+        if (!normalized.phone && o.ownerPhone) normalized.phone = o.ownerPhone;
+        return normalized;
+    }
+
+    function getServiceTitle(order) {
+        var serviceTitle = (order.title && order.title !== '-') ? order.title : (order.serviceTitle || '-');
+        if (serviceTitle && serviceTitle !== '-') return serviceTitle;
+
+        var isFuelCard = order.ownerPhone || order.ownerNationalId || order.vin;
+        var isMarriageLoan = order.applicantPhone || order.applicantNationalId || order.idNumber;
+        var isKonkor = order.regionCode || order.educationLevel || order.applicantNationalId;
+        var isRental = order.contractNumber || order.depositAmount || order.iban;
+        var isHousing = order.ownershipStatus || order.familyCount;
+        var isIeltsToefl = order.passportNumber || order.examType;
+        var isInternet = order.address || order.operator;
+        var isCriminalRecord = order.birthplace;
+        var isSmartCard = order.serialNumber;
+        var isHealthInsurance = order.familyMembers;
+        var isResumeEmployment = order.serviceKey === 'resumeEmployment' || order.jobField || order.experienceYears || order.skills;
+        var isArticlesResearch = order.serviceKey === 'articlesResearch' || order.researchType || order.subject || order.academicLevel;
+        var isCustomServices = order.serviceKey === 'customServices' || order.serviceDescription;
+
+        if (isFuelCard) return 'کارت سوخت';
+        else if (isMarriageLoan) return 'وام ازدواج';
+        else if (isKonkor) return 'کنکور سراسری';
+        else if (isRental) return 'ودیعه مسکن اجاره';
+        else if (isHousing) return 'نهضت ملی مسکن';
+        else if (isIeltsToefl) return 'ثبت‌نام تافل و آیلتس';
+        else if (isInternet) return 'ثبت‌نام اینترنت پرسرعت';
+        else if (isCriminalRecord) return 'گواهی عدم سوء پیشینه';
+        else if (isSmartCard) return 'کارت ملی هوشمند';
+        else if (isHealthInsurance) return 'بیمه سلامت';
+        else if (isResumeEmployment) return 'رزومه و استخدام';
+        else if (isArticlesResearch) return 'مقاله و تحقیق';
+        else if (isCustomServices) return 'خدمات سفارشی';
+        else return 'پیش ثبت نام مدارس';
+    }
+
+    function isSpecialService(order) {
+        return order.serviceKey === 'resumeEmployment' || 
+               order.serviceKey === 'customServices' || 
+               order.serviceKey === 'articlesResearch' ||
+               (order.jobField || order.experienceYears || order.skills) ||
+               (order.researchType || order.subject || order.academicLevel) ||
+               order.serviceDescription;
+    }
+
+    function renderOrders(orders){
+        if(orders.length === 0){
+            document.getElementById('emptyState').style.display = 'block';
+            return;
+        }
+        document.getElementById('emptyState').style.display = 'none';
+        var html = '';
+        orders.forEach(function(o){
+            var n = normalizeOrder(o);
+            var statusClass = n.status === 'pending' ? 'status-pending' : n.status === 'processing' ? 'status-processing' : 'status-completed';
+            var statusText = n.status === 'pending' ? 'در صف انتظار' : n.status === 'processing' ? 'در حال انجام' : 'انجام شده';
+            var dateStr = n.created_at ? new Date(n.created_at).toLocaleDateString('fa-IR') : (n.createdAt || '—');
+            var title = getServiceTitle(n);
+            var priceHtml = '';
+            if (isSpecialService(n)) {
+                var price = n.proposedPrice || n.adminProposedPrice || n.cost || null;
+                if (price) {
+                    var priceNum = typeof price === 'string' ? price.replace(/[^0-9]/g, '') : price;
+                    if (priceNum) {
+                        priceHtml = '<div style="margin-top:6px;text-align:center;direction:rtl;"><strong style="color:#ff9800;">قیمت پیشنهادی: </strong><span>' + Number(priceNum).toLocaleString('fa-IR') + ' تومان</span></div>';
+                    }
+                }
+            }
+            html += '<div class="order-card">'
+                + '<div class="order-card-header">'
+                + '<div class="order-card-title">' + title + '</div>'
+                + '<span class="order-status ' + statusClass + '">' + statusText + '</span>'
+                + '</div>'
+                + '<div class="order-card-meta"><span class="order-category">دسته‌بندی: ' + (n.category || '—') + '</span>' + priceHtml + '</div>'
+                + '<div class="order-card-body">'
+                + '<span>کد سفارش: ' + (n.trackingCode || '—') + '</span>'
+                + '</div>'
+                + '<div class="order-card-footer">'
+                + '<a href="order-detail.html?code=' + encodeURIComponent(n.trackingCode) + '" class="btn-view-detail">جزئیات سفارش</a>'
+                + '<span class="order-date">' + dateStr + '</span>'
+                + '</div>'
+                + '</div>';
+        });
+        document.getElementById('ordersContainer').insertAdjacentHTML('afterbegin', html);
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        var userData = null;
+        try { userData = JSON.parse(localStorage.getItem('userData')); } catch(e){}
+        var username = userData ? userData.username : null;
+        if(!username){
+            document.getElementById('emptyState').innerHTML = '<p>لطفاً ابتدا وارد شوید</p>';
+            return;
+        }
+
+        fetch('/api/orders/user?username=' + encodeURIComponent(username))
+            .then(function(r){ return r.json(); })
+            .then(function(orders){
+                if(orders && orders.length > 0){
+                    orders.sort(function(a, b){
+                        var da = a.created_at || a.createdAt || '';
+                        var db = b.created_at || b.createdAt || '';
+                        return db.localeCompare(da);
+                    });
+                    renderOrders(orders);
+                } else {
+                    document.getElementById('emptyState').style.display = 'block';
+                }
+            })
+            .catch(function(){
+                document.getElementById('emptyState').innerHTML = '<p>خطا در دریافت اطلاعات</p>';
+            });
+    });
+    </script>
+
+</body>
+</html>
