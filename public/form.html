@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&family=Markazi+Text:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/all.css">
 <style>
 :root{
   --ink:#122A33;
@@ -27,14 +28,14 @@
   --font-display:"Markazi Text","Vazirmatn",serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:var(--font-body);background:var(--paper);color:var(--ink);line-height:1.9;font-size:15px}
+body{font-family:var(--font-body);background:#1C5E52;color:var(--ink);line-height:1.9;font-size:15px}
 a{color:inherit;text-decoration:none}
 button{font-family:inherit;cursor:pointer;background:none;border:none;color:inherit}
 :focus-visible{outline:3px solid var(--gold);outline-offset:2px;border-radius:6px}
 .container{max-width:720px;margin-inline:auto;padding-inline:24px}
 
 /* ---------- header ---------- */
-header.site{background:var(--card);border-bottom:1px solid var(--line)}
+header.site{background:transparent}
 .header-row{display:flex;align-items:center;gap:28px;min-height:76px}
 .brand{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .brand-mark{width:46px;height:46px;border-radius:12px;background:var(--deep);display:grid;place-items:center;overflow:hidden}
@@ -46,11 +47,13 @@ header.site{background:var(--card);border-bottom:1px solid var(--line)}
 .btn-primary:hover{background:var(--firouzeh-dark);transform:translateY(-1px)}
 .btn-ghost{border:1.5px solid var(--line);color:var(--deep)}
 .btn-ghost:hover{border-color:var(--firouzeh);color:var(--firouzeh-dark)}
+header .btn-ghost{border:1.5px solid rgba(255,255,255,.3);color:#fff}
+header .btn-ghost:hover{border-color:rgba(255,255,255,.7);color:#fff;opacity:.85}
 .back-link{margin-inline-start:auto}
 
 /* ---------- form card ---------- */
-main{padding:40px 0 70px}
-.form-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+main{padding:40px 0 70px;background:#1C5E52}
+.form-card{background:#fcffde;border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
 .card-strip{height:5px;background:repeating-linear-gradient(90deg,var(--firouzeh) 0 34px,var(--gold) 34px 44px,var(--deep) 44px 78px)}
 .card-head{padding:28px 30px 6px}
 .card-head .kicker{color:var(--firouzeh-dark);font-weight:800;font-size:12px;letter-spacing:.08em}
@@ -61,13 +64,13 @@ main{padding:40px 0 70px}
 .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
 .f-field{display:flex;flex-direction:column;gap:5px}
 .f-field.full{grid-column:1/-1}
-.f-field label{font-size:12.5px;font-weight:800;color:var(--deep)}
+.f-field label{font-size:13px;font-weight:900;color:var(--deep)}
 .f-field label .opt{font-weight:400;color:var(--muted);font-size:11.5px}
-.f-field input,.f-field textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;transition:border-color .15s,background .15s}
-.f-field textarea{resize:vertical;min-height:84px;line-height:1.8}
+.f-field input,.f-field textarea{font-family:inherit;font-size:14px;color:var(--ink);background:#FEFFF7;border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;transition:border-color .15s,background .15s}
+.f-field textarea{resize:none;min-height:84px;line-height:1.8;overflow:hidden}
 .f-field .textarea-wrap{position:relative}
 .f-field .textarea-wrap textarea{width:100%;padding-left:40px;box-sizing:border-box}
-.f-field .attach-btn{position:absolute;bottom:10px;left:10px;width:32px;height:32px;border-radius:8px;border:none;background:var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--deep);font-size:16px;transition:background .15s}
+.f-field .attach-btn{position:absolute;bottom:14px;left:14px;width:32px;height:32px;border-radius:8px;border:none;background:var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--deep);font-size:16px;transition:background .15s}
 .f-field .attach-btn:hover{background:var(--firouzeh);color:#fff}
 .f-field .file-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .f-field .file-preview .file-thumb{position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)}
@@ -102,16 +105,16 @@ main{padding:40px 0 70px}
 /* ---------- order summary ---------- */
 .order-summary{padding:30px}
 .order-summary h2{font-family:var(--font-display);font-size:24px;color:var(--deep);font-weight:700;margin-bottom:20px;text-align:center}
-.summary-card{background:var(--paper);border-radius:12px;padding:20px;margin-bottom:20px}
+.summary-card{background:#FCFFDE;border-radius:12px;padding:20px;margin-bottom:20px}
 .summary-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line)}
 .summary-row:last-child{border-bottom:none}
-.summary-row .label{color:var(--muted);font-size:13px}
+.summary-row .label{color:var(--muted);font-size:15px;font-weight:700}
 .summary-row .value{color:var(--deep);font-weight:700;font-size:14px}
 .summary-row.total{background:var(--firouzeh-soft);margin:15px -20px -20px;padding:15px 20px;border-radius:0 0 12px 12px;border-top:2px solid var(--firouzeh)}
 .summary-row.total .label{color:var(--deep);font-weight:800;font-size:15px}
 .summary-row.total .value{color:var(--firouzeh-dark);font-weight:800;font-size:18px}
 .btn-pay{width:100%;justify-content:center;margin-top:20px;padding-block:14px;font-size:15px;background:linear-gradient(135deg,var(--firouzeh),var(--firouzeh-dark));box-shadow:0 8px 20px -8px rgba(23,162,166,.8)}
-.btn-pay:hover{transform:translateY(-2px);box-shadow:0 12px 25px -8px rgba(23,162,166,.9)}
+.btn-pay:hover{transform:translateY(-2px);background:#0F8488;box-shadow:0 12px 25px -8px rgba(23,162,166,.9)}
 
 /* ---------- payment confirmation ---------- */
 .payment-confirm{padding:30px;text-align:center}
@@ -149,12 +152,6 @@ main{padding:40px 0 70px}
 
 <header class="site">
   <div class="container header-row">
-    <a class="brand" href="index.html">
-      <span class="brand-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-5h4v5"/></svg>
-      </span>
-      <span class="brand-name">پیشخوان ۲۴<small>کافی‌نت آنلاین خدمات دولتی</small></span>
-    </a>
     <a class="btn btn-ghost back-link" href="index.html">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       <span>بازگشت به صفحه اصلی</span>
@@ -186,13 +183,11 @@ main{padding:40px 0 70px}
         <div class="done-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         </div>
-        <h2>درخواست شما ثبت شد</h2>
-        <p>کارشناس ما حداکثر تا ۱۵ دقیقه دیگر با شما تماس می‌گیرد.</p>
+        <h2>سفارش شما تایید شد</h2>
         <div class="track-code" id="omCode">—</div>
-        <div class="track-note">کد رهگیری را برای پیگیری نگه دارید.</div>
-<div class="done-summary" id="omSummary"></div>
+        <div class="track-note" style="font-size:14px;font-weight:600;margin-top:8px">کد رهگیری را برای پیگیری نگه دارید.</div>
 <div class="done-actions">
-           <a class="btn btn-wa" id="omWa" href="#" target="_blank" rel="noopener">ارسال مدارک در واتساپ</a>
+           <button class="btn btn-primary" id="btnDownloadInvoice" type="button" style="background:var(--firouzeh);color:#fff">دانلود فاکتور</button>
            <a class="btn btn-ghost" href="index.html">بازگشت به صفحه اصلی</a>
          </div>
        </div>
@@ -321,12 +316,17 @@ function enDigits(s){
                   .replace(/[٠-٩]/g, function(d){ return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); });
 }
 
+function autoResize(el){
+  el.style.height = '';
+  el.style.height = el.scrollHeight + 'px';
+}
+
 function fieldHTML(f){
   if(f.type === 'textarea'){
     return '<div class="f-field full">'
          +   '<label for="f_'+f.key+'">'+f.label+(f.opt?' <span class="opt">(اختیاری)</span>':'')+'</label>'
          +   '<div class="textarea-wrap">'
-         +     '<textarea id="f_'+f.key+'" name="'+f.key+'"'+(f.opt?'':' required')+'></textarea>'
+         +     '<textarea id="f_'+f.key+'" name="'+f.key+'"'+(f.opt?'':' required')+' oninput="autoResize(this)"></textarea>'
          +     '<button type="button" class="attach-btn" onclick="document.getElementById(\'f_attachInput\').click()" title="افزودن فایل"><i class="fas fa-paperclip"></i></button>'
          +   '</div>'
          +   '<div class="file-preview" id="f_filePreview"></div>'
@@ -360,6 +360,8 @@ function fieldHTML(f){
 
   var first = omFields.querySelector('input');
   if (first) first.focus();
+
+  omFields.querySelectorAll('textarea').forEach(autoResize);
 })();
 
 // --- toast notification ---------------------------------------------------
@@ -496,6 +498,7 @@ omForm.addEventListener('submit', function(e){
   document.getElementById('summaryFields').innerHTML = fieldsHtml;
 
   omForm.hidden = true;
+  document.querySelector('.card-head').hidden = true;
   document.getElementById('orderSummary').hidden = false;
   window.scrollTo({top:0, behavior:'smooth'});
 });
@@ -503,15 +506,56 @@ omForm.addEventListener('submit', function(e){
 // Back to form from summary
 document.getElementById('btnBackToForm').addEventListener('click', function(){
   document.getElementById('orderSummary').hidden = true;
+  document.querySelector('.card-head').hidden = false;
   omForm.hidden = false;
   window.scrollTo({top:0, behavior:'smooth'});
 });
 
-// Pay button → show payment confirmation
+// Pay button → show order done (skip bank payment)
 document.getElementById('btnPay').addEventListener('click', function(){
-  document.getElementById('orderSummary').hidden = true;
-  document.getElementById('paymentConfirm').hidden = false;
-  window.scrollTo({top:0, behavior:'smooth'});
+  var data = window._orderData || {};
+  var service = document.getElementById('serviceTitle').textContent;
+  var cat = document.getElementById('omCat').textContent;
+  var code = 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
+  var userData = null;
+  try { userData = JSON.parse(localStorage.getItem('userData')); } catch(e){}
+
+  var body = {
+    title: service,
+    category: cat,
+    name: data.name,
+    phone: data.phone,
+    nationalId: data.nationalId,
+    note: data.note || '',
+    extraFields: {},
+    trackingCode: code,
+    status: 'pending',
+    username: userData ? userData.username : null
+  };
+  Object.keys(data).forEach(function(key){
+    if(['name','phone','nationalId','note'].indexOf(key) === -1 && data[key]){
+      body.extraFields[key] = data[key];
+    }
+  });
+
+  fetch('/api/order', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(result){
+    document.getElementById('omCode').textContent = code;
+    document.getElementById('orderSummary').hidden = true;
+    document.getElementById('orderDone').hidden = false;
+    window.scrollTo({top:0, behavior:'smooth'});
+  })
+  .catch(function(){
+    document.getElementById('omCode').textContent = code;
+    document.getElementById('orderSummary').hidden = true;
+    document.getElementById('orderDone').hidden = false;
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
 });
 
 // Back to summary from payment
@@ -656,6 +700,102 @@ function showPendingPage(code, service, cat, data){
   document.getElementById('orderPending').hidden = false;
   window.scrollTo({top:0, behavior:'smooth'});
 }
+
+// --- Invoice Generator ---
+function generateInvoice(){
+  var data = window._orderData || {};
+  var service = document.getElementById('serviceTitle').textContent;
+  var cat = document.getElementById('omCat').textContent;
+  var code = document.getElementById('omCode').textContent;
+  var now = new Date();
+  var dateStr = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
+  var timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+  var rows = '';
+  rows += '<tr><td>۱</td><td>' + service + '</td><td>' + cat + '</td><td>۵۰۰,۰۰۰</td></tr>';
+
+  var extraHtml = '';
+  Object.keys(data).forEach(function(key){
+    var val = data[key];
+    if (!val || key === 'note') return;
+    var label = FIELD_LABELS[key] || key;
+    var displayVal = val;
+    if (key === 'phone' || key === 'nationalId') displayVal = faDigits(val);
+    extraHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eee;font-size:12px"><span style="color:#666">' + label + '</span><span style="color:#1a1a2e;font-weight:600">' + displayVal + '</span></div>';
+  });
+
+  var invoiceHtml = '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>فاکتور - ' + code + '</title>'
+    + '<style>'
+    + '@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap");'
+    + '*{margin:0;padding:0;box-sizing:border-box}'
+    + 'body{font-family:"Vazirmatn",Tahoma,sans-serif;background:#f5f5f5;padding:20px;color:#1a1a2e}'
+    + '.invoice{background:#fff;max-width:800px;margin:0 auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)}'
+    + '.inv-header{background:linear-gradient(135deg,#1C5E52,#0F8488);color:#fff;padding:30px;display:flex;justify-content:space-between;align-items:center}'
+    + '.inv-header h1{font-size:22px;font-weight:800}'
+    + '.inv-header .inv-logo{font-size:28px;font-weight:900;color:#fcffde}'
+    + '.inv-meta{display:flex;gap:30px;padding:20px 30px;background:#f8fdfd;border-bottom:2px solid #e0e0e0}'
+    + '.inv-meta div{font-size:12px}'
+    + '.inv-meta span{color:#888;display:block;margin-bottom:2px}'
+    + '.inv-meta b{color:#1a1a2e;font-size:13px}'
+    + '.inv-body{padding:25px 30px}'
+    + '.inv-section-title{font-size:14px;font-weight:700;color:#1C5E52;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #1C5E52;display:inline-block}'
+    + '.inv-table{width:100%;border-collapse:collapse;margin-bottom:20px}'
+    + '.inv-table th{background:#1C5E52;color:#fff;padding:10px 12px;font-size:12px;font-weight:600;text-align:right}'
+    + '.inv-table td{padding:10px 12px;font-size:12px;border-bottom:1px solid #eee}'
+    + '.inv-table tr:nth-child(even){background:#f8fdfd}'
+    + '.inv-extra{margin-bottom:20px}'
+    + '.inv-total{display:flex;justify-content:flex-end;margin-top:15px}'
+    + '.inv-total-box{background:linear-gradient(135deg,#1C5E52,#0F8488);color:#fff;padding:15px 25px;border-radius:10px;text-align:center}'
+    + '.inv-total-box .inv-total-label{font-size:11px;opacity:.8}'
+    + '.inv-total-box .inv-total-value{font-size:24px;font-weight:900;margin-top:4px}'
+    + '.inv-footer{text-align:center;padding:20px 30px;background:#f8fdfd;border-top:2px solid #e0e0e0;font-size:11px;color:#888}'
+    + '.inv-footer .inv-thanks{font-size:14px;color:#1C5E52;font-weight:700;margin-bottom:6px}'
+    + '.inv-note{background:#fcffde;border:1px solid #e8dfa0;border-radius:8px;padding:12px;margin-top:15px;font-size:11px;color:#8a7a3a}'
+    + '@media print{body{background:#fff;padding:0}.invoice{box-shadow:none;border-radius:0}}'
+    + '</style></head><body>'
+    + '<div class="invoice">'
+    // Header
+    + '<div class="inv-header"><div><h1>فاکتور رسمی</h1><div style="font-size:12px;opacity:.8;margin-top:4px">مرکز خدمات کافینت</div></div><div class="inv-logo">CAFENET</div></div>'
+    // Meta
+    + '<div class="inv-meta">'
+    + '<div><span>شماره فاکتور</span><b>' + code + '</b></div>'
+    + '<div><span>تاریخ صدور</span><b>' + dateStr + '</b></div>'
+    + '<div><span>ساعت</span><b>' + timeStr + '</b></div>'
+    + '<div><span>وضعیت</span><b style="color:#27ae60">تایید شده</b></div>'
+    + '</div>'
+    // Body
+    + '<div class="inv-body">'
+    // Customer info
+    + '<div class="inv-section-title">اطلاعات مشتری</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;padding:15px;background:#f8fdfd;border-radius:8px;border:1px solid #eee">'
+    + '<div style="font-size:12px"><span style="color:#888">نام:</span> <b>' + (data.name || '—') + '</b></div>'
+    + '<div style="font-size:12px"><span style="color:#888">تلفن:</span> <b>' + (data.phone ? faDigits(data.phone) : '—') + '</b></div>'
+    + '<div style="font-size:12px"><span style="color:#888">کد ملی:</span> <b>' + (data.nationalId ? faDigits(data.nationalId) : '—') + '</b></div>'
+    + '<div style="font-size:12px"><span style="color:#888">خدمت:</span> <b>' + service + '</b></div>'
+    + '</div>'
+    // Table
+    + '<div class="inv-section-title">جزئیات سفارش</div>'
+    + '<table class="inv-table"><thead><tr><th>#</th><th>خدمت</th><th>دسته‌بندی</th><th>مبلغ (تومان)</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table>'
+    // Extra fields
+    + (extraHtml ? '<div class="inv-section-title">اطلاعات تکمیلی</div><div class="inv-extra">' + extraHtml + '</div>' : '')
+    // Note
+    + (data.note ? '<div class="inv-note"><b>توضیحات:</b> ' + data.note + '</div>' : '')
+    // Total
+    + '<div class="inv-total"><div class="inv-total-box"><div class="inv-total-label">مبلغ قابل پرداخت</div><div class="inv-total-value">۵۰۰,۰۰۰ تومان</div></div></div>'
+    + '</div>'
+    // Footer
+    + '<div class="inv-footer"><div class="inv-thanks">با تشکر از اعتماد شما</div><div>مرکز خدمات کافینت | www.cafenet.ir</div></div>'
+    + '</div>'
+    + '<script>window.onload=function(){window.print()}<\/script>'
+    + '</body></html>';
+
+  var w = window.open('', '_blank');
+  w.document.write(invoiceHtml);
+  w.document.close();
+}
+
+document.getElementById('btnDownloadInvoice').addEventListener('click', generateInvoice);
 </script>
 </body>
 </html>
