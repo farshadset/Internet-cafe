@@ -189,11 +189,11 @@ main{padding:40px 0 70px;background:#1C5E52}
         <div class="track-note" style="font-size:14px;font-weight:600;margin-top:8px">کد رهگیری را برای پیگیری نگه دارید.</div>
 <div class="done-actions">
            <button class="btn btn-primary" id="btnDownloadInvoice" type="button" style="background:var(--firouzeh);color:#fff">دانلود فاکتور</button>
-           <a class="btn btn-ghost" href="index.html">بازگشت به صفحه اصلی</a>
+           <a class="btn btn-primary" href="orders.html" title="سفارش‌ها" style="background:var(--firouzeh);color:#fff"><span>سفارش‌ها</span></a>
          </div>
-       </div>
+        </div>
 
-       <!-- Order Summary -->
+        <!-- Order Summary -->
        <div class="order-summary" id="orderSummary" hidden>
          <h2>خلاصه سفارش</h2>
          <div class="summary-card" id="summaryCard">
@@ -206,10 +206,10 @@ main{padding:40px 0 70px;background:#1C5E52}
              <span class="value" id="sumCat">—</span>
            </div>
            <div id="summaryFields"></div>
-           <div class="summary-row total">
-             <span class="label">مبلغ قابل پرداخت</span>
-             <span class="value">۵۰۰,۰۰۰ تومان</span>
-           </div>
+            <div class="summary-row total">
+              <span class="label">مبلغ قابل پرداخت</span>
+              <span class="value" id="sumTotalPrice">—</span>
+            </div>
          </div>
          <button class="btn btn-primary btn-pay" id="btnPay" type="button">تایید و پرداخت</button>
          <button class="btn btn-ghost" id="btnBackToForm" type="button" style="width:100%;justify-content:center;margin-top:10px">بازگشت به فرم</button>
@@ -222,7 +222,7 @@ main{padding:40px 0 70px;background:#1C5E52}
          </div>
          <h2>تایید پرداخت</h2>
          <p>لطفاً مبلغ زیر را پرداخت کنید</p>
-         <div class="price-box">۵۰۰,۰۰۰ تومان</div>
+          <div class="price-box" id="priceBox">—</div>
          <p>پس از پرداخت موفق، سفارش شما در صف انتظار قرار می‌گیرد</p>
          <div class="actions">
            <button class="btn btn-success" id="btnConfirmPay" type="button">پرداخت و تایید نهایی</button>
@@ -243,13 +243,14 @@ main{padding:40px 0 70px;background:#1C5E52}
          <div class="done-summary" id="pendingSummary"></div>
          <div class="actions">
            <a class="btn btn-wa" id="pendingWa" href="#" target="_blank" rel="noopener">ارسال مدارک در واتساپ</a>
-           <a class="btn btn-ghost" href="index.html">بازگشت به صفحه اصلی</a>
-         </div>
-       </div>
-     </div>
-   </div>
-</main>
+            <a class="btn btn-primary" href="orders.html" title="سفارش‌ها" style="background:var(--firouzeh);color:#fff"><span>سفارش‌ها</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+ </main>
 
+<script src="app.js"></script>
 <script src="service-extra-configs.js"></script>
 <script>
 window.EXTRA_SERVICE_CONFIGS = EXTRA_SERVICE_OPTIONS;
@@ -364,6 +365,68 @@ function fieldHTML(f){
   if (first) first.focus();
 
   omFields.querySelectorAll('textarea').forEach(autoResize);
+
+  // --- Fetch admin pricing for this service ---
+  var SERVICE_TO_PRICING_KEY = {
+    'کارت ملی هوشمند':'smartCard','المثنی کارت ملی':'smartCardDuplicate','تغییر نشانی':'addressChange',
+    'شناسنامه المثنی':'idDuplicate','اصلاح مشخصات':'infoCorrection',
+    'ثبت نام گذرنامه':'passportRegistration','تمدید پاسپورت':'passportRenewal','المثنی گذرنامه':'passportDuplicate','فرم مهاجرت':'migrationForm',
+    'ثبت نام ثنا':'sanaRegister','بازیابی رمز ثنا':'judicialPasswordRecovery','ابلاغ الکترونیک':'electronicNotice','پیگیری پرونده':'caseTracking','نوبت‌دهی قضایی':'judicialAppointment',
+    'گواهی عدم سوء پیشینه':'criminalRecord','استعلام کد ملی':'nationalIdInquiry','استعلام شناسنامه':'idInquiry','استعلام محکومیت':'criminalInquiry',
+    'وام ازدواج':'marriageLoan','وام ودیعه مسکن':'rentalDeposit','وام ضروری':'urgentLoan','تسهیلات خرید مسکن':'housingPurchaseLoan',
+    'یارانه معیشتی':'subsidyRegistration','اعتراض یارانه':'subsidyAppeal','سهام عدالت':'justiceStocks','فروش سهام':'stockSale',
+    'ثبت سجام':'sjamRegistration','احراز هویت بورسی':'stockAuth','افتتاح کد بورسی':'stockRegistration',
+    'افتتاح حساب':'bankAccountOpening','احراز هویت بانک':'bankAuth','اعتبارسنجی مرآت':'meratValidation','پرداخت آنلاین':'onlinePayment',
+    'صدور کارت سوخت':'fuelCardIssue','المثنی کارت سوخت':'fuelCardDuplicate','انتقال کارت سوخت':'fuelCardTransfer',
+    'نوبت تعویض پلاک':'plateExchangeAppointment','نقل و انتقال خودرو':'vehicleTransfer','مالیات نقل و انتقال':'vehicleTransferTax',
+    'استعلام خلافی':'fineInquiry','پرداخت جریمه':'finePayment','اعتراض جریمه':'fineAppeal','نوبت معاینه فنی':'technicalInspectionAppointment',
+    'ایران خودرو':'iranKhodroRegistration','سایپا':'saipaRegistration','سامانه یکپارچه':'integratedVehicleRegistration','انتخاب خودرو':'vehicleSelection',
+    'تهران من':'tehranMan','یارانه سوخت وانت':'vanFuelSubsidy',
+    'پیش ثبت نام مدارس':'schoolPreRegistration','مدارس شاهد':'witnessSchools','مدارس تیزهوشان':'giftedSchools','مدارس غیردولتی':'nonGovSchools',
+    'دانشگاه آزاد':'azadUniversityRegistration','پیام نور':'payamNoorRegistration','علمی کاربردی':'appliedScienceRegistration','ثبت نام غیرحضوری':'nonAttendeeRegistration',
+    'کنکور سراسری':'konkurSarasari','ارشد':'mastersExam','دکتری':'doctorateExam',
+    'آموزش و پرورش':'employmentEducation','بانک‌ها':'bankEmploymentExam','دستگاه‌های دولتی':'governmentEmploymentExam',
+    'سامانه‌های آموزشی':'studentPortal','وام دانشجویی':'studentLoan','تافل و آیلتس':'ieltsToeflRegistration',
+    'اظهارنامه مالیاتی':'taxReturn','تبصره ۱۰۰':'tabssore100','ارزش افزوده':'vatTax','اعتراض مالیاتی':'taxAppeal','کد اقتصادی':'economicCode',
+    'ثبت شرکت':'companyRegistration','ثبت برند':'brandRegistration','تغییرات شرکت':'companyChanges',
+    'سامانه ملی مجوزها':'nationalPermitSystem','جواز کسب':'businessPermitLicense','مجوز صنفی':'professionalPermit','مجوز تولیدی':'productionPermit',
+    'نوین اصناف':'novinAsnaf','بازدید اماکن':'locationInspection','صلاحیت بهداشتی':'healthQualification','گواهی مالیاتی ۱۸۶':'taxCertificate186',
+    'میخک':'mikhak','سخا':'sakha','شمس':'shams','ستاد ایران':'setadIran',
+    'ثبت‌نام املاک و اسکان':'realEstateHousingRegistration','خودنویس':'khodnevis','ثبت سند ملکی':'propertyDeedRegistration',
+    'نام نویسی کارفرما':'employerRegistration','ثبت نیروی کار':'workforceRegistration','ارسال لیست بیمه':'insuranceListSubmission',
+    'بیمه با سابقه':'experiencedInsurance','کمیسیون پزشکی':'medicalCommission','کمک هزینه عینک':'glassesAid','کمک هزینه سمعک':'hearingAid',
+    'راه‌اندازی توکن':'tokenSetup','امضا در ثبت من':'thabtemSign','امضای نرم‌افزاری':'softwareSignature',
+    'رأی اولی‌ها':'firstVoters','تعیین شعبه':'branchDetermination','تأیید صلاحیت':'qualificationApproval',
+    'وام دانشجویی':'studentLoan'
+  };
+  var pricingKey = SERVICE_TO_PRICING_KEY[service];
+  window._servicePrice = 0;
+  window._formattedPrice = '—';
+
+  function updatePriceDisplays() {
+    var p = window._servicePrice;
+    var txt = formatPrice(p) + ' تومان';
+    var el1 = document.getElementById('sumTotalPrice');
+    var el2 = document.getElementById('priceBox');
+    if (el1) el1.textContent = txt;
+    if (el2) el2.textContent = txt;
+  }
+
+  if (pricingKey) {
+    fetch('/api/pricing')
+      .then(function(r) { return r.json(); })
+      .then(function(pricing) {
+        var pricingMap = {};
+        pricing.forEach(function(p) { pricingMap[p.service] = p.price; });
+        if (pricingMap[pricingKey]) {
+          window._servicePrice = pricingMap[pricingKey];
+          window._formattedPrice = formatPrice(window._servicePrice) + ' تومان';
+          updatePriceDisplays();
+        }
+      })
+      .catch(function() {});
+  }
+
 })();
 
 // --- toast notification ---------------------------------------------------
@@ -532,6 +595,7 @@ document.getElementById('btnPay').addEventListener('click', function(){
     extraFields: {},
     trackingCode: code,
     status: 'pending',
+    cost: window._servicePrice || 0,
     username: userData ? userData.username : null
   };
   Object.keys(data).forEach(function(key){
@@ -587,7 +651,7 @@ document.getElementById('btnConfirmPay').addEventListener('click', function(){
     nationalId: data.nationalId,
     note: data.note || '',
     extraFields: {},
-    cost: 500000,
+    cost: window._servicePrice || 500000,
     status: 'pending',
     priceStatus: 'confirmed',
     username: userData ? userData.username : null
@@ -674,7 +738,7 @@ function showPendingPage(code, service, cat, data){
     if (key === 'phone' || key === 'nationalId') displayVal = faDigits(val);
     pendingHtml += '<div><span>' + label + '</span><b>' + displayVal + '</b></div>';
   });
-  pendingHtml += '<div><span>مبلغ پرداختی</span><b>۵۰۰,۰۰۰ تومان</b></div>';
+  pendingHtml += '<div><span>مبلغ پرداختی</span><b>' + (window._formattedPrice || '—') + '</b></div>';
   if(window._attachedFiles && window._attachedFiles.length > 0){
     var pFiles = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">';
     window._attachedFiles.forEach(function(f){
@@ -714,7 +778,7 @@ function generateInvoice(){
   var timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
 
   var rows = '';
-  rows += '<tr><td>۱</td><td>' + service + '</td><td>' + cat + '</td><td>۵۰۰,۰۰۰</td></tr>';
+  rows += '<tr><td>۱</td><td>' + service + '</td><td>' + cat + '</td><td>' + (window._formattedPrice || '—') + '</td></tr>';
 
   var extraHtml = '';
   Object.keys(data).forEach(function(key){
@@ -784,7 +848,7 @@ function generateInvoice(){
     // Note
     + (data.note ? '<div class="inv-note"><b>توضیحات:</b> ' + data.note + '</div>' : '')
     // Total
-    + '<div class="inv-total"><div class="inv-total-box"><div class="inv-total-label">مبلغ قابل پرداخت</div><div class="inv-total-value">۵۰۰,۰۰۰ تومان</div></div></div>'
+    + '<div class="inv-total"><div class="inv-total-box"><div class="inv-total-label">مبلغ قابل پرداخت</div><div class="inv-total-value">' + (window._formattedPrice || '—') + '</div></div></div>'
     + '</div>'
     // Footer
     + '<div class="inv-footer"><div class="inv-thanks">با تشکر از اعتماد شما</div><div>مرکز خدمات کافینت | www.cafenet.ir</div></div>'
