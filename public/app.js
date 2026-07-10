@@ -1257,11 +1257,12 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            localStorage.setItem('userData', JSON.stringify({ username }));
+            const phone = document.getElementById('phone').value;
+            localStorage.setItem('userData', JSON.stringify({ username, phone }));
             fetch('/api/register', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password, phone })
             }).catch(() => {});
             window.location.href = 'index.html';
         });
