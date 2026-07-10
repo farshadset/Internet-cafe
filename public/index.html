@@ -64,33 +64,74 @@
     }
     </style>
     <style>
-    .skeleton-overlay{position:fixed;inset:0;z-index:9999;background:#000;display:flex;justify-content:center;padding-top:80px;transition:opacity .3s;overflow-y:auto}
+    .skeleton-overlay{position:fixed;inset:0;z-index:99999;background:#0d2a32;transition:opacity .4s ease}
     .skeleton-overlay.hide{opacity:0;pointer-events:none}
-    .skel-wrap{width:100%;max-width:720px;padding-inline:24px}
-    .skel{background:#1c1c1e;border-radius:8px;position:relative;overflow:hidden}
-    .skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);animation:skelPulse 1.5s infinite}
-    @keyframes skelPulse{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
-    .skel-h1{width:180px;height:40px;margin:0 auto 16px;border-radius:6px}
-    .skel-menu-row{display:flex;gap:12px;justify-content:center;margin-bottom:24px;flex-wrap:wrap}
-    .skel-menu-item{width:80px;height:32px;border-radius:20px}
-    .skel-search{max-width:32rem;height:44px;border-radius:9999px;margin:0 auto 24px}
-    .skel-banner{width:100%;aspect-ratio:16/9;margin-bottom:24px}
-    .skel-heading{width:90px;height:16px;margin:0 auto 20px}
-    .skel-row{display:flex;gap:16px;justify-content:center;margin-bottom:24px}
-    .skel-card{display:flex;flex-direction:column;align-items:center;gap:10px;flex:1}
-    .skel-card-img{width:100%;max-width:160px;aspect-ratio:1;border-radius:14px}
-    .skel-card-text{width:80%;max-width:120px;height:12px}
-    @media(max-width:768px){
-        .skeleton-overlay{padding-top:16px}
-        .skel-h1{width:140px;height:32px;margin-bottom:12px}
-        .skel-menu-item{width:60px;height:28px}
-        .skel-search{height:38px;margin-bottom:16px}
-        .skel-row{gap:10px}
-        .skel-card-img{max-width:110px}
-        .skel-card-text{max-width:90px;height:10px}
+    .skel{background:rgba(255,255,255,.08);border-radius:8px;position:relative;overflow:hidden}
+    .skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent);animation:skP 1.5s infinite}
+    @keyframes skP{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+    .skel-sidebar{position:fixed;top:0;left:0;width:80px;height:100vh;background:#0f303a;display:none;flex-direction:column;align-items:center;padding:12px 8px;gap:6px;z-index:100000;overflow:hidden;box-sizing:border-box}
+    .skel-sidebar .skel-brand{width:64px;height:64px;border-radius:8px;background:rgba(255,255,255,.08)}
+    .skel-sidebar .skel-divider{width:64px;height:1px;background:rgba(255,255,255,.2);flex-shrink:0}
+    .skel-sidebar .skel-nav-icon{width:64px;height:36px;border-radius:10px;background:rgba(255,255,255,.08);flex-shrink:0}
+    .skel-main{position:fixed;top:0;left:0;right:0;bottom:0;overflow-y:auto;scrollbar-width:none;z-index:100000}
+    .skel-main::-webkit-scrollbar{display:none}
+    .skel-content{width:100%;max-width:720px;margin:0 auto;padding:16px 24px 80px;box-sizing:border-box;overflow:visible}
+    .skel-logo{position:fixed;top:15px;left:15px;width:50px;height:50px;border-radius:50%;z-index:100001;display:none}
+    .skel-h1{height:48px;margin:0 auto 0;border-radius:6px;width:240px}
+    .skel-menu{display:flex;gap:4px;justify-content:center;margin-bottom:0;padding:8px 12px;border-radius:14px;overflow:visible;flex-wrap:nowrap}
+    .skel-menu-pill{height:45px;border-radius:8px;flex-shrink:0}
+    .skel-menu-pill:nth-child(1){width:180px}
+    .skel-menu-pill:nth-child(2){width:160px}
+    .skel-menu-pill:nth-child(3){width:160px}
+    .skel-menu-pill:nth-child(4){width:150px}
+    .skel-menu-pill:nth-child(5){width:190px}
+    .skel-menu-pill:nth-child(6){width:150px}
+    .skel-search{width:100%;max-width:32rem;height:44px;border-radius:9999px;margin:15px auto 0}
+    .skel-banner{width:100%;max-width:600px;aspect-ratio:2/1;margin:0 auto 16px;border-radius:16px}
+    .skel-section-title{width:120px;height:28px;margin:0 auto 1rem;border-radius:4px}
+    .skel-cards{display:flex;gap:1rem;justify-content:center;margin-bottom:1.5rem}
+    .skel-card{display:flex;flex-direction:column;align-items:center;gap:8px}
+    .skel-card-img{width:170px;height:170px;border-radius:16px}
+    .skel-card-label{width:170px;height:14px;border-radius:4px}
+    .skel-banner-gap{margin-top:25px}
+    .skel-bottom{position:fixed;bottom:0;left:0;right:0;height:64px;background:rgba(13,42,50,.75);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);display:none;align-items:center;justify-content:space-around;padding:0 12px;border-top:1px solid rgba(255,255,255,.06);z-index:100000}
+    .skel-bottom-item{width:48px;height:48px;border-radius:50%}
+    .skel-float-support{position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;display:none;z-index:100000}
+    .skel-float-profile{position:fixed;top:20px;right:20px;width:50px;height:50px;border-radius:50%;display:none;z-index:100000}
+    @media(min-width:1024px){
+        .skel-sidebar{display:flex}
+        .skel-menu{margin-left:80px}
+    }
+    @media(max-width:1023px){
+        .skel-sidebar{display:none}
+        .skel-logo{display:none}
+        .skel-bottom{display:flex}
+        .skel-float-support{display:none}
+        .skel-float-profile{display:none}
+        .skel-menu{display:none}
+    }
+    @media(max-width:767px){
+        .skel-content{padding:60px 16px 80px}
+        .skel-cards{gap:10px}
+        .skel-card,.skel-card-img,.skel-card-label{width:100%;max-width:120px}
+        .skel-card-img{height:auto;aspect-ratio:1}
+        .skel-card-label{height:12px}
     }
     </style>
     <script>
+        var _skelReady={banners:false,mega:false,allLoaded:false};
+        function hideSkeleton(){
+            if(!_skelReady.banners||!_skelReady.mega||!_skelReady.allLoaded) return;
+            var el=document.getElementById('skeletonOverlay');
+            if(el&&!el.classList.contains('hide')){
+                el.classList.add('hide');
+                setTimeout(function(){el.style.display='none'},400);
+            }
+        }
+        window.addEventListener('load',function(){
+            _skelReady.allLoaded=true;
+            hideSkeleton();
+        });
         document.addEventListener('DOMContentLoaded', function() {
             var bannerStates = {};
 
@@ -149,13 +190,66 @@
             ]).then(function(results) {
                 showBanners(results[0], 'bannersContainer1');
                 showBanners(results[1], 'bannersContainer2');
-                setTimeout(function(){ document.getElementById('skeletonOverlay').classList.add('hide'); }, 150);
-            }).catch(function(){ document.getElementById('skeletonOverlay').classList.add('hide'); });
-            setTimeout(function(){ document.getElementById('skeletonOverlay').classList.add('hide'); }, 3000);
+                _skelReady.banners=true;
+                hideSkeleton();
+            }).catch(function(){
+                _skelReady.banners=true;
+                hideSkeleton();
+            });
+            setTimeout(function(){
+                _skelReady.banners=true;
+                _skelReady.mega=true;
+                _skelReady.allLoaded=true;
+                hideSkeleton();
+            }, 5000);
         });
     </script>
 </head>
 <body>
+    <div class="skeleton-overlay" id="skeletonOverlay">
+        <div class="skel skel-logo"></div>
+        <div class="skel-sidebar">
+            <div class="skel-brand"></div>
+            <div class="skel-divider"></div>
+            <div class="skel-nav-icon"></div>
+            <div class="skel-nav-icon"></div>
+            <div class="skel-nav-icon"></div>
+            <div class="skel-nav-icon"></div>
+            <div class="skel-nav-icon"></div>
+            <div class="skel-nav-icon"></div>
+        </div>
+        <div class="skel-main">
+            <div class="skel-content">
+                <div class="skel skel-h1"></div>
+                <div class="skel-menu">
+                    <div class="skel skel-menu-pill"></div>
+                    <div class="skel skel-menu-pill"></div>
+                    <div class="skel skel-menu-pill"></div>
+                    <div class="skel skel-menu-pill"></div>
+                    <div class="skel skel-menu-pill"></div>
+                    <div class="skel skel-menu-pill"></div>
+                </div>
+                <div class="skel skel-search"></div>
+                <div class="skel skel-banner" style="margin-top:25px"></div>
+                <div class="skel skel-section-title"></div>
+                <div class="skel-cards">
+                    <div class="skel-card"><div class="skel skel-card-img"></div><div class="skel skel-card-label"></div></div>
+                    <div class="skel-card"><div class="skel skel-card-img"></div><div class="skel skel-card-label"></div></div>
+                    <div class="skel-card"><div class="skel skel-card-img"></div><div class="skel skel-card-label"></div></div>
+                </div>
+                <div class="skel skel-banner" style="aspect-ratio:16/7"></div>
+            </div>
+        </div>
+        <div class="skel-bottom">
+            <div class="skel skel-bottom-item"></div>
+            <div class="skel skel-bottom-item"></div>
+            <div class="skel skel-bottom-item"></div>
+            <div class="skel skel-bottom-item"></div>
+            <div class="skel skel-bottom-item"></div>
+        </div>
+        <div class="skel skel-float-support"></div>
+        <div class="skel skel-float-profile"></div>
+    </div>
     <!-- Desktop Sidebar -->
     <div class="desktop-sidebar-overlay" id="sidebarOverlay"></div>
     <nav class="desktop-sidebar" id="desktopSidebar">
@@ -196,27 +290,6 @@
             <div id="searchResults" class="search-results"></div>
         </div>
 <main>
-        <div class="skeleton-overlay" id="skeletonOverlay">
-            <div class="skel-wrap">
-                <div class="skel skel-h1"></div>
-                <div class="skel-menu-row">
-                    <div class="skel skel-menu-item"></div>
-                    <div class="skel skel-menu-item"></div>
-                    <div class="skel skel-menu-item"></div>
-                    <div class="skel skel-menu-item"></div>
-                    <div class="skel skel-menu-item"></div>
-                </div>
-                <div class="skel skel-search"></div>
-                <div class="skel skel-banner"></div>
-                <div class="skel skel-heading"></div>
-                <div class="skel-row">
-                    <div class="skel-card"><div class="skel skel-card-img"></div><div class="skel skel-card-text"></div></div>
-                    <div class="skel-card"><div class="skel skel-card-img"></div><div class="skel skel-card-text"></div></div>
-                    <div class="skel-card"><div class="skel skel-card-img"></div><div class="skel skel-card-text"></div></div>
-                </div>
-                <div class="skel skel-banner" style="aspect-ratio:16/7"></div>
-            </div>
-        </div>
               <div id="bannersContainer1" style="text-align: center;"></div>
               <h2 style="color: white; margin-bottom: 1rem;">خدمات ویژه</h2>
              <div class="service-buttons">
@@ -306,7 +379,10 @@
             fetch('/api/mega-menu').then(function(r){return r.text()}).then(function(html){
                 document.getElementById('megaMenuContainer').innerHTML = html;
                 initMegaMenu();
-            }).catch(function(){});
+            }).catch(function(){}).then(function(){
+                _skelReady.mega=true;
+                hideSkeleton();
+            });
         });
 
         function initMegaMenu(){
