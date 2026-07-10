@@ -34,7 +34,7 @@
             </div>
             <div style="margin-bottom:1rem;">
                 <label style="display:block;margin-bottom:0.5rem;font-weight:700;color:#333;">قیمت (تومان):</label>
-                <input type="number" id="servicePriceInput" min="0" step="1000" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:8px;">
+                <input type="text" id="servicePriceInput" inputmode="numeric" placeholder="0" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:8px;">
             </div>
             <div class="form-actions" style="justify-content:flex-end;">
                 <button class="btn-next" id="savePriceBtn">ذخیره</button>
@@ -53,8 +53,8 @@
             if (!match) return numStr;
             var num = parseInt(match[0], 10);
             if (isNaN(num)) return numStr;
-            var formatted = num.toLocaleString('fa-IR').replace(/٬/g, '٫');
-            return '\u202A' + numStr.replace(match[0], formatted) + '\u202C';
+            var formatted = num.toLocaleString('fa-IR').replace(/[٬٫]/g, ',');
+            return formatted;
         }
 
         var currentServiceKey = null;
@@ -343,6 +343,21 @@
             var savePriceBtn = document.getElementById('savePriceBtn');
             var closePricePopup = document.getElementById('closePricePopup');
 
+            function stripCommas(str) { return str.replace(/,/g, ''); }
+            function formatInputNumber(val) {
+                var raw = stripCommas(val);
+                if (!/^\d*$/.test(raw)) return servicePriceInput.value;
+                if (raw === '') return '';
+                return parseInt(raw, 10).toLocaleString('en');
+            }
+            servicePriceInput.addEventListener('input', function() {
+                var pos = this.selectionStart;
+                var oldLen = this.value.length;
+                this.value = formatInputNumber(this.value);
+                var diff = this.value.length - oldLen;
+                this.setSelectionRange(pos + diff, pos + diff);
+            });
+
             var state = { expandedCategories: {}, expandedGroups: {} };
 
             function renderPricing(pricingMap) {
@@ -418,7 +433,7 @@
                                             e.stopPropagation();
                                             currentServiceKey = this.getAttribute('data-service');
                                             serviceNameInput.value = this.getAttribute('data-title');
-                                            servicePriceInput.value = this.getAttribute('data-price') || '';
+                                            servicePriceInput.value = this.getAttribute('data-price') ? formatInputNumber(this.getAttribute('data-price')) : '';
                                             pricePopup.classList.add('active');
                                         });
                                         groupDiv.appendChild(serviceDiv);
@@ -438,7 +453,7 @@
                                         e.stopPropagation();
                                         currentServiceKey = this.getAttribute('data-service');
                                         serviceNameInput.value = this.getAttribute('data-title');
-                                        servicePriceInput.value = this.getAttribute('data-price') || '';
+                                        servicePriceInput.value = this.getAttribute('data-price') ? formatInputNumber(this.getAttribute('data-price')) : '';
                                         pricePopup.classList.add('active');
                                     });
                                     groupDiv.appendChild(singleDiv);
@@ -464,7 +479,7 @@
                 });
 
             savePriceBtn.addEventListener('click', function() {
-                var price = parseInt(servicePriceInput.value) || 0;
+                var price = parseInt(stripCommas(servicePriceInput.value)) || 0;
                 if (!currentServiceKey) return;
                 fetch('/api/pricing', {
                     method: 'POST',

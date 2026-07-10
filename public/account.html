@@ -10,15 +10,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <style>
+        .orders-wrapper{max-width:480px;margin-inline:auto;padding-top:1rem}
+        .back-link{display:block!important;margin-bottom:1rem;width:fit-content;margin-right:auto;border:1.5px solid rgba(255,255,255,.5);color:#fff;background:transparent;padding:9px 18px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13.5px;font-family:inherit;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;display:inline-flex;align-items:center;gap:8px}
+        .back-link:hover{border-color:#fff}
+        @media(max-width:600px){.back-link span{display:none}}
+    </style>
 </head>
 <body>
     <div class="container">
         <a href="index.html" class="logo-icon" title="صفحه اصلی">
             <i class="fas fa-mug-hot"></i>
         </a>
-        <header>
-            <h1>حساب کاربری</h1>
-        </header>
+        <div class="orders-wrapper">
+        <a class="btn btn-ghost back-link" href="profile.html">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+            <span>بازگشت به پروفایل</span>
+        </a>
         <main>
             <div class="form-card">
                 <div class="profile-field">
@@ -35,9 +43,9 @@
                         <a href="#" class="edit-btn" id="editPhone"><i class="fas fa-edit"></i></a>
                     </div>
                 </div>
-                <a href="profile.html" class="btn-next">بازگشت</a>
             </div>
         </main>
+    </div>
     </div>
     <script src="app.js"></script>
     <script>

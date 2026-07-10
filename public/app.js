@@ -6,7 +6,7 @@ function formatPrice(price) {
     if (!match) return numStr;
     var num = parseInt(match[0], 10);
     if (isNaN(num)) return numStr;
-    var formatted = num.toLocaleString('fa-IR').replace(/٬/g, ',');
+    var formatted = num.toLocaleString('fa-IR').replace(/[٬٫]/g, ',');
     var result = '\u202A' + numStr.replace(match[0], formatted) + '\u202C';
     return result;
 }
