@@ -23,6 +23,16 @@
                 <div class="card-strip"></div>
                 <div class="f-grid">
                     <div class="f-field">
+                        <label for="customerName">نام و نام خانوادگی</label>
+                        <input type="text" id="customerName" name="customerName" required>
+                    </div>
+
+                    <div class="f-field">
+                        <label for="customerPhone">شماره تلفن</label>
+                        <input type="tel" id="customerPhone" name="customerPhone" placeholder="09123456789" value="09123456789" required class="phone-default" style="direction:ltr;text-align:left;color:#999;font-weight:400" onfocus="if(this.value==='09123456789'){this.value='';this.style.color='#122A33';this.style.fontWeight='400'}" onblur="if(!this.value){this.value='09123456789';this.style.color='#999';this.style.fontWeight='400'}">
+                    </div>
+
+                    <div class="f-field">
                         <label for="serviceType">نوع خدمت</label>
                         <select id="serviceType" name="serviceType" required>
                             <option value="">انتخاب کنید...</option>
@@ -31,16 +41,6 @@
                             <option value="consultation">مشاوره</option>
                             <option value="other">سایر خدمات</option>
                         </select>
-                    </div>
-
-                    <div class="f-field">
-                        <label for="customerName">نام و نام خانوادگی</label>
-                        <input type="text" id="customerName" name="customerName" required>
-                    </div>
-
-                    <div class="f-field">
-                        <label for="customerPhone">شماره تلفن</label>
-                        <input type="tel" id="customerPhone" name="customerPhone" placeholder="09xx-xxx-xxxx" required>
                     </div>
 
                     <div class="f-field">
@@ -53,9 +53,7 @@
                         <label for="additionalNotes">توضیحات اضافی <span class="opt">(اختیاری)</span></label>
                         <div class="textarea-wrap">
                             <textarea id="additionalNotes" name="additionalNotes" rows="3" data-rtl-listener="true"></textarea>
-                            <button type="button" class="pin-attachment" id="pinAttachment" title="افزودن فایل">
-                                <i class="fas fa-paperclip"></i>
-                            </button>
+                            <button type="button" class="attach-btn" onclick="document.getElementById('attachmentFile').click()" title="افزودن فایل"><i class="fas fa-paperclip"></i></button>
                         </div>
                         <div class="file-preview" id="attachmentPreview"></div>
                         <input type="file" id="attachmentFile" accept="image/*,.pdf" style="display: none;">
@@ -71,6 +69,40 @@
             var userData = JSON.parse(localStorage.getItem('userData') || 'null');
             var form = document.getElementById('customServicesForm');
             setupPriceInputFormatting(document.getElementById('proposedPrice'));
+            var attachmentFile = document.getElementById('attachmentFile');
+            var attachmentPreview = document.getElementById('attachmentPreview');
+            window.currentAttachments = window.currentAttachments || [];
+            function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]})}
+            if(attachmentFile && attachmentPreview){
+                attachmentFile.addEventListener('change', function(e){
+                    var file = e.target.files[0];
+                    if(!file) return;
+                    if(file.type.startsWith('image/') && window.currentAttachments.filter(function(a){return a.type&&a.type.startsWith('image/');}).length>=4){alert('فقط می توان چهار فایل آپلود کرد');attachmentFile.value='';return;}
+                    if(file.type==='application/pdf' && window.currentAttachments.filter(function(a){return a.type==='application/pdf';}).length>=4){alert('فقط می توان چهار فایل آپلود کرد');attachmentFile.value='';return;}
+                    var id='att_'+Date.now()+'_'+Math.random().toString(16).slice(2);
+                    var thumb=document.createElement('div');
+                    thumb.className='file-thumb';
+                    thumb.dataset.id=id;
+                    var reader=new FileReader();
+                    reader.onload=function(ev){
+                        if(file.type.startsWith('image/')){
+                            thumb.innerHTML='<img src="'+ev.target.result+'"><div class="file-name">'+escapeHtml(file.name)+'</div><button type="button" class="file-remove" onclick="window._removeSpecialAttach(\''+id+'\')">&times;</button>';
+                        } else {
+                            thumb.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f0f0f0;font-size:10px;color:#666;text-align:center;padding:4px">'+escapeHtml(file.name)+'</div><button type="button" class="file-remove" onclick="window._removeSpecialAttach(\''+id+'\')">&times;</button>';
+                        }
+                        window.currentAttachments.push({id:id,name:file.name,type:file.type,size:file.size,dataUrl:ev.target.result,uploadedAt:new Date().toISOString()});
+                        window.currentAttachments = window.currentAttachments;
+                    };
+                    reader.readAsDataURL(file);
+                    attachmentPreview.appendChild(thumb);
+                    attachmentFile.value='';
+                });
+            }
+            window._removeSpecialAttach = function(id){
+                window.currentAttachments = window.currentAttachments.filter(function(a){return a.id!==id});
+                var thumb=document.querySelector('.file-thumb[data-id="'+id+'"]');
+                if(thumb) thumb.remove();
+            };
             function getAttachmentMetadata() {
                 return (window.currentAttachments || []).map(function(attachment) {
                     return {
