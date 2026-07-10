@@ -78,6 +78,7 @@ main{padding:40px 0 70px;background:#1C5E52}
 .f-field .file-preview .file-thumb .file-name{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:2px 4px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .f-field .file-preview .file-thumb .file-remove{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:rgba(220,50,50,.85);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
 .f-field input:focus,.f-field textarea:focus{outline:none;border-color:var(--firouzeh);background:#fff}
+.phone-default{color:#999;font-weight:400}
 .f-field.has-err input,.f-field.has-err textarea{border-color:var(--err)}
 .f-field .err{font-size:11.5px;color:var(--err);display:none}
 .f-field.has-err .err{display:block}
@@ -333,7 +334,8 @@ function fieldHTML(f){
          +   '<input type="file" id="f_attachInput" accept="image/*,.pdf,.doc,.docx" style="display:none" multiple>'
          +   '<span class="err"></span></div>';
   }
-  var input = '<input id="f_'+f.key+'" name="'+f.key+'" type="text"'+(f.ph?' placeholder="'+f.ph+'"':'')+(f.opt?'':' required')+(f.digits?' inputmode="numeric" data-digits="'+f.digits+'"':'')+'>';
+  var extra_attrs = (f.ph?' placeholder="'+f.ph+'"':'')+(f.val?' value="'+f.val+'" class="phone-default"':'')+(f.opt?'':' required')+(f.digits?' inputmode="numeric" data-digits="'+f.digits+'"':'')+(f.key==='phone'?' style="direction:ltr;text-align:left;color:#999;font-weight:400" onfocus="if(this.value===\'09123456789\'){this.value=\'\';this.style.color=\'#122A33\';this.style.fontWeight=\'400\'}" onblur="if(!this.value){this.value=\'09123456789\';this.style.color=\'#999\';this.style.fontWeight=\'400\'}"':'');
+  var input = '<input id="f_'+f.key+'" name="'+f.key+'" type="text"'+extra_attrs+'>';
   return '<div class="f-field'+(f.full?' full':'')+'">'
        +   '<label for="f_'+f.key+'">'+f.label+(f.opt?' <span class="opt">(اختیاری)</span>':'')+'</label>'
        +   input + '<span class="err"></span></div>';
@@ -352,7 +354,7 @@ function fieldHTML(f){
   var extra = BY_SERVICE[service] || BY_CATEGORY[cat] || [];
   var html = ''
 + fieldHTML({key:'name',   label:'نام و نام خانوادگی'})
-+ fieldHTML({key:'phone',  label:'شماره تلفن', ph:'۰۹۱۲۳۴۵۶۷۸۹', digits:11})
++ fieldHTML({key:'phone',  label:'شماره تلفن', ph:'09123456789', val:'09123456789', digits:11})
 + fieldHTML({key:'nationalId', label:'کد ملی', ph:'۱۰ رقم', digits:10});
   extra.forEach(function(f){ html += fieldHTML(f); });
   html += fieldHTML({key:'note', label:'توضیحات', type:'textarea', opt:true, full:true});
