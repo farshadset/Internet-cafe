@@ -317,7 +317,8 @@ var formFieldsHtml = renderFormFields(order);
                         summaryHtml += filesHtml;
                         summaryHtml += priceRow;
                         summaryHtml += paymentRow;
-                        summaryHtml += '<div class="summary-row total"><span class="label">مبلغ قابل پرداخت</span><span class="value">۵۰۰,۰۰۰ تومان</span></div>';
+                        var totalCost = order.adminProposedPrice || order.proposedPrice || order.cost || 0;
+                        summaryHtml += '<div class="summary-row total"><span class="label">مبلغ قابل پرداخت</span><span class="value">' + formatPrice(totalCost) + ' تومان</span></div>';
                         summaryHtml += '</div>';
                         
                         container.innerHTML = summaryHtml +

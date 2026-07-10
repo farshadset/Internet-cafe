@@ -63,6 +63,33 @@
         background: #2a4d3a;
     }
     </style>
+    <style>
+    .skeleton-overlay{position:fixed;inset:0;z-index:9999;background:#000;display:flex;justify-content:center;padding-top:80px;transition:opacity .3s;overflow-y:auto}
+    .skeleton-overlay.hide{opacity:0;pointer-events:none}
+    .skel-wrap{width:100%;max-width:720px;padding-inline:24px}
+    .skel{background:#1c1c1e;border-radius:8px;position:relative;overflow:hidden}
+    .skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);animation:skelPulse 1.5s infinite}
+    @keyframes skelPulse{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+    .skel-h1{width:180px;height:40px;margin:0 auto 16px;border-radius:6px}
+    .skel-menu-row{display:flex;gap:12px;justify-content:center;margin-bottom:24px;flex-wrap:wrap}
+    .skel-menu-item{width:80px;height:32px;border-radius:20px}
+    .skel-search{max-width:32rem;height:44px;border-radius:9999px;margin:0 auto 24px}
+    .skel-banner{width:100%;aspect-ratio:16/9;margin-bottom:24px}
+    .skel-heading{width:90px;height:16px;margin:0 auto 20px}
+    .skel-row{display:flex;gap:16px;justify-content:center;margin-bottom:24px}
+    .skel-card{display:flex;flex-direction:column;align-items:center;gap:10px;flex:1}
+    .skel-card-img{width:100%;max-width:160px;aspect-ratio:1;border-radius:14px}
+    .skel-card-text{width:80%;max-width:120px;height:12px}
+    @media(max-width:768px){
+        .skeleton-overlay{padding-top:16px}
+        .skel-h1{width:140px;height:32px;margin-bottom:12px}
+        .skel-menu-item{width:60px;height:28px}
+        .skel-search{height:38px;margin-bottom:16px}
+        .skel-row{gap:10px}
+        .skel-card-img{max-width:110px}
+        .skel-card-text{max-width:90px;height:10px}
+    }
+    </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var bannerStates = {};
@@ -122,7 +149,9 @@
             ]).then(function(results) {
                 showBanners(results[0], 'bannersContainer1');
                 showBanners(results[1], 'bannersContainer2');
-            }).catch(() => {});
+                setTimeout(function(){ document.getElementById('skeletonOverlay').classList.add('hide'); }, 150);
+            }).catch(function(){ document.getElementById('skeletonOverlay').classList.add('hide'); });
+            setTimeout(function(){ document.getElementById('skeletonOverlay').classList.add('hide'); }, 3000);
         });
     </script>
 </head>
@@ -167,6 +196,27 @@
             <div id="searchResults" class="search-results"></div>
         </div>
 <main>
+        <div class="skeleton-overlay" id="skeletonOverlay">
+            <div class="skel-wrap">
+                <div class="skel skel-h1"></div>
+                <div class="skel-menu-row">
+                    <div class="skel skel-menu-item"></div>
+                    <div class="skel skel-menu-item"></div>
+                    <div class="skel skel-menu-item"></div>
+                    <div class="skel skel-menu-item"></div>
+                    <div class="skel skel-menu-item"></div>
+                </div>
+                <div class="skel skel-search"></div>
+                <div class="skel skel-banner"></div>
+                <div class="skel skel-heading"></div>
+                <div class="skel-row">
+                    <div class="skel-card"><div class="skel skel-card-img"></div><div class="skel skel-card-text"></div></div>
+                    <div class="skel-card"><div class="skel skel-card-img"></div><div class="skel skel-card-text"></div></div>
+                    <div class="skel-card"><div class="skel skel-card-img"></div><div class="skel skel-card-text"></div></div>
+                </div>
+                <div class="skel skel-banner" style="aspect-ratio:16/7"></div>
+            </div>
+        </div>
               <div id="bannersContainer1" style="text-align: center;"></div>
               <h2 style="color: white; margin-bottom: 1rem;">خدمات ویژه</h2>
              <div class="service-buttons">
