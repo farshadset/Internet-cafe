@@ -10,16 +10,49 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
+    <nav class="desktop-sidebar" id="desktopSidebar">
+        <div class="sidebar-brand"><img src="logooo.png" alt="لیمو نت" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
+        <hr class="sidebar-divider">
+        <a href="index.html" title="خانه"><i class="fas fa-home"></i><span>خانه</span></a>
+        <a href="orders.html" title="سفارش‌ها"><img src="list.png" alt="سفارش‌ها" style="width:24px;height:24px;object-fit:contain;filter:brightness(0) invert(1)"><span>سفارش‌ها</span></a>
+        <button id="sidebarSupportBtn" title="پشتیبانی"><i class="fas fa-headset"></i><span>پشتیبانی</span></button>
+        <button id="sidebarProfileBtn" title="پروفایل"><i class="fas fa-user"></i><span>پروفایل</span></button>
+        <a href="articles-research.html" title="اخبار"><i class="fas fa-newspaper"></i><span>اخبار</span></a>
+        <a href="faq.html" title="آموزش"><i class="fas fa-graduation-cap"></i><span>آموزش</span></a>
+        <div style="flex:1"></div>
+        <div class="sidebar-social">
+            <a href="#" title="واتساپ" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"></path></svg></a>
+            <a href="#" title="تلگرام" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="#26A5E4"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012.056 0h-.112zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"></path></svg></a>
+            <a href="#" title="بله" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center"><img src="bale.svg" alt="بله" width="26" height="26"></a>
+            <a href="#" title="روبیکا" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center"><img src="robika.svg" alt="روبیکا" width="26" height="26"></a>
+        </div>
+    </nav>
     <div class="container">
-        <a href="index.html" class="logo-icon" title="صفحه اصلی">
-            <i class="fas fa-mug-hot"></i>
-        </a>
         <header>
             <h1>پنل مدیریت</h1>
         </header>
         <main>
+            <div style="margin:0 auto 15px auto;width:600px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <div class="status-btns" style="margin-bottom:0;" id="chartFilterTabs">
+                        <button class="status-btn active" data-days="7" title="۷ روز اخیر"><i class="fas fa-calendar-week"></i></button>
+                        <button class="status-btn" data-days="30" title="۱ ماه اخیر"><i class="fas fa-calendar-alt"></i></button>
+                        <button class="status-btn" data-days="180" title="۶ ماه اخیر"><i class="fas fa-calendar"></i></button>
+                    </div>
+                    <div class="status-btns" style="margin-bottom:0;" id="chartTypeTabs">
+                        <button class="status-btn active" data-chart="income" title="درآمد"><i class="fas fa-chart-line"></i></button>
+                        <button class="status-btn" data-chart="return" title="نحوه محاسبه نرخ بازگشت:&#10;درصد مشتریانی که بیش از یک سفارش تکمیل شده دارند&#10;تعداد مشتریان بازگشتی تقسیم بر کل مشتریان تکمیل شده ضربدر ۱۰۰"><i class="fas fa-user-check"></i></button>
+                        <button class="status-btn" data-chart="newcustomers" title="مشتریان جدید"><i class="fas fa-user-plus"></i></button>
+                        <button class="status-btn" data-chart="visits" title="نحوه محاسبه بازدید:&#10;فقط صفحه اصلی (index.html) شمارش میشود&#10;بازدید مدیر محاسبه نمیشود&#10;رفرش‌های پشت سر هم تا ۳۰ دقیقه فقط یک بازدید حساب میشود"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div class="form-card" style="padding:4px !important;width:600px !important;height:300px !important;max-width:600px !important;min-width:600px !important;box-sizing:border-box;overflow:hidden;display:block !important;flex-direction:unset !important;margin:0 !important;">
+                    <canvas id="incomeChart" style="width:100%;height:100%;"></canvas>
+                </div>
+            </div>
             <div class="form-card" id="adminPanel">
                 <a href="admin-orders.html" class="profile-option" style="display: flex; align-items: center;">
                     <i class="fas fa-list"></i>
@@ -36,6 +69,10 @@
                     <span>چت با مشتری</span>
                     <span class="badge" id="chatBadge" style="display: none;">0</span>
                 </a>
+                <a href="admin-transactions.html" class="profile-option" style="display: flex; align-items: center;">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>تراکنش‌های مالی</span>
+                </a>
                 <a href="admin-pricing.html" class="profile-option" style="display: flex; align-items: center;">
                     <i class="fas fa-tag"></i>
                     <span>قیمت گذاری</span>
@@ -43,6 +80,10 @@
                 <a href="admin-banner.html" class="profile-option" style="display: flex; align-items: center;">
                     <i class="fas fa-image"></i>
                     <span>بنر</span>
+                </a>
+                <a href="admin-social.html" class="profile-option" style="display: flex; align-items: center;">
+                    <i class="fas fa-share-alt"></i>
+                    <span>اطلاعات تماس</span>
                 </a>
                 <a href="#" class="profile-option" id="adminLogoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
@@ -54,6 +95,196 @@
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            var incomeChart = null;
+            var allOrders = [];
+            var allVisits = {};
+            var chartFilterBtns = document.querySelectorAll('#chartFilterTabs .status-btn');
+            var chartTypeBtns = document.querySelectorAll('#chartTypeTabs .status-btn');
+            var currentDays = 7;
+            var currentChartType = 'income';
+
+            function getDateLabels(days) {
+                var labels = [];
+                var now = new Date();
+                for (var i = days - 1; i >= 0; i--) {
+                    var d = new Date(now);
+                    d.setDate(d.getDate() - i);
+                    d.setHours(0, 0, 0, 0);
+                    if (days <= 31) {
+                        labels.push({ date: d, label: String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0') });
+                    } else {
+                        labels.push({ date: d, label: String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getFullYear()).slice(2) });
+                    }
+                }
+                return labels;
+            }
+
+            function buildIncomeChart(orders, days) {
+                var labelsObj = getDateLabels(days);
+                var data = labelsObj.map(function() { return 0; });
+                orders.forEach(function(o) {
+                    if (o.status === 'completed' && o.created_at) {
+                        var price = parseInt(o.adminProposedPrice || o.proposedPrice || 0, 10) || 0;
+                        if (price <= 0) return;
+                        var oDate = new Date(o.created_at);
+                        oDate.setHours(0, 0, 0, 0);
+                        for (var i = 0; i < labelsObj.length; i++) {
+                            if (oDate.getTime() === labelsObj[i].date.getTime()) {
+                                data[i] += price;
+                                break;
+                            }
+                        }
+                    }
+                });
+                renderChart(labelsObj.map(function(l) { return l.label; }), data, 'درآمد (ت)', '#227164', 'ت');
+            }
+
+            function buildReturnChart(orders, days) {
+                var labelsObj = getDateLabels(days);
+                var data = labelsObj.map(function() { return 0; });
+                var customerOrders = {};
+                orders.filter(function(o) { return o.status === 'completed' && o.created_at; }).forEach(function(o) {
+                    if (!customerOrders[o.username]) customerOrders[o.username] = [];
+                    customerOrders[o.username].push(new Date(o.created_at));
+                });
+                labelsObj.forEach(function(label, idx) {
+                    var count = 0;
+                    var total = 0;
+                    Object.keys(customerOrders).forEach(function(username) {
+                        var dates = customerOrders[username].sort(function(a, b) { return a - b; });
+                        if (dates.length < 2) return;
+                        total++;
+                        for (var i = 1; i < dates.length; i++) {
+                            var prev = new Date(dates[i - 1]);
+                            prev.setHours(0, 0, 0, 0);
+                            var curr = new Date(dates[i]);
+                            curr.setHours(0, 0, 0, 0);
+                            if (curr.getTime() === label.date.getTime() && prev.getTime() < curr.getTime()) {
+                                count++;
+                                break;
+                            }
+                        }
+                    });
+                    data[idx] = total > 0 ? Math.round((count / total) * 100) : 0;
+                });
+                renderChart(labelsObj.map(function(l) { return l.label; }), data, 'نرخ بازگشت (%)', '#2196F3', '%');
+            }
+
+            function buildVisitsChart(days, visitsData) {
+                var labelsObj = getDateLabels(days);
+                var data = labelsObj.map(function() { return 0; });
+                labelsObj.forEach(function(label, idx) {
+                    var key = label.date.getFullYear() + '-' + String(label.date.getMonth() + 1).padStart(2, '0') + '-' + String(label.date.getDate()).padStart(2, '0');
+                    data[idx] = visitsData[key] || 0;
+                });
+                renderChart(labelsObj.map(function(l) { return l.label; }), data, 'تعداد بازدید', '#FF9800', 'بار');
+            }
+
+            function buildNewCustomersChart(orders, days) {
+                var labelsObj = getDateLabels(days);
+                var data = labelsObj.map(function() { return 0; });
+                var firstOrderDate = {};
+                orders.filter(function(o) { return o.status === 'completed' && o.created_at && o.username; }).forEach(function(o) {
+                    var username = o.username;
+                    var oDate = new Date(o.created_at);
+                    if (!firstOrderDate[username] || oDate < firstOrderDate[username]) {
+                        firstOrderDate[username] = oDate;
+                    }
+                });
+                Object.keys(firstOrderDate).forEach(function(username) {
+                    var fDate = firstOrderDate[username];
+                    fDate.setHours(0, 0, 0, 0);
+                    for (var i = 0; i < labelsObj.length; i++) {
+                        if (fDate.getTime() === labelsObj[i].date.getTime()) {
+                            data[i]++;
+                            break;
+                        }
+                    }
+                });
+                renderChart(labelsObj.map(function(l) { return l.label; }), data, 'مشتریان جدید', '#9C27B0', 'نفر');
+            }
+
+            function renderChart(labels, data, label, color, suffix) {
+                if (incomeChart) incomeChart.destroy();
+                var ctx = document.getElementById('incomeChart').getContext('2d');
+                incomeChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: label,
+                            data: data,
+                            borderColor: color,
+                            backgroundColor: color.replace(')', ',0.15)').replace('rgb', 'rgba'),
+                            fill: true,
+                            tension: 0.3,
+                            pointBackgroundColor: color,
+                            pointRadius: labels.length <= 31 ? 4 : 0,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(v) { return v.toLocaleString('fa-IR') + ' ' + suffix; }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function render() {
+                if (currentChartType === 'income') {
+                    buildIncomeChart(allOrders, currentDays);
+                } else if (currentChartType === 'return') {
+                    buildReturnChart(allOrders, currentDays);
+                } else if (currentChartType === 'newcustomers') {
+                    buildNewCustomersChart(allOrders, currentDays);
+                } else if (currentChartType === 'visits') {
+                    buildVisitsChart(currentDays, allVisits);
+                }
+            }
+
+            chartFilterBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    chartFilterBtns.forEach(function(b) { b.classList.remove('active'); });
+                    this.classList.add('active');
+                    currentDays = parseInt(this.getAttribute('data-days'), 10);
+                    render();
+                });
+            });
+
+            chartTypeBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    chartTypeBtns.forEach(function(b) { b.classList.remove('active'); });
+                    this.classList.add('active');
+                    currentChartType = this.getAttribute('data-chart');
+                    render();
+                });
+            });
+
+            fetch('/api/orders')
+                .then(function(r) { return r.json(); })
+                .then(function(orders) {
+                    allOrders = orders;
+                    render();
+                })
+                .catch(function() {});
+
+            fetch('/api/visits')
+                .then(function(r) { return r.json(); })
+                .then(function(visits) {
+                    allVisits = visits;
+                    if (currentChartType === 'visits') render();
+                })
+                .catch(function() {});
+
             fetch('/api/admin/customers')
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
@@ -64,6 +295,33 @@
                     }
                 })
                 .catch(function() {});
+
+            // Sidebar toggle
+            var sidebar = document.getElementById('desktopSidebar');
+            if(sidebar) {
+                sidebar.addEventListener('mouseenter', function(){
+                    sidebar.classList.add('expanded');
+                });
+                sidebar.addEventListener('mouseleave', function(){
+                    sidebar.classList.remove('expanded');
+                });
+            }
+
+            // Load social links into sidebar
+            var savedSocial = localStorage.getItem('caffint_social_links');
+            if (savedSocial) {
+                try {
+                    var socialData = JSON.parse(savedSocial);
+                    var socialLinks = document.querySelectorAll('.sidebar-social a');
+                    socialLinks.forEach(function(link) {
+                        var title = link.getAttribute('title');
+                        if (title === 'واتساپ' && socialData.whatsapp) link.href = socialData.whatsapp;
+                        else if (title === 'تلگرام' && socialData.telegram) link.href = socialData.telegram;
+                        else if (title === 'بله' && socialData.bale) link.href = socialData.bale;
+                        else if (title === 'روبیکا' && socialData.robika) link.href = socialData.robika;
+                    });
+                } catch(e) {}
+            }
         });
     </script>
 </body>
