@@ -44,7 +44,10 @@
             var ordersPopup = document.getElementById('customerOrdersPopup');
             var customerOrdersList = document.getElementById('customerOrdersList');
             var closeOrdersPopup = document.getElementById('closeOrdersPopup');
-            
+            var customersData = [];
+            var sortField = '';
+            var sortDir = 'asc';
+
             function getServiceTitle(order) {
                 var title = order.title || '';
                 if (!title || title === '-') {
@@ -58,7 +61,7 @@
                     var isCriminalRecord = order.birthplace;
                     var isSmartCard = order.serialNumber;
                     var isHealthInsurance = order.familyMembers;
-                    
+
                     if (isFuelCard) title = 'کارت سوخت';
                     else if (isMarriageLoan) title = 'وام ازدواج';
                     else if (isKonkor) title = 'کنکور سراسری';
@@ -73,7 +76,7 @@
                 }
                 return title;
             }
-            
+
             function renderCustomerOrders(orders) {
                 customerOrdersList.innerHTML = '';
                 if (orders.length === 0) {
@@ -98,38 +101,70 @@
                     customerOrdersList.appendChild(div);
                 });
             }
-            
-            function renderCustomers(customers) {
+
+            function sortCustomers(field) {
+                if (sortField === field) {
+                    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortField = field;
+                    sortDir = 'asc';
+                }
+                customersData.sort(function(a, b) {
+                    var valA = field === 'totalSpent' ? a.totalSpent : a.totalOrders;
+                    var valB = field === 'totalSpent' ? b.totalSpent : b.totalOrders;
+                    return sortDir === 'asc' ? valA - valB : valB - valA;
+                });
+                renderTable();
+            }
+
+            function getArrow(field) {
+                if (sortField !== field) return '<i class="fas fa-sort" style="margin-right:4px;font-size:10px;opacity:0.5;"></i>';
+                var icon = sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
+                return '<i class="fas ' + icon + '" style="margin-right:4px;font-size:10px;"></i>';
+            }
+
+            function renderTable() {
                 container.innerHTML = '';
-                if (customers.length === 0) {
+                if (customersData.length === 0) {
                     container.innerHTML = '<p style="text-align:center;color:#999;">مشتری یافت نشد.</p>';
                     return;
                 }
-                customers.forEach(function(customer) {
-                    var div = document.createElement('div');
-                    div.className = 'order-card';
+                var table = document.createElement('table');
+                table.style.cssText = 'width:100%;border-collapse:collapse;text-align:center;font-size:14px;';
+                var thead = document.createElement('thead');
+                thead.innerHTML = '<tr style="background:#227164;color:#fff;">' +
+                    '<th style="padding:12px 8px;border-radius:0 8px 8px 0;">نام کاربری</th>' +
+                    '<th data-sort="totalSpent" class="sortable-th" style="padding:12px 8px;cursor:pointer;user-select:none;">مجموع پرداختی' + getArrow('totalSpent') + '</th>' +
+                    '<th data-sort="totalOrders" class="sortable-th" style="padding:12px 8px;cursor:pointer;user-select:none;">سفارش‌ها' + getArrow('totalOrders') + '</th>' +
+                    '<th style="padding:12px 8px;border-radius:8px 0 0 8px;"></th>' +
+                    '</tr>';
+                table.appendChild(thead);
+                var tbody = document.createElement('tbody');
+                customersData.forEach(function(customer, index) {
                     var totalSpentFormatted = customer.totalSpent.toLocaleString('fa-IR');
-                    
-                    div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">' +
-                        '<div class="order-title">' + customer.username + '</div>' +
-                        '<a href="#" class="view-orders-btn" data-username="' + customer.username + '" style="color:#667eea;font-size:1.2rem;text-decoration:none;"><i class="fas fa-eye"></i></a>' +
-                        '</div>' +
-                        '<div style="margin-bottom:0.25rem;text-align:center;">' +
-                        '<strong>مجموع پرداختی: </strong>' +
-                        '<span class="cost-value">' + totalSpentFormatted + ' تومان</span>' +
-                        '</div>' +
-                        '<div style="margin-bottom:0.25rem;text-align:center;">' +
-                        '<strong>سفارش‌های تکمیل شده:</strong> ' +
-                        '<span>' + customer.totalOrders + ' سفارش</span>' +
-                        '</div>';
-                    container.appendChild(div);
+                    var bgColor = index % 2 === 0 ? '#f8f9fa' : '#fff';
+                    var tr = document.createElement('tr');
+                    tr.style.cssText = 'background:' + bgColor + ';border-bottom:1px solid #eee;';
+                    tr.innerHTML = '<td style="padding:10px 8px;font-weight:600;">' + customer.username + '</td>' +
+                        '<td style="padding:10px 8px;">' + totalSpentFormatted + ' تومان</td>' +
+                        '<td style="padding:10px 8px;">' + customer.totalOrders + ' سفارش</td>' +
+                        '<td style="padding:10px 8px;"><a href="#" class="view-orders-btn" data-username="' + customer.username + '" style="color:#667eea;font-size:1.1rem;text-decoration:none;"><i class="fas fa-eye"></i></a></td>';
+                    tbody.appendChild(tr);
                 });
-                
+                table.appendChild(tbody);
+                container.appendChild(table);
+
+                document.querySelectorAll('.sortable-th').forEach(function(th) {
+                    th.addEventListener('click', function() {
+                        sortCustomers(this.getAttribute('data-sort'));
+                    });
+                });
+
                 document.querySelectorAll('.view-orders-btn').forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
                         e.preventDefault();
                         var username = this.getAttribute('data-username');
-                        var customer = customers.find(function(c) { return c.username === username; });
+                        var customer = customersData.find(function(c) { return c.username === username; });
                         if (customer) {
                             renderCustomerOrders(customer.orders);
                             ordersPopup.classList.add('active');
@@ -137,21 +172,21 @@
                     });
                 });
             }
-            
+
             fetch('/api/admin/customers')
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    var customers = data.customers || [];
-                    renderCustomers(customers);
+                    customersData = data.customers || [];
+                    renderTable();
                 })
                 .catch(function() {
                     container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری مشتریان.</p>';
                 });
-            
+
             closeOrdersPopup.addEventListener('click', function() {
                 ordersPopup.classList.remove('active');
             });
-            
+
             ordersPopup.addEventListener('click', function(e) {
                 if (e.target === ordersPopup) ordersPopup.classList.remove('active');
             });

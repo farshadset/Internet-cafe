@@ -317,6 +317,29 @@ app.post('/api/change-password', async (req, res) => {
     res.json({ success: true });
 });
 
+const lastVisitTime = {};
+
+app.post('/api/track-visit', async (req, res) => {
+    const db = readDB();
+    db.visits = db.visits || {};
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const now = new Date();
+    const COOLDOWN = 30 * 60 * 1000;
+    if (lastVisitTime[ip] && (now.getTime() - lastVisitTime[ip]) < COOLDOWN) {
+        return res.json({ success: true, counted: false });
+    }
+    lastVisitTime[ip] = now.getTime();
+    const key = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    db.visits[key] = (db.visits[key] || 0) + 1;
+    writeDB(db);
+    res.json({ success: true, counted: true });
+});
+
+app.get('/api/visits', async (req, res) => {
+    const db = readDB();
+    res.json(db.visits || {});
+});
+
 app.get('/api/orders', async (req, res) => {
     const { status } = req.query;
     const db = readDB();

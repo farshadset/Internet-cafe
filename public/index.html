@@ -89,10 +89,10 @@
     .skel-search{width:100%;max-width:32rem;height:44px;border-radius:9999px;margin:15px auto 0}
     .skel-banner{width:100%;max-width:600px;aspect-ratio:2/1;margin:0 auto 16px;border-radius:16px}
     .skel-section-title{width:120px;height:28px;margin:0 auto 1rem;border-radius:4px}
-    .skel-cards{display:flex;gap:1rem;justify-content:center;margin-bottom:1.5rem}
-    .skel-card{display:flex;flex-direction:column;align-items:center;gap:8px}
+    .skel-cards{display:flex;gap:1rem;justify-content:center;margin-bottom:1.5rem;flex-wrap:wrap;direction:rtl}
+    .skel-card{display:flex;flex-direction:column;align-items:center;gap:0;flex-shrink:0}
     .skel-card-img{width:170px;height:170px;border-radius:16px}
-    .skel-card-label{width:170px;height:14px;border-radius:4px}
+    .skel-card-label{width:170px;height:24px;border-radius:4px;margin-top:8px}
     .skel-banner-gap{margin-top:25px}
     .skel-bottom{position:fixed;bottom:0;left:0;right:0;height:64px;background:rgba(13,42,50,.75);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);display:none;align-items:center;justify-content:space-around;padding:0 12px;border-top:1px solid rgba(255,255,255,.06);z-index:100000}
     .skel-bottom-item{width:48px;height:48px;border-radius:50%}
@@ -112,10 +112,9 @@
     }
     @media(max-width:767px){
         .skel-content{padding:60px 16px 80px}
-        .skel-cards{gap:10px}
-        .skel-card,.skel-card-img,.skel-card-label{width:100%;max-width:120px}
-        .skel-card-img{height:auto;aspect-ratio:1}
-        .skel-card-label{height:12px}
+        .skel-cards{gap:0.5rem}
+        .skel-card-img{width:100%;max-width:120px;height:auto;aspect-ratio:1}
+        .skel-card-label{width:100%;max-width:120px;height:18px}
     }
     </style>
     <script>
@@ -611,6 +610,32 @@
         if(bottomMenuBtn) bottomMenuBtn.addEventListener('click', openMenuSheet);
         if(menuSheetClose) menuSheetClose.addEventListener('click', closeMenuSheet);
         if(menuOverlay) menuOverlay.addEventListener('click', closeMenuSheet);
+
+        // Load social links from localStorage
+        (function() {
+            var saved = localStorage.getItem('caffint_social_links');
+            if (saved) {
+                try {
+                    var data = JSON.parse(saved);
+                    var socialLinks = document.querySelectorAll('.sidebar-social a');
+                    socialLinks.forEach(function(link) {
+                        var title = link.getAttribute('title');
+                        if (title === 'واتساپ' && data.whatsapp) link.href = data.whatsapp;
+                        else if (title === 'تلگرام' && data.telegram) link.href = data.telegram;
+                        else if (title === 'بله' && data.bale) link.href = data.bale;
+                        else if (title === 'روبیکا' && data.robika) link.href = data.robika;
+                    });
+                } catch(e) {}
+            }
+        })();
+
+        // Track visit (skip if admin)
+        (function() {
+            var isAdmin = localStorage.getItem('adminData');
+            if (!isAdmin) {
+                fetch('/api/track-visit', { method: 'POST', keepalive: true }).catch(function() {});
+            }
+        })();
     </script>
 </body>
 </html>
