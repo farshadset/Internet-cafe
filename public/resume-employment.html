@@ -6,81 +6,85 @@
     <title>رزومه و استخدام</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="fonts/all.css">
 </head>
 <body>
-    <div class="container">
-        <a href="index.html" class="logo-icon" title="صفحه اصلی">
-            <i class="fas fa-mug-hot"></i>
-        </a>
-        <header>
-            <h1>رزومه و استخدام</h1>
-        </header>
-        <main>
-            <form id="resumeEmploymentForm" class="form-card">
-                <div class="form-group">
-                    <label for="serviceType">نوع خدمات</label>
-                    <select id="serviceType" name="serviceType" required>
-                        <option value="">انتخاب کنید...</option>
-                        <option value="resume">نوشتن رزومه</option>
-                        <option value="coverLetter">نامه توصیه</option>
-                        <option value="linkedin">بهینه‌سازی لینکدین</option>
-                        <option value="interview">مشاوره مصاحبه</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="jobField">رشته شغلی</label>
-                    <input type="text" id="jobField" name="jobField" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="experienceYears">سال‌های تجربه</label>
-                    <input type="number" id="experienceYears" name="experienceYears" min="0" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="skills">مهارت‌ها</label>
-                    <textarea id="skills" name="skills" rows="3" placeholder="مهارت‌های خود را وارد کنید..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="targetJob">سمت شغل مورد نظر</label>
-                    <input type="text" id="targetJob" name="targetJob">
-                </div>
-
-                <div class="form-group">
-                    <label for="customerName">نام و نام خانوادگی</label>
-                    <input type="text" id="customerName" name="customerName" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="customerPhone">شماره تلفن</label>
-                    <input type="tel" id="customerPhone" name="customerPhone" placeholder="09xx-xxx-xxxx" required>
-                </div>
-                <div class="form-group">
-                    <label for="additionalNotes">توضیحات اضافی</label>
-                    <div class="textarea-wrapper">
-                        <textarea id="additionalNotes" name="additionalNotes" class="additional-notes" style="height: 150px;" data-rtl-listener="true"></textarea>
-                        <div class="attachment-preview hidden" id="attachmentPreview"></div>
-                        <button type="button" class="pin-attachment" id="pinAttachment" title="افزودن فایل">
-                            <i class="fas fa-paperclip"></i>
-                        </button>
-                        <div class="textarea-placeholder" id="textareaPlaceholder">
-                            <span>میتوانید چهار تصویر آپلود</span><span class="cursor"></span>
-                        </div>
+    <header class="site">
+        <div class="container header-row">
+            <a class="btn btn-ghost back-link" href="index.html">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <span>بازگشت به صفحه اصلی</span>
+            </a>
+        </div>
+    </header>
+    <main>
+        <div class="container">
+            <form id="resumeEmploymentForm" class="form-card order-form">
+                <div class="card-strip"></div>
+                <div class="f-grid">
+                    <div class="f-field">
+                        <label for="serviceType">نوع خدمات</label>
+                        <select id="serviceType" name="serviceType" required>
+                            <option value="">انتخاب کنید...</option>
+                            <option value="resume">نوشتن رزومه</option>
+                            <option value="coverLetter">نامه توصیه</option>
+                            <option value="linkedin">بهینه‌سازی لینکدین</option>
+                            <option value="interview">مشاوره مصاحبه</option>
+                        </select>
                     </div>
-                    <input type="file" id="attachmentFile" accept="image/*,.pdf" style="display: none;">
+
+                    <div class="f-field">
+                        <label for="jobField">رشته شغلی</label>
+                        <input type="text" id="jobField" name="jobField" required>
+                    </div>
+
+                    <div class="f-field">
+                        <label for="experienceYears">سال‌های تجربه</label>
+                        <input type="number" id="experienceYears" name="experienceYears" min="0" required>
+                    </div>
+
+                    <div class="f-field">
+                        <label for="targetJob">سمت شغل مورد نظر</label>
+                        <input type="text" id="targetJob" name="targetJob">
+                    </div>
+
+                    <div class="f-field">
+                        <label for="customerName">نام و نام خانوادگی</label>
+                        <input type="text" id="customerName" name="customerName" required>
+                    </div>
+
+                    <div class="f-field">
+                        <label for="customerPhone">شماره تلفن</label>
+                        <input type="tel" id="customerPhone" name="customerPhone" placeholder="09xx-xxx-xxxx" required>
+                    </div>
+
+                    <div class="f-field">
+                        <label for="proposedPrice">قیمت پیشنهادی (تومان)</label>
+                        <input type="text" id="proposedPrice" name="proposedPrice" placeholder="قیمت مورد نظر خود را وارد کنید" required>
+                        <small class="small">قیمت وارد شده بررسی و تایید یا اصلاح توسط مدیر خواهد شد</small>
+                    </div>
+
+                    <div class="f-field full">
+                        <label for="skills">مهارت‌ها <span class="opt">(اختیاری)</span></label>
+                        <textarea id="skills" name="skills" rows="2" placeholder="مهارت‌های خود را وارد کنید..."></textarea>
+                    </div>
+
+                    <div class="f-field full">
+                        <label for="additionalNotes">توضیحات اضافی <span class="opt">(اختیاری)</span></label>
+                        <div class="textarea-wrap">
+                            <textarea id="additionalNotes" name="additionalNotes" rows="3" data-rtl-listener="true"></textarea>
+                            <button type="button" class="pin-attachment" id="pinAttachment" title="افزودن فایل">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                        </div>
+                        <div class="file-preview" id="attachmentPreview"></div>
+                        <input type="file" id="attachmentFile" accept="image/*,.pdf" style="display: none;">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="proposedPrice">قیمت پیشنهادی (تومان)</label>
-                    <input type="text" id="proposedPrice" name="proposedPrice" placeholder="قیمت مورد نظر خود را وارد کنید" required>
-                    <small>قیمت وارد شده بررسی و تایید یا اصلاح توسط مدیر خواهد شد</small>
-                </div>
-                <button type="submit" class="btn-next">ثبت درخواست</button>
+                <button type="submit" class="btn btn-primary">ثبت درخواست</button>
             </form>
-        </main>
-    </div>
-    <link rel="stylesheet" href="fonts/all.css">
+        </div>
+    </main>
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
