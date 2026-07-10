@@ -20,10 +20,14 @@
             <h1>لیست سفارش‌ها</h1>
         </header>
 <main>
-             <div class="status-btns" style="justify-content:center;margin-bottom:1rem;" id="adminFilterTabs">
-                 <button class="status-btn status-btn-pending active" data-filter="pending" title="در صف انتظار"><i class="fas fa-clock"></i></button>
-                 <button class="status-btn status-btn-processing" data-filter="processing" title="در حال انجام"><i class="fas fa-spinner"></i></button>
-                 <button class="status-btn status-btn-completed" data-filter="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>
+             <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
+                 <div class="status-btns" style="margin-bottom:0;" id="adminFilterTabs">
+                     <button class="status-btn status-btn-pending active" data-filter="pending" title="در صف انتظار"><i class="fas fa-clock"></i></button>
+                     <button class="status-btn status-btn-processing" data-filter="processing" title="در حال انجام"><i class="fas fa-spinner"></i></button>
+                     <button class="status-btn status-btn-completed" data-filter="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>
+                     <button class="status-btn" data-filter="all" title="همه"><i class="fas fa-list"></i></button>
+                 </div>
+                 <input type="text" id="orderSearchInput" placeholder="جستجوی کد سفارش..." style="padding:8px 14px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;width:180px;direction:rtl;">
              </div>
              <div class="form-card" id="adminOrdersList">
                  <p>بارگذاری...</p>
@@ -56,18 +60,20 @@
 
 <script src="app.js"></script>
     <script>
-        var currentTrackingCode = null;
-        var currentOrderData = null;
-        var SERVICE_TITLES = {
-            resumeEmployment: 'رزومه و استخدام',
-            articlesResearch: 'مقاله و تحقیق',
-            customServices: 'خدمات سفارشی'
-        };
-        document.addEventListener('DOMContentLoaded', function() {
-            var container = document.getElementById('adminOrdersList');
-            var filterBtns = document.querySelectorAll('#adminFilterTabs .status-btn');
-            var allOrders = [];
-            var currentFilter = 'pending';
+            var currentTrackingCode = null;
+            var currentOrderData = null;
+            var SERVICE_TITLES = {
+                resumeEmployment: 'رزومه و استخدام',
+                articlesResearch: 'مقاله و تحقیق',
+                customServices: 'خدمات سفارشی'
+            };
+            document.addEventListener('DOMContentLoaded', function() {
+                var container = document.getElementById('adminOrdersList');
+                var filterBtns = document.querySelectorAll('#adminFilterTabs .status-btn');
+                var orderSearchInput = document.getElementById('orderSearchInput');
+                var allOrders = [];
+                var currentFilter = 'pending';
+                var searchQuery = '';
             var resultPopup = document.getElementById('resultPopup');
             var resultText = document.getElementById('resultText');
             var saveResultBtn = document.getElementById('saveResultBtn');
@@ -97,7 +103,12 @@
 
             function renderOrders(orders) {
                 container.innerHTML = '';
-                var filtered = orders.filter(function(o) { return o.status === currentFilter; });
+                var filtered = currentFilter === 'all' ? orders.slice() : orders.filter(function(o) { return o.status === currentFilter; });
+                if (searchQuery) {
+                    filtered = filtered.filter(function(o) {
+                        return o.trackingCode && o.trackingCode.includes(searchQuery);
+                    });
+                }
                 if (filtered.length === 0) {
                     container.innerHTML = '<p style="text-align:center;color:#999;">سفارشی یافت نشد.</p>';
                     return;
@@ -310,6 +321,11 @@
                     currentFilter = this.getAttribute('data-filter');
                     renderOrders(allOrders);
                 });
+            });
+
+            orderSearchInput.addEventListener('input', function() {
+                searchQuery = this.value.trim();
+                renderOrders(allOrders);
             });
 
             updateOrdersBadge();
