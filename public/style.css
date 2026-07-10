@@ -15,6 +15,7 @@ a {
     --firouzeh-soft: #E4F3F3;
     --deep: #0B3B4A;
     --gold: #E2A93B;
+    --line: #D8E4E4;
 }
 
 body {
@@ -862,10 +863,9 @@ header.site {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--deep);
-    font-size: 16px;
-    transition: background .15s;
 }
+.form-card .f-field .attach-btn{position:absolute;bottom:14px;left:14px;width:32px;height:32px;border-radius:8px;border:none;background:var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--deep);font-size:16px;transition:background .15s}
+.form-card .f-field .attach-btn:hover{background:var(--firouzeh);color:#fff}
 
 .form-card .f-field .pin-attachment:hover {
     background: var(--firouzeh);
@@ -878,6 +878,49 @@ header.site {
     gap: 8px;
     margin-top: 6px;
 }
+.form-card .f-field .file-preview .file-thumb {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1.5px solid var(--line);
+}
+.form-card .f-field .file-preview .file-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.form-card .f-field .file-preview .file-thumb .file-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,.6);
+    color: #fff;
+    font-size: 9px;
+    padding: 2px 4px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.form-card .f-field .file-preview .file-thumb .file-remove {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(220,50,50,.85);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
 .form-card .f-field input:focus,
 .form-card .f-field textarea:focus,
@@ -886,6 +929,9 @@ header.site {
     border-color: var(--firouzeh);
     background: #fff;
 }
+.phone-default{color:#999;font-weight:400}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 
 .form-card .f-field .small {
     font-size: 12px;
