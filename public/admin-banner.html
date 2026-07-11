@@ -13,13 +13,16 @@
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="logo-icon" title="صفحه اصلی">
-            <i class="fas fa-mug-hot"></i>
-        </a>
         <header>
             <h1>مدیریت بنرها</h1>
         </header>
         <main>
+            <div style="max-width:480px;margin:0 auto;display:flex;justify-content:flex-end;margin-bottom:0.5rem;">
+                <a class="btn btn-ghost back-link" href="admin.html">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                    <span>بازگشت</span>
+                </a>
+            </div>
             <div class="form-card">
                 <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; width: 100%;">
                     <label style="font-weight: 700; color: #333; white-space: nowrap;">گروه بنر:</label>
@@ -38,7 +41,6 @@
                     </div>
                 </div>
                 <div id="bannersList"></div>
-                <a href="admin.html" class="btn-next">بازگشت</a>
             </div>
         </main>
     </div>
