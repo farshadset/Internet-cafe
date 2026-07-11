@@ -39,6 +39,9 @@ nav.main{position:relative}
 .menu-sheet-close{width:32px;height:32px;border-radius:50%;border:none;background:var(--line,#D8E4E4);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--deep);transition:background .2s}
 .menu-sheet-close:hover{background:var(--firouzeh,#17A2A6);color:#fff}
 .menu-sheet-body{flex:1;overflow-y:auto;padding:8px 0 80px}
+.menu-sheet-body a{display:flex;align-items:center;gap:10px;padding:12px 20px;font-size:14px;font-weight:700;color:var(--deep,#0B3B4A);text-decoration:none;transition:background .15s}
+.menu-sheet-body a:hover{background:rgba(0,0,0,0.06)}
+.menu-sheet-body a i{font-size:18px;width:24px;text-align:center;color:var(--firouzeh,#17A2A6)}
 .menu-sheet-body::-webkit-scrollbar{width:6px}
 .menu-sheet-body::-webkit-scrollbar-track{background:#FEFEDC}
 .menu-sheet-body::-webkit-scrollbar-thumb{background:#D8E4E4;border-radius:3px}

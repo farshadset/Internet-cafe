@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="mega-menu.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -17,8 +18,8 @@
         <div class="sidebar-brand"><img src="logooo.png" alt="لیمو نت" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
         <hr class="sidebar-divider">
         <a href="index.html" title="خانه"><i class="fas fa-home"></i><span>خانه</span></a>
-        <a href="orders.html" title="سفارش‌ها"><img src="list.png" alt="سفارش‌ها" style="width:24px;height:24px;object-fit:contain;filter:brightness(0) invert(1)"><span>سفارش‌ها</span></a>
-        <button id="sidebarSupportBtn" title="پشتیبانی"><i class="fas fa-headset"></i><span>پشتیبانی</span></button>
+        <a href="admin-orders.html" title="لیست سفارش‌ها"><i class="fas fa-list"></i><span>لیست سفارش‌ها</span></a>
+        <a href="admin-chat.html" title="چت با مشتری"><i class="fas fa-comments"></i><span>چت با مشتری</span></a>
         <button id="sidebarProfileBtn" title="پروفایل"><i class="fas fa-user"></i><span>پروفایل</span></button>
         <a href="articles-research.html" title="اخبار"><i class="fas fa-newspaper"></i><span>اخبار</span></a>
         <a href="faq.html" title="آموزش"><i class="fas fa-graduation-cap"></i><span>آموزش</span></a>
@@ -30,10 +31,10 @@
             <a href="#" title="روبیکا" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center"><img src="robika.svg" alt="روبیکا" width="26" height="26"></a>
         </div>
     </nav>
+    <div class="mega-menu-wrap" id="megaMenuWrap" style="display:none;">
+        <div class="container" id="megaMenuContainer"></div>
+    </div>
     <div class="container">
-        <header>
-            <h1>پنل مدیریت</h1>
-        </header>
         <main>
             <div style="margin:0 auto 15px auto;width:600px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -57,7 +58,7 @@
                 <a href="admin-orders.html" class="profile-option" style="display: flex; align-items: center;">
                     <i class="fas fa-list"></i>
                     <span>لیست سفارش‌ها</span>
-                    <span class="badge" id="ordersBadge" style="display: none;">0</span>
+                    <span class="badge" id="ordersBadge" style="display:inline-block;">0</span>
                 </a>
                 <a href="admin-customers.html" class="profile-option" style="display: flex; align-items: center;">
                     <i class="fas fa-users"></i>
@@ -92,7 +93,7 @@
             </div>
         </main>
     </div>
-    <script src="app.js"></script>
+    <script src="app.js" defer></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var incomeChart = null;
@@ -322,6 +323,91 @@
                     });
                 } catch(e) {}
             }
+        });
+    </script>
+    <nav class="bottom-nav">
+        <a href="index.html"><i class="fas fa-home"></i><span>خانه</span></a>
+        <a href="admin-orders.html"><i class="fas fa-list"></i><span>لیست سفارش‌ها</span></a>
+        <button class="bottom-menu-btn" id="bottomMenuBtn" aria-label="باز و بسته کردن منو">
+            <i class="fas fa-bars"></i>
+            <span>منو</span>
+        </button>
+        <a href="admin-chat.html"><i class="fas fa-comments"></i><span>چت با مشتری</span><span class="badge" id="chatBadge" style="display:none;">0</span></a>
+        <a href="#" id="profileBtnBottom"><i class="fas fa-user"></i><span>پروفایل</span></a>
+    </nav>
+    <div class="menu-overlay" id="menuOverlay"></div>
+    <div class="menu-sheet" id="menuSheet">
+        <div class="menu-sheet-handle"></div>
+        <div class="menu-sheet-header">
+            <h3>منو</h3>
+            <button class="menu-sheet-close" id="menuSheetClose">&times;</button>
+        </div>
+        <div class="menu-sheet-body">
+            <div class="mobile-nav" id="mobileNav"></div>
+        </div>
+    </div>
+    <script>
+        var menuOverlay = document.getElementById('menuOverlay');
+        var menuSheet = document.getElementById('menuSheet');
+        var bottomMenuBtn = document.getElementById('bottomMenuBtn');
+        var menuSheetClose = document.getElementById('menuSheetClose');
+        function openMenuSheet(){ menuOverlay.classList.add('show'); menuSheet.classList.add('show'); document.body.style.overflow='hidden'; }
+        function closeMenuSheet(){ menuOverlay.classList.remove('show'); menuSheet.classList.remove('show'); document.body.style.overflow=''; }
+        if(bottomMenuBtn) bottomMenuBtn.addEventListener('click', openMenuSheet);
+        if(menuSheetClose) menuSheetClose.addEventListener('click', closeMenuSheet);
+        if(menuOverlay) menuOverlay.addEventListener('click', closeMenuSheet);
+
+        function buildMobileNav(){
+            var mobile = document.getElementById('mobileNav');
+            if(!mobile) return;
+            var MEGA = window.MEGA_MENU_DATA;
+            if(!MEGA) return;
+            mobile.innerHTML = '';
+            var categoryNames = {'identity-judicial':'خدمات هویتی و قضایی','finance':'بانکی، مالی و بورسی','vehicle-education':'خودرو و حمل و نقل','tax-license':'مالیات، مجوز و کسب‌وکار','government':'سامانه‌های دولتی'};
+            Object.keys(MEGA).forEach(function(key){
+                var sections = MEGA[key];
+                var accordionItem = document.createElement('div');
+                accordionItem.className = 'accordion-item';
+                var header = document.createElement('button');
+                header.className = 'accordion-header';
+                header.setAttribute('aria-expanded', 'false');
+                header.textContent = categoryNames[key] || key;
+                var body = document.createElement('div');
+                body.className = 'accordion-body';
+                var wrap = document.createElement('div');
+                wrap.className = 'm-group';
+                sections.forEach(function(section){
+                    var h = document.createElement('h5');
+                    h.textContent = section.title;
+                    wrap.appendChild(h);
+                    if(section.subItems){
+                        section.subItems.forEach(function(sub){
+                            var a = document.createElement('a');
+                            a.href = sub.link;
+                            a.textContent = sub.title;
+                            wrap.appendChild(a);
+                        });
+                    }
+                });
+                body.appendChild(wrap);
+                accordionItem.appendChild(header);
+                accordionItem.appendChild(body);
+                mobile.appendChild(accordionItem);
+                header.addEventListener('click', function(){
+                    var isOpen = header.getAttribute('aria-expanded') === 'true';
+                    mobile.querySelectorAll('.accordion-header[aria-expanded="true"]').forEach(function(h){
+                        h.setAttribute('aria-expanded', 'false');
+                        h.nextElementSibling.style.maxHeight = '0';
+                    });
+                    if(!isOpen){
+                        header.setAttribute('aria-expanded', 'true');
+                        body.style.maxHeight = body.scrollHeight + 'px';
+                    }
+                });
+            });
+        }
+        document.addEventListener('DOMContentLoaded', function(){
+            setTimeout(buildMobileNav, 300);
         });
     </script>
 </body>
