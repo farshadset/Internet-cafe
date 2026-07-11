@@ -255,8 +255,8 @@
         <div class="sidebar-brand"><img src="logooo.png" alt="لیمو نت" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
         <hr class="sidebar-divider">
         <a href="index.html" title="خانه"><i class="fas fa-home"></i><span>خانه</span></a>
-        <a href="orders.html" title="سفارش‌ها"><img src="list.png" alt="سفارش‌ها" style="width:24px;height:24px;object-fit:contain;filter:brightness(0) invert(1)"><span>سفارش‌ها</span></a>
-        <button id="sidebarSupportBtn" title="پشتیبانی"><i class="fas fa-headset"></i><span>پشتیبانی</span></button>
+        <a href="admin-orders.html" title="لیست سفارش‌ها"><i class="fas fa-list"></i><span>لیست سفارش‌ها</span></a>
+        <a href="admin-chat.html" title="چت با مشتری"><i class="fas fa-comments"></i><span>چت با مشتری</span></a>
         <button id="sidebarProfileBtn" title="پروفایل"><i class="fas fa-user"></i><span>پروفایل</span></button>
         <a href="articles-research.html" title="اخبار"><i class="fas fa-newspaper"></i><span>اخبار</span></a>
         <a href="faq.html" title="آموزش"><i class="fas fa-graduation-cap"></i><span>آموزش</span></a>
@@ -270,9 +270,6 @@
     </nav>
 
     <div class="container">
-        <a href="index.html" class="logo-icon" title="صفحه اصلی">
-            <i class="fas fa-mug-hot"></i>
-        </a>
         <header>
             <h1>کافینت آنلاین</h1>
             <div class="mega-menu-wrap" id="megaMenuWrap">
@@ -314,12 +311,12 @@
     <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn"><i class="fas fa-headset"></i></a>
     <nav class="bottom-nav">
         <a href="index.html"><i class="fas fa-home"></i><span>خانه</span></a>
-        <a href="orders.html"><img src="list.png" alt="سفارش‌ها" style="width:24px;height:24px;object-fit:contain;filter:brightness(0) invert(1)"><span>سفارش‌ها</span></a>
+        <a href="admin-orders.html"><i class="fas fa-list"></i><span>لیست سفارش‌ها</span></a>
         <button class="bottom-menu-btn" id="bottomMenuBtn" aria-label="باز و بسته کردن منو">
             <i class="fas fa-bars"></i>
             <span>منو</span>
         </button>
-        <a href="#" id="supportBtnBottom"><i class="fas fa-headset"></i><span>پشتیبانی</span></a>
+        <a href="admin-chat.html"><i class="fas fa-comments"></i><span>چت با مشتری</span></a>
         <a href="#" id="profileBtnBottom"><i class="fas fa-user"></i><span>پروفایل</span></a>
     </nav>
     
@@ -530,16 +527,9 @@
             });
         });
 
-        document.getElementById('supportBtnBottom')?.addEventListener('click', function(e){
-            e.preventDefault();
-            document.getElementById('supportBtn')?.click();
-        });
         document.getElementById('profileBtnBottom')?.addEventListener('click', function(e){
             e.preventDefault();
             document.getElementById('profileBtn')?.click();
-        });
-        document.getElementById('sidebarSupportBtn')?.addEventListener('click', function(){
-            document.getElementById('supportBtn')?.click();
         });
         document.getElementById('sidebarProfileBtn')?.addEventListener('click', function(){
             document.getElementById('profileBtn')?.click();

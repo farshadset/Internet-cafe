@@ -986,6 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     buildMegaMenu();
 
+    window.MEGA_MENU_DATA = MEGA_MENU_DATA;
     window.megaMenuSearchIndex = [];
     Object.keys(MEGA_MENU_DATA).forEach(function(key) {
         var sections = MEGA_MENU_DATA[key];

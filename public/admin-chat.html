@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لیست مشتریان</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -80,19 +79,18 @@
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="logo-icon" title="صفحه اصلی">
-            <i class="fas fa-mug-hot"></i>
-        </a>
-        <header>
-            <h1>مشتریان</h1>
-        </header>
         <main>
+            <div style="max-width:480px;margin:0 auto;display:flex;justify-content:flex-start;margin-bottom:0.5rem;">
+                <a class="btn btn-ghost back-link" href="admin.html">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                    <span>بازگشت</span>
+                </a>
+            </div>
             <div class="form-card">
                 <div class="customer-list" id="customersList">
                     <p class="empty-state">در حال بارگذاری...</p>
                 </div>
             </div>
-            <a href="admin.html" class="btn-next" style="margin-top: 1rem;">بازگشت به مدیریت</a>
         </main>
     </div>
     <script>

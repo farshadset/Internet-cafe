@@ -13,13 +13,14 @@
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="logo-icon" title="صفحه اصلی">
-            <i class="fas fa-mug-hot"></i>
-        </a>
-        <header>
-            <h1>لیست سفارش‌ها</h1>
-        </header>
-<main>
+
+ <main>
+             <div style="max-width:480px;margin:0 auto;display:flex;justify-content:flex-end;margin-bottom:0.5rem;">
+                 <a class="btn btn-ghost back-link" href="admin.html">
+                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                     <span>بازگشت</span>
+                 </a>
+             </div>
              <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
                  <div class="status-btns" style="margin-bottom:0;" id="adminFilterTabs">
                      <button class="status-btn status-btn-pending active" data-filter="pending" title="در صف انتظار"><i class="fas fa-clock"></i></button>
@@ -27,12 +28,11 @@
                      <button class="status-btn status-btn-completed" data-filter="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>
                      <button class="status-btn" data-filter="all" title="همه"><i class="fas fa-list"></i></button>
                  </div>
-                 <input type="text" id="orderSearchInput" placeholder="جستجوی کد سفارش..." style="padding:8px 14px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;width:180px;direction:rtl;">
+                 <input type="text" id="orderSearchInput" placeholder="جستجوی کد سفارش یا تاریخ..." style="padding:8px 14px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;width:220px;direction:rtl;">
              </div>
              <div class="form-card" id="adminOrdersList">
                  <p>بارگذاری...</p>
              </div>
-             <a href="admin.html" class="btn-next">بازگشت</a>
          </main>
      </div>
 
@@ -101,12 +101,20 @@
                 }
             }
 
+            function toEnDigits(str) {
+                if (!str) return '';
+                return str.replace(/[۰-۹]/g, function(d) { return String.fromCharCode(d.charCodeAt(0) - 1728); });
+            }
+
             function renderOrders(orders) {
                 container.innerHTML = '';
                 var filtered = currentFilter === 'all' ? orders.slice() : orders.filter(function(o) { return o.status === currentFilter; });
                 if (searchQuery) {
+                    var q = toEnDigits(searchQuery);
                     filtered = filtered.filter(function(o) {
-                        return o.trackingCode && o.trackingCode.includes(searchQuery);
+                        var matchCode = o.trackingCode && toEnDigits(o.trackingCode).includes(q);
+                        var matchDate = o.created_at && toEnDigits(new Date(o.created_at).toLocaleDateString('fa-IR')).includes(q);
+                        return matchCode || matchDate;
                     });
                 }
                 if (filtered.length === 0) {
