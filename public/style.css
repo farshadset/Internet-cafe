@@ -1736,8 +1736,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     }
     
     .form-card {
-        padding: 1rem;
-        margin: 0 0.5rem;
+        padding: 2rem;
+        max-width: 480px;
+        margin: 0 auto;
     }
     
     .date-fields {
