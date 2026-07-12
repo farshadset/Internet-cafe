@@ -653,47 +653,47 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 title: 'کارت ملی و شناسنامه',
                 icon: 'fa-id-card',
-                link: 'smart-national-card.html',
+                link: 'form.html?service=کارت ملی هوشمند&cat=خدمات هویتی و قضایی',
                 subItems: [
-                    { title: 'کارت ملی هوشمند', link: 'smart-national-card.html' },
-                    { title: 'المثنی کارت ملی', link: 'smart-national-card.html' },
-                    { title: 'تغییر نشانی', link: '#' },
-                    { title: 'شناسنامه المثنی', link: '#' },
-                    { title: 'اصلاح مشخصات', link: '#' }
+                    { title: 'کارت ملی هوشمند', link: 'form.html?service=کارت ملی هوشمند&cat=خدمات هویتی و قضایی' },
+                    { title: 'المثنی کارت ملی', link: 'form.html?service=المثنی کارت ملی&cat=خدمات هویتی و قضایی' },
+                    { title: 'تغییر نشانی', link: 'form.html?service=تغییر نشانی&cat=خدمات هویتی و قضایی' },
+                    { title: 'شناسنامه المثنی', link: 'form.html?service=شناسنامه المثنی&cat=خدمات هویتی و قضایی' },
+                    { title: 'اصلاح مشخصات', link: 'form.html?service=اصلاح مشخصات&cat=خدمات هویتی و قضایی' }
                 ]
             },
             {
                 title: 'گذرنامه و مهاجرت',
                 icon: 'fa-passport',
-                link: '#',
+                link: 'form.html?service=ثبت نام گذرنامه&cat=خدمات هویتی و قضایی',
                 subItems: [
-                    { title: 'ثبت نام گذرنامه', link: '#' },
-                    { title: 'تمدید پاسپورت', link: '#' },
-                    { title: 'المثنی گذرنامه', link: '#' },
-                    { title: 'فرم مهاجرت', link: '#' }
+                    { title: 'ثبت نام گذرنامه', link: 'form.html?service=ثبت نام گذرنامه&cat=خدمات هویتی و قضایی' },
+                    { title: 'تمدید پاسپورت', link: 'form.html?service=تمدید پاسپورت&cat=خدمات هویتی و قضایی' },
+                    { title: 'المثنی گذرنامه', link: 'form.html?service=المثنی گذرنامه&cat=خدمات هویتی و قضایی' },
+                    { title: 'فرم مهاجرت', link: 'form.html?service=فرم مهاجرت&cat=خدمات هویتی و قضایی' }
                 ]
             },
             {
                 title: 'سامانه ثنا و قضایی',
                 icon: 'fa-gavel',
-                link: 'service.html?service=judicial',
+                link: 'form.html?service=ثبت نام ثنا&cat=خدمات هویتی و قضایی',
                 subItems: [
-                    { title: 'ثبت نام ثنا', link: '#' },
-                    { title: 'بازیابی رمز ثنا', link: 'service.html?service=judicial' },
-                    { title: 'ابلاغ الکترونیک', link: '#' },
-                    { title: 'پیگیری پرونده', link: '#' },
-                    { title: 'نوبت‌دهی قضایی', link: 'service.html?service=judicial' }
+                    { title: 'ثبت نام ثنا', link: 'form.html?service=ثبت نام ثنا&cat=خدمات هویتی و قضایی' },
+                    { title: 'بازیابی رمز ثنا', link: 'form.html?service=بازیابی رمز ثنا&cat=خدمات هویتی و قضایی' },
+                    { title: 'ابلاغ الکترونیک', link: 'form.html?service=ابلاغ الکترونیک&cat=خدمات هویتی و قضایی' },
+                    { title: 'پیگیری پرونده', link: 'form.html?service=پیگیری پرونده&cat=خدمات هویتی و قضایی' },
+                    { title: 'نوبت‌دهی قضایی', link: 'form.html?service=نوبت‌دهی قضایی&cat=خدمات هویتی و قضایی' }
                 ]
             },
             {
                 title: 'سوء پیشینه و استعلام‌ها',
                 icon: 'fa-search',
-                link: 'criminal-record.html',
+                link: 'form.html?service=گواهی عدم سوء پیشینه&cat=خدمات هویتی و قضایی',
                 subItems: [
-                    { title: 'گواهی عدم سوء پیشینه', link: 'criminal-record.html' },
-                    { title: 'استعلام کد ملی', link: '#' },
-                    { title: 'استعلام شناسنامه', link: '#' },
-                    { title: 'استعلام محکومیت', link: 'service.html?service=licenses' }
+                    { title: 'گواهی عدم سوء پیشینه', link: 'form.html?service=گواهی عدم سوء پیشینه&cat=خدمات هویتی و قضایی' },
+                    { title: 'استعلام کد ملی', link: 'form.html?service=استعلام کد ملی&cat=خدمات هویتی و قضایی' },
+                    { title: 'استعلام شناسنامه', link: 'form.html?service=استعلام شناسنامه&cat=خدمات هویتی و قضایی' },
+                    { title: 'استعلام محکومیت', link: 'form.html?service=استعلام محکومیت&cat=خدمات هویتی و قضایی' }
                 ]
             }
         ],
@@ -701,44 +701,44 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 title: 'وام و تسهیلات',
                 icon: 'fa-hand-holding-usd',
-                link: 'marriage-loan.html',
+                link: 'form.html?service=وام ازدواج&cat=بانکی، مالی و بورسی',
                 subItems: [
-                    { title: 'وام ازدواج', link: 'marriage-loan.html' },
-                    { title: 'وام ودیعه مسکن', link: 'rental-deposit.html' },
-                    { title: 'وام ضروری', link: 'urgent-loan.html' },
-                    { title: 'تسهیلات خرید مسکن', link: 'housing-purchase.html' }
+                    { title: 'وام ازدواج', link: 'form.html?service=وام ازدواج&cat=بانکی، مالی و بورسی' },
+                    { title: 'وام ودیعه مسکن', link: 'form.html?service=وام ودیعه مسکن&cat=بانکی، مالی و بورسی' },
+                    { title: 'وام ضروری', link: 'form.html?service=وام ضروری&cat=بانکی، مالی و بورسی' },
+                    { title: 'تسهیلات خرید مسکن', link: 'form.html?service=تسهیلات خرید مسکن&cat=بانکی، مالی و بورسی' }
                 ]
             },
             {
                 title: 'یارانه و سهام عدالت',
                 icon: 'fa-hand-holding-heart',
-                link: 'subsidy.html',
+                link: 'form.html?service=یارانه معیشتی&cat=بانکی، مالی و بورسی',
                 subItems: [
-                    { title: 'یارانه معیشتی', link: 'subsidy.html' },
-                    { title: 'اعتراض یارانه', link: 'subsidy.html' },
-                    { title: 'سهام عدالت', link: 'justice-stocks.html' },
-                    { title: 'فروش سهام', link: 'justice-stocks.html' }
+                    { title: 'یارانه معیشتی', link: 'form.html?service=یارانه معیشتی&cat=بانکی، مالی و بورسی' },
+                    { title: 'اعتراض یارانه', link: 'form.html?service=اعتراض یارانه&cat=بانکی، مالی و بورسی' },
+                    { title: 'سهام عدالت', link: 'form.html?service=سهام عدالت&cat=بانکی، مالی و بورسی' },
+                    { title: 'فروش سهام', link: 'form.html?service=فروش سهام&cat=بانکی، مالی و بورسی' }
                 ]
             },
             {
                 title: 'بورس و سجام',
                 icon: 'fa-chart-line',
-                link: 'sjam.html',
+                link: 'form.html?service=ثبت سجام&cat=بانکی، مالی و بورسی',
                 subItems: [
-                    { title: 'ثبت سجام', link: 'sjam.html' },
-                    { title: 'احراز هویت بورسی', link: 'sjam.html' },
-                    { title: 'افتتاح کد بورسی', link: 'stock-registration.html' }
+                    { title: 'ثبت سجام', link: 'form.html?service=ثبت سجام&cat=بانکی، مالی و بورسی' },
+                    { title: 'احراز هویت بورسی', link: 'form.html?service=احراز هویت بورسی&cat=بانکی، مالی و بورسی' },
+                    { title: 'افتتاح کد بورسی', link: 'form.html?service=افتتاح کد بورسی&cat=بانکی، مالی و بورسی' }
                 ]
             },
             {
                 title: 'خدمات بانکی',
                 icon: 'fa-wallet',
-                link: 'service.html?service=finance',
+                link: 'form.html?service=افتتاح حساب&cat=بانکی، مالی و بورسی',
                 subItems: [
-                    { title: 'افتتاح حساب', link: 'service.html?service=finance' },
-                    { title: 'احراز هویت بانک', link: 'service.html?service=finance' },
-                    { title: 'اعتبارسنجی مرآت', link: 'service.html?service=finance' },
-                    { title: 'پرداخت آنلاین', link: 'service.html?service=finance' }
+                    { title: 'افتتاح حساب', link: 'form.html?service=افتتاح حساب&cat=بانکی، مالی و بورسی' },
+                    { title: 'احراز هویت بانک', link: 'form.html?service=احراز هویت بانک&cat=بانکی، مالی و بورسی' },
+                    { title: 'اعتبارسنجی مرآت', link: 'form.html?service=اعتبارسنجی مرآت&cat=بانکی، مالی و بورسی' },
+                    { title: 'پرداخت آنلاین', link: 'form.html?service=پرداخت آنلاین&cat=بانکی، مالی و بورسی' }
                 ]
             }
         ],
@@ -746,52 +746,52 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 title: 'کارت سوخت',
                 icon: 'fa-gas-pump',
-                link: 'fuel-card.html',
+                link: 'form.html?service=صدور کارت سوخت&cat=خودرو و حمل و نقل',
                 subItems: [
-                    { title: 'صدور کارت سوخت', link: 'fuel-card.html' },
-                    { title: 'المثنی کارت سوخت', link: 'fuel-card.html' },
-                    { title: 'انتقال کارت سوخت', link: 'fuel-card-transfer.html' }
+                    { title: 'صدور کارت سوخت', link: 'form.html?service=صدور کارت سوخت&cat=خودرو و حمل و نقل' },
+                    { title: 'المثنی کارت سوخت', link: 'form.html?service=المثنی کارت سوخت&cat=خودرو و حمل و نقل' },
+                    { title: 'انتقال کارت سوخت', link: 'form.html?service=انتقال کارت سوخت&cat=خودرو و حمل و نقل' }
                 ]
             },
             {
                 title: 'تعویض پلاک و خودرو',
                 icon: 'fa-ticket-alt',
-                link: '#',
+                link: 'form.html?service=نوبت تعویض پلاک&cat=خودرو و حمل و نقل',
                 subItems: [
-                    { title: 'نوبت تعویض پلاک', link: '#' },
-                    { title: 'نقل و انتقال خودرو', link: '#' },
-                    { title: 'مالیات نقل و انتقال', link: 'service.html?service=finance' }
+                    { title: 'نوبت تعویض پلاک', link: 'form.html?service=نوبت تعویض پلاک&cat=خودرو و حمل و نقل' },
+                    { title: 'نقل و انتقال خودرو', link: 'form.html?service=نقل و انتقال خودرو&cat=خودرو و حمل و نقل' },
+                    { title: 'مالیات نقل و انتقال', link: 'form.html?service=مالیات نقل و انتقال&cat=خودرو و حمل و نقل' }
                 ]
             },
             {
                 title: 'جریمه و معاینه فنی',
                 icon: 'fa-exclamation-triangle',
-                link: 'fine-payment.html',
+                link: 'form.html?service=استعلام خلافی&cat=خودرو و حمل و نقل',
                 subItems: [
-                    { title: 'استعلام خلافی', link: '#' },
-                    { title: 'پرداخت جریمه', link: 'fine-payment.html' },
-                    { title: 'اعتراض جریمه', link: 'fine-appeal.html' },
-                    { title: 'نوبت معاینه فنی', link: 'technical-inspection-appointment.html' }
+                    { title: 'استعلام خلافی', link: 'form.html?service=استعلام خلافی&cat=خودرو و حمل و نقل' },
+                    { title: 'پرداخت جریمه', link: 'form.html?service=پرداخت جریمه&cat=خودرو و حمل و نقل' },
+                    { title: 'اعتراض جریمه', link: 'form.html?service=اعتراض جریمه&cat=خودرو و حمل و نقل' },
+                    { title: 'نوبت معاینه فنی', link: 'form.html?service=نوبت معاینه فنی&cat=خودرو و حمل و نقل' }
                 ]
             },
             {
                 title: 'ثبت نام خودرو',
                 icon: 'fa-car',
-                link: 'service.html?service=vehicles',
+                link: 'form.html?service=ثبت نام خودرو ایران خودرو&cat=خودرو و حمل و نقل',
                 subItems: [
-                    { title: 'ایران خودرو', link: 'service.html?service=vehicles' },
-                    { title: 'سایپا', link: 'service.html?service=vehicles' },
-                    { title: 'سامانه یکپارچه', link: 'service.html?service=vehicles' },
-                    { title: 'انتخاب خودرو', link: 'service.html?service=vehicles' }
+                    { title: 'ایران خودرو', link: 'form.html?service=ثبت نام خودرو ایران خودرو&cat=خودرو و حمل و نقل' },
+                    { title: 'سایپا', link: 'form.html?service=ثبت نام خودرو سایپا&cat=خودرو و حمل و نقل' },
+                    { title: 'سامانه یکپارچه', link: 'form.html?service=سامانه یکپارچه&cat=خودرو و حمل و نقل' },
+                    { title: 'انتخاب خودرو', link: 'form.html?service=انتخاب خودرو&cat=خودرو و حمل و نقل' }
                 ]
             },
             {
                 title: 'خدمات شهری',
                 icon: 'fa-city',
-                link: 'service.html?service=vehicles',
+                link: 'form.html?service=تهران من&cat=خودرو و حمل و نقل',
                 subItems: [
-                    { title: 'تهران من', link: 'service.html?service=vehicles' },
-                    { title: 'یارانه سوخت وانت', link: 'service.html?service=vehicles' }
+                    { title: 'تهران من', link: 'form.html?service=تهران من&cat=خودرو و حمل و نقل' },
+                    { title: 'یارانه سوخت وانت', link: 'form.html?service=یارانه سوخت وانت&cat=خودرو و حمل و نقل' }
                 ]
             }
         ],
@@ -799,52 +799,52 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 title: 'مدارس',
                 icon: 'fa-school',
-                link: 'schools.html',
+                link: 'form.html?service=پیش ثبت نام مدارس&cat=آموزش و آزمون‌ها',
                 subItems: [
-                    { title: 'پیش ثبت نام مدارس', link: 'schools.html' },
-                    { title: 'مدارس شاهد', link: 'special-schools.html' },
-                    { title: 'مدارس تیزهوشان', link: 'special-schools.html' },
-                    { title: 'مدارس غیردولتی', link: 'non-gov-schools.html' }
+                    { title: 'پیش ثبت نام مدارس', link: 'form.html?service=پیش ثبت نام مدارس&cat=آموزش و آزمون‌ها' },
+                    { title: 'مدارس شاهد', link: 'form.html?service=مدارس شاهد&cat=آموزش و آزمون‌ها' },
+                    { title: 'مدارس تیزهوشان', link: 'form.html?service=مدارس تیزهوشان&cat=آموزش و آزمون‌ها' },
+                    { title: 'مدارس غیردولتی', link: 'form.html?service=مدارس غیردولتی&cat=آموزش و آزمون‌ها' }
                 ]
             },
             {
                 title: 'دانشگاه‌ها',
                 icon: 'fa-university',
-                link: 'university-registration.html',
+                link: 'form.html?service=ثبت نام دانشگاه آزاد&cat=آموزش و آزمون‌ها',
                 subItems: [
-                    { title: 'دانشگاه آزاد', link: 'university-registration.html' },
-                    { title: 'پیام نور', link: 'university-registration.html' },
-                    { title: 'علمی کاربردی', link: 'university-registration.html' },
-                    { title: 'ثبت نام غیرحضوری', link: 'university-registration.html' }
+                    { title: 'دانشگاه آزاد', link: 'form.html?service=ثبت نام دانشگاه آزاد&cat=آموزش و آزمون‌ها' },
+                    { title: 'پیام نور', link: 'form.html?service=ثبت نام پیام نور&cat=آموزش و آزمون‌ها' },
+                    { title: 'علمی کاربردی', link: 'form.html?service=ثبت نام علمی کاربردی&cat=آموزش و آزمون‌ها' },
+                    { title: 'ثبت نام غیرحضوری', link: 'form.html?service=ثبت نام غیرحضوری&cat=آموزش و آزمون‌ها' }
                 ]
             },
             {
                 title: 'کنکور و آزمون‌ها',
                 icon: 'fa-graduation-cap',
-                link: 'konkor.html',
+                link: 'form.html?service=کنکور سراسری&cat=آموزش و آزمون‌ها',
                 subItems: [
-                    { title: 'کنکور سراسری', link: 'konkor.html' },
-                    { title: 'ارشد', link: 'konkor.html' },
-                    { title: 'دکتری', link: 'konkor.html' }
+                    { title: 'کنکور سراسری', link: 'form.html?service=کنکور سراسری&cat=آموزش و آزمون‌ها' },
+                    { title: 'ارشد', link: 'form.html?service=ارشد&cat=آموزش و آزمون‌ها' },
+                    { title: 'دکتری', link: 'form.html?service=دکتری&cat=آموزش و آزمون‌ها' }
                 ]
             },
             {
                 title: 'آزمون‌های استخدامی',
                 icon: 'fa-file-alt',
-                link: 'employment-exam.html',
+                link: 'form.html?service=آزمون استخدامی آموزش و پرورش&cat=آموزش و آزمون‌ها',
                 subItems: [
-                    { title: 'آموزش و پرورش', link: 'employment-exam.html' },
-                    { title: 'بانک‌ها', link: 'employment-exam.html' },
-                    { title: 'دستگاه‌های دولتی', link: 'employment-exam.html' }
+                    { title: 'آموزش و پرورش', link: 'form.html?service=آزمون استخدامی آموزش و پرورش&cat=آموزش و آزمون‌ها' },
+                    { title: 'بانک‌ها', link: 'form.html?service=آزمون استخدامی بانک‌ها&cat=آموزش و آزمون‌ها' },
+                    { title: 'دستگاه‌های دولتی', link: 'form.html?service=آزمون استخدامی دستگاه‌های دولتی&cat=آموزش و آزمون‌ها' }
                 ]
             },
             {
                 title: 'خدمات دانشجویی',
                 icon: 'fa-user-graduate',
-                link: 'service.html?service=student',
+                link: 'form.html?service=سامانه‌های آموزشی&cat=آموزش و آزمون‌ها',
                 subItems: [
-                    { title: 'سامانه‌های آموزشی', link: 'service.html?service=student' },
-                    { title: 'وام دانشجویی', link: 'urgent-loan.html' }
+                    { title: 'سامانه‌های آموزشی', link: 'form.html?service=سامانه‌های آموزشی&cat=آموزش و آزمون‌ها' },
+                    { title: 'وام دانشجویی', link: 'form.html?service=وام دانشجویی&cat=آموزش و آزمون‌ها' }
                 ]
             }
         ],
@@ -852,45 +852,45 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 title: 'مالیات',
                 icon: 'fa-file-invoice-dollar',
-                link: 'service.html?service=tax',
+                link: 'form.html?service=اظهارنامه مالیاتی&cat=مالیات، مجوز و کسب‌وکار',
                 subItems: [
-                    { title: 'اظهارنامه مالیاتی', link: 'service.html?service=business-tax' },
-                    { title: 'تبصره ۱۰۰', link: 'service.html?service=tax' },
-                    { title: 'ارزش افزوده', link: 'service.html?service=business-tax' },
-                    { title: 'اعتراض مالیاتی', link: 'service.html?service=tax' },
-                    { title: 'کد اقتصادی', link: 'service.html?service=tax' }
+                    { title: 'اظهارنامه مالیاتی', link: 'form.html?service=اظهارنامه مالیاتی&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'تبصره ۱۰۰', link: 'form.html?service=تبصره ۱۰۰&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'ارزش افزوده', link: 'form.html?service=ارزش افزوده&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'اعتراض مالیاتی', link: 'form.html?service=اعتراض مالیاتی&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'کد اقتصادی', link: 'form.html?service=کد اقتصادی&cat=مالیات، مجوز و کسب‌وکار' }
                 ]
             },
             {
                 title: 'ثبت و تغییرات شرکت',
                 icon: 'fa-building',
-                link: '#',
+                link: 'form.html?service=ثبت شرکت&cat=مالیات، مجوز و کسب‌وکار',
                 subItems: [
-                    { title: 'ثبت شرکت', link: 'service.html?service=business-tax' },
-                    { title: 'ثبت برند', link: 'service.html?service=business-tax' },
-                    { title: 'تغییرات شرکت', link: 'service.html?service=business-tax' }
+                    { title: 'ثبت شرکت', link: 'form.html?service=ثبت شرکت&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'ثبت برند', link: 'form.html?service=ثبت برند&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'تغییرات شرکت', link: 'form.html?service=تغییرات شرکت&cat=مالیات، مجوز و کسب‌وکار' }
                 ]
             },
             {
                 title: 'مجوزها',
                 icon: 'fa-certificate',
-                link: 'service.html?service=licenses',
+                link: 'form.html?service=سامانه ملی مجوزها&cat=مالیات، مجوز و کسب‌وکار',
                 subItems: [
-                    { title: 'سامانه ملی مجوزها', link: 'service.html?service=licenses' },
-                    { title: 'جواز کسب', link: 'service.html?service=licenses' },
-                    { title: 'مجوز صنفی', link: 'service.html?service=licenses' },
-                    { title: 'مجوز تولیدی', link: 'service.html?service=licenses' }
+                    { title: 'سامانه ملی مجوزها', link: 'form.html?service=سامانه ملی مجوزها&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'جواز کسب', link: 'form.html?service=جواز کسب&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'مجوز صنفی', link: 'form.html?service=مجوز صنفی&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'مجوز تولیدی', link: 'form.html?service=مجوز تولیدی&cat=مالیات، مجوز و کسب‌وکار' }
                 ]
             },
             {
                 title: 'اصناف و اماکن',
                 icon: 'fa-store',
-                link: 'service.html?service=licenses',
+                link: 'form.html?service=نوین اصناف&cat=مالیات، مجوز و کسب‌وکار',
                 subItems: [
-                    { title: 'نوین اصناف', link: 'service.html?service=licenses' },
-                    { title: 'بازدید اماکن', link: 'service.html?service=licenses' },
-                    { title: 'صلاحیت بهداشتی', link: 'service.html?service=licenses' },
-                    { title: 'گواهی مالیاتی ۱۸۶', link: 'service.html?service=licenses' }
+                    { title: 'نوین اصناف', link: 'form.html?service=نوین اصناف&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'بازدید اماکن', link: 'form.html?service=بازدید اماکن&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'صلاحیت بهداشتی', link: 'form.html?service=صلاحیت بهداشتی&cat=مالیات، مجوز و کسب‌وکار' },
+                    { title: 'گواهی مالیاتی ۱۸۶', link: 'form.html?service=گواهی مالیاتی ۱۸۶&cat=مالیات، مجوز و کسب‌وکار' }
                 ]
             }
         ],
@@ -898,56 +898,56 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 title: 'سامانه‌های عمومی',
                 icon: 'fa-landmark',
-                link: 'service.html?service=government',
+                link: 'form.html?service=میخک&cat=سامانه‌های دولتی',
                 subItems: [
-                    { title: 'میخک', link: 'service.html?service=government' },
-                    { title: 'سخا', link: 'service.html?service=government' },
-                    { title: 'شمس', link: 'service.html?service=government' },
-                    { title: 'ستاد ایران', link: 'service.html?service=government' }
+                    { title: 'میخک', link: 'form.html?service=میخک&cat=سامانه‌های دولتی' },
+                    { title: 'سخا', link: 'form.html?service=سخا&cat=سامانه‌های دولتی' },
+                    { title: 'شمس', link: 'form.html?service=شمس&cat=سامانه‌های دولتی' },
+                    { title: 'ستاد ایران', link: 'form.html?service=ستاد ایران&cat=سامانه‌های دولتی' }
                 ]
             },
             {
                 title: 'املاک و اسکان',
                 icon: 'fa-home',
-                link: 'service.html?service=housing',
+                link: 'form.html?service=ثبت‌نام املاک و اسکان&cat=سامانه‌های دولتی',
                 subItems: [
-                    { title: 'ثبت‌نام املاک و اسکان', link: 'service.html?service=housing' },
-                    { title: 'خودنویس', link: 'service.html?service=government' },
-                    { title: 'ثبت سند ملکی', link: 'service.html?service=government' }
+                    { title: 'ثبت‌نام املاک و اسکان', link: 'form.html?service=ثبت‌نام املاک و اسکان&cat=سامانه‌های دولتی' },
+                    { title: 'خودنویس', link: 'form.html?service=خودنویس&cat=سامانه‌های دولتی' },
+                    { title: 'ثبت سند ملکی', link: 'form.html?service=ثبت سند ملکی&cat=سامانه‌های دولتی' }
                 ]
             },
             {
                 title: 'تأمین اجتماعی و بیمه',
                 icon: 'fa-shield-alt',
-                link: 'service.html?service=insurance',
+                link: 'form.html?service=نام نویسی کارفرما&cat=سامانه‌های دولتی',
                 subItems: [
-                    { title: 'نام نویسی کارفرما', link: 'service.html?service=insurance' },
-                    { title: 'ثبت نیروی کار', link: 'service.html?service=insurance' },
-                    { title: 'ارسال لیست بیمه', link: 'service.html?service=insurance' },
-                    { title: 'بیمه با سابقه', link: 'service.html?service=insurance' },
-                    { title: 'کمیسیون پزشکی', link: 'service.html?service=insurance' },
-                    { title: 'کمک هزینه عینک', link: 'service.html?service=insurance' },
-                    { title: 'کمک هزینه سمعک', link: 'service.html?service=insurance' }
+                    { title: 'نام نویسی کارفرما', link: 'form.html?service=نام نویسی کارفرما&cat=سامانه‌های دولتی' },
+                    { title: 'ثبت نیروی کار', link: 'form.html?service=ثبت نیروی کار&cat=سامانه‌های دولتی' },
+                    { title: 'ارسال لیست بیمه', link: 'form.html?service=ارسال لیست بیمه&cat=سامانه‌های دولتی' },
+                    { title: 'بیمه با سابقه', link: 'form.html?service=بیمه با سابقه&cat=سامانه‌های دولتی' },
+                    { title: 'کمیسیون پزشکی', link: 'form.html?service=کمیسیون پزشکی&cat=سامانه‌های دولتی' },
+                    { title: 'کمک هزینه عینک', link: 'form.html?service=کمک هزینه عینک&cat=سامانه‌های دولتی' },
+                    { title: 'کمک هزینه سمعک', link: 'form.html?service=کمک هزینه سمعک&cat=سامانه‌های دولتی' }
                 ]
             },
             {
                 title: 'خدمات توکن',
                 icon: 'fa-key',
-                link: 'service.html?service=token',
+                link: 'form.html?service=راه‌اندازی توکن&cat=سامانه‌های دولتی',
                 subItems: [
-                    { title: 'راه‌اندازی توکن', link: 'service.html?service=token' },
-                    { title: 'امضا در ثبت من', link: 'service.html?service=token' },
-                    { title: 'امضای نرم‌افزاری', link: 'service.html?service=token' }
+                    { title: 'راه‌اندازی توکن', link: 'form.html?service=راه‌اندازی توکن&cat=سامانه‌های دولتی' },
+                    { title: 'امضا در ثبت من', link: 'form.html?service=امضا در ثبت من&cat=سامانه‌های دولتی' },
+                    { title: 'امضای نرم‌افزاری', link: 'form.html?service=امضای نرم‌افزاری&cat=سامانه‌های دولتی' }
                 ]
             },
             {
                 title: 'خدمات انتخاباتی',
                 icon: 'fa-vote-yea',
-                link: '#',
+                link: 'form.html?service=رأی اولی‌ها&cat=سامانه‌های دولتی',
                 subItems: [
-                    { title: 'رأی اولی‌ها', link: '#' },
-                    { title: 'تعیین شعبه', link: '#' },
-                    { title: 'تأیید صلاحیت', link: '#' }
+                    { title: 'رأی اولی‌ها', link: 'form.html?service=رأی اولی‌ها&cat=سامانه‌های دولتی' },
+                    { title: 'تعیین شعبه', link: 'form.html?service=تعیین شعبه&cat=سامانه‌های دولتی' },
+                    { title: 'تأیید صلاحیت', link: 'form.html?service=تأیید صلاحیت&cat=سامانه‌های دولتی' }
                 ]
             }
         ]

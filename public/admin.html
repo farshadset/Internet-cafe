@@ -31,9 +31,6 @@
             <a href="#" title="روبیکا" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center"><img src="robika.svg" alt="روبیکا" width="26" height="26"></a>
         </div>
     </nav>
-    <div class="mega-menu-wrap" id="megaMenuWrap" style="display:none;">
-        <div class="container" id="megaMenuContainer"></div>
-    </div>
     <div class="container">
         <main>
             <div style="margin:0 auto 15px auto;width:600px;">
@@ -357,13 +354,13 @@
         if(menuSheetClose) menuSheetClose.addEventListener('click', closeMenuSheet);
         if(menuOverlay) menuOverlay.addEventListener('click', closeMenuSheet);
 
-        function buildMobileNav(){
+        function buildAdminMobileNav(){
             var mobile = document.getElementById('mobileNav');
             if(!mobile) return;
             var MEGA = window.MEGA_MENU_DATA;
-            if(!MEGA) return;
+            if(!MEGA) { setTimeout(buildAdminMobileNav, 300); return; }
             mobile.innerHTML = '';
-            var categoryNames = {'identity-judicial':'خدمات هویتی و قضایی','finance':'بانکی، مالی و بورسی','vehicle-education':'خودرو و حمل و نقل','tax-license':'مالیات، مجوز و کسب‌وکار','government':'سامانه‌های دولتی'};
+            var categoryNames = {'identity-judicial':'خدمات هویتی و قضایی','finance':'بانکی، مالی و بورسی','automotive':'خودرو و حمل و نقل','education':'آموزش و آزمون‌ها','business-tax':'مالیات، مجوز و کسب‌وکار','government-services':'سامانه‌های دولتی'};
             Object.keys(MEGA).forEach(function(key){
                 var sections = MEGA[key];
                 var accordionItem = document.createElement('div');
@@ -407,7 +404,7 @@
             });
         }
         document.addEventListener('DOMContentLoaded', function(){
-            setTimeout(buildMobileNav, 300);
+            setTimeout(buildAdminMobileNav, 300);
         });
     </script>
 </body>
