@@ -33,22 +33,28 @@
     </nav>
     <div class="container">
         <main>
-            <div style="margin:0 auto 15px auto;width:600px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                    <div class="status-btns" style="margin-bottom:0;" id="chartFilterTabs">
-                        <button class="status-btn active" data-days="7" title="۷ روز اخیر"><i class="fas fa-calendar-week"></i></button>
-                        <button class="status-btn" data-days="30" title="۱ ماه اخیر"><i class="fas fa-calendar-alt"></i></button>
-                        <button class="status-btn" data-days="180" title="۶ ماه اخیر"><i class="fas fa-calendar"></i></button>
-                    </div>
-                    <div class="status-btns" style="margin-bottom:0;" id="chartTypeTabs">
-                        <button class="status-btn active" data-chart="income" title="درآمد"><i class="fas fa-chart-line"></i></button>
-                        <button class="status-btn" data-chart="return" title="نحوه محاسبه نرخ بازگشت:&#10;درصد مشتریانی که بیش از یک سفارش تکمیل شده دارند&#10;تعداد مشتریان بازگشتی تقسیم بر کل مشتریان تکمیل شده ضربدر ۱۰۰"><i class="fas fa-user-check"></i></button>
-                        <button class="status-btn" data-chart="newcustomers" title="مشتریان جدید"><i class="fas fa-user-plus"></i></button>
-                        <button class="status-btn" data-chart="visits" title="نحوه محاسبه بازدید:&#10;فقط صفحه اصلی (index.html) شمارش میشود&#10;بازدید مدیر محاسبه نمیشود&#10;رفرش‌های پشت سر هم تا ۳۰ دقیقه فقط یک بازدید حساب میشود"><i class="fas fa-eye"></i></button>
-                    </div>
+            <div style="display:flex;justify-content:center;gap:16px;margin-bottom:1rem;flex-wrap:wrap;">
+                <div style="flex:1;min-width:100px;max-width:150px;background:#FFF8E1;border-radius:16px;padding:16px 12px;text-align:center;box-shadow:0 4px 15px rgba(255,152,0,0.15);">
+                    <i class="fas fa-clock" style="font-size:24px;color:#FF9800;margin-bottom:6px;"></i>
+                    <div style="font-size:20px;font-weight:800;color:#333;" id="pendingCount">۰</div>
                 </div>
-                <div class="form-card" style="padding:4px !important;width:600px !important;height:300px !important;max-width:600px !important;min-width:600px !important;box-sizing:border-box;overflow:hidden;display:block !important;flex-direction:unset !important;margin:0 !important;">
-                    <canvas id="incomeChart" style="width:100%;height:100%;"></canvas>
+                <div style="flex:1;min-width:100px;max-width:150px;background:#E3F2FD;border-radius:16px;padding:16px 12px;text-align:center;box-shadow:0 4px 15px rgba(33,150,243,0.15);">
+                    <i class="fas fa-spinner" style="font-size:24px;color:#2196F3;margin-bottom:6px;"></i>
+                    <div style="font-size:20px;font-weight:800;color:#333;" id="processingCount">۰</div>
+                </div>
+                <div style="flex:1;min-width:100px;max-width:150px;background:#E8F5E9;border-radius:16px;padding:16px 12px;text-align:center;box-shadow:0 4px 15px rgba(76,175,80,0.15);">
+                    <i class="fas fa-check-circle" style="font-size:24px;color:#4CAF50;margin-bottom:6px;"></i>
+                    <div style="font-size:20px;font-weight:800;color:#333;" id="completedCount">۰</div>
+                </div>
+            </div>
+            <div style="background:#F1F9EC;border-radius:16px;padding:14px 20px;margin-bottom:15px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 15px rgba(156,39,176,0.1);max-width:480px;width:100%;margin:0 auto 15px auto;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-wallet" style="font-size:20px;color:#9C27B0;"></i>
+                    <span style="font-size:14px;color:#666;">درآمد کل:</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:20px;font-weight:800;color:#333;" id="totalIncome">۰</span>
+                    <span style="font-size:13px;color:#999;">تومان</span>
                 </div>
             </div>
             <div class="form-card" id="adminPanel">
@@ -75,6 +81,10 @@
                     <i class="fas fa-tag"></i>
                     <span>قیمت گذاری</span>
                 </a>
+                <a href="admin-chart.html" class="profile-option" style="display: flex; align-items: center;">
+                    <i class="fas fa-chart-line"></i>
+                    <span>نمودار</span>
+                </a>
                 <a href="admin-banner.html" class="profile-option" style="display: flex; align-items: center;">
                     <i class="fas fa-image"></i>
                     <span>بنر</span>
@@ -93,193 +103,28 @@
     <script src="app.js" defer></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var incomeChart = null;
-            var allOrders = [];
-            var allVisits = {};
-            var chartFilterBtns = document.querySelectorAll('#chartFilterTabs .status-btn');
-            var chartTypeBtns = document.querySelectorAll('#chartTypeTabs .status-btn');
-            var currentDays = 7;
-            var currentChartType = 'income';
+            function toFa(n) { return n.toLocaleString('fa-IR'); }
 
-            function getDateLabels(days) {
-                var labels = [];
-                var now = new Date();
-                for (var i = days - 1; i >= 0; i--) {
-                    var d = new Date(now);
-                    d.setDate(d.getDate() - i);
-                    d.setHours(0, 0, 0, 0);
-                    if (days <= 31) {
-                        labels.push({ date: d, label: String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0') });
-                    } else {
-                        labels.push({ date: d, label: String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getFullYear()).slice(2) });
-                    }
-                }
-                return labels;
-            }
-
-            function buildIncomeChart(orders, days) {
-                var labelsObj = getDateLabels(days);
-                var data = labelsObj.map(function() { return 0; });
+            function updateStatusCounts(orders) {
+                var pending = 0, processing = 0, completed = 0, totalIncome = 0;
                 orders.forEach(function(o) {
-                    if (o.status === 'completed' && o.created_at) {
-                        var price = parseInt(o.adminProposedPrice || o.proposedPrice || 0, 10) || 0;
-                        if (price <= 0) return;
-                        var oDate = new Date(o.created_at);
-                        oDate.setHours(0, 0, 0, 0);
-                        for (var i = 0; i < labelsObj.length; i++) {
-                            if (oDate.getTime() === labelsObj[i].date.getTime()) {
-                                data[i] += price;
-                                break;
-                            }
-                        }
+                    if (o.status === 'pending') pending++;
+                    else if (o.status === 'processing') processing++;
+                    else if (o.status === 'completed') {
+                        completed++;
+                        totalIncome += parseInt(o.adminProposedPrice || o.proposedPrice || 0, 10) || 0;
                     }
                 });
-                renderChart(labelsObj.map(function(l) { return l.label; }), data, 'درآمد (ت)', '#227164', 'ت');
+                document.getElementById('pendingCount').textContent = toFa(pending);
+                document.getElementById('processingCount').textContent = toFa(processing);
+                document.getElementById('completedCount').textContent = toFa(completed);
+                document.getElementById('totalIncome').textContent = toFa(totalIncome);
             }
-
-            function buildReturnChart(orders, days) {
-                var labelsObj = getDateLabels(days);
-                var data = labelsObj.map(function() { return 0; });
-                var customerOrders = {};
-                orders.filter(function(o) { return o.status === 'completed' && o.created_at; }).forEach(function(o) {
-                    if (!customerOrders[o.username]) customerOrders[o.username] = [];
-                    customerOrders[o.username].push(new Date(o.created_at));
-                });
-                labelsObj.forEach(function(label, idx) {
-                    var count = 0;
-                    var total = 0;
-                    Object.keys(customerOrders).forEach(function(username) {
-                        var dates = customerOrders[username].sort(function(a, b) { return a - b; });
-                        if (dates.length < 2) return;
-                        total++;
-                        for (var i = 1; i < dates.length; i++) {
-                            var prev = new Date(dates[i - 1]);
-                            prev.setHours(0, 0, 0, 0);
-                            var curr = new Date(dates[i]);
-                            curr.setHours(0, 0, 0, 0);
-                            if (curr.getTime() === label.date.getTime() && prev.getTime() < curr.getTime()) {
-                                count++;
-                                break;
-                            }
-                        }
-                    });
-                    data[idx] = total > 0 ? Math.round((count / total) * 100) : 0;
-                });
-                renderChart(labelsObj.map(function(l) { return l.label; }), data, 'نرخ بازگشت (%)', '#2196F3', '%');
-            }
-
-            function buildVisitsChart(days, visitsData) {
-                var labelsObj = getDateLabels(days);
-                var data = labelsObj.map(function() { return 0; });
-                labelsObj.forEach(function(label, idx) {
-                    var key = label.date.getFullYear() + '-' + String(label.date.getMonth() + 1).padStart(2, '0') + '-' + String(label.date.getDate()).padStart(2, '0');
-                    data[idx] = visitsData[key] || 0;
-                });
-                renderChart(labelsObj.map(function(l) { return l.label; }), data, 'تعداد بازدید', '#FF9800', 'بار');
-            }
-
-            function buildNewCustomersChart(orders, days) {
-                var labelsObj = getDateLabels(days);
-                var data = labelsObj.map(function() { return 0; });
-                var firstOrderDate = {};
-                orders.filter(function(o) { return o.status === 'completed' && o.created_at && o.username; }).forEach(function(o) {
-                    var username = o.username;
-                    var oDate = new Date(o.created_at);
-                    if (!firstOrderDate[username] || oDate < firstOrderDate[username]) {
-                        firstOrderDate[username] = oDate;
-                    }
-                });
-                Object.keys(firstOrderDate).forEach(function(username) {
-                    var fDate = firstOrderDate[username];
-                    fDate.setHours(0, 0, 0, 0);
-                    for (var i = 0; i < labelsObj.length; i++) {
-                        if (fDate.getTime() === labelsObj[i].date.getTime()) {
-                            data[i]++;
-                            break;
-                        }
-                    }
-                });
-                renderChart(labelsObj.map(function(l) { return l.label; }), data, 'مشتریان جدید', '#9C27B0', 'نفر');
-            }
-
-            function renderChart(labels, data, label, color, suffix) {
-                if (incomeChart) incomeChart.destroy();
-                var ctx = document.getElementById('incomeChart').getContext('2d');
-                incomeChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: label,
-                            data: data,
-                            borderColor: color,
-                            backgroundColor: color.replace(')', ',0.15)').replace('rgb', 'rgba'),
-                            fill: true,
-                            tension: 0.3,
-                            pointBackgroundColor: color,
-                            pointRadius: labels.length <= 31 ? 4 : 0,
-                            pointHoverRadius: 6
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    callback: function(v) { return v.toLocaleString('fa-IR') + ' ' + suffix; }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-
-            function render() {
-                if (currentChartType === 'income') {
-                    buildIncomeChart(allOrders, currentDays);
-                } else if (currentChartType === 'return') {
-                    buildReturnChart(allOrders, currentDays);
-                } else if (currentChartType === 'newcustomers') {
-                    buildNewCustomersChart(allOrders, currentDays);
-                } else if (currentChartType === 'visits') {
-                    buildVisitsChart(currentDays, allVisits);
-                }
-            }
-
-            chartFilterBtns.forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    chartFilterBtns.forEach(function(b) { b.classList.remove('active'); });
-                    this.classList.add('active');
-                    currentDays = parseInt(this.getAttribute('data-days'), 10);
-                    render();
-                });
-            });
-
-            chartTypeBtns.forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    chartTypeBtns.forEach(function(b) { b.classList.remove('active'); });
-                    this.classList.add('active');
-                    currentChartType = this.getAttribute('data-chart');
-                    render();
-                });
-            });
 
             fetch('/api/orders')
                 .then(function(r) { return r.json(); })
                 .then(function(orders) {
-                    allOrders = orders;
-                    render();
-                })
-                .catch(function() {});
-
-            fetch('/api/visits')
-                .then(function(r) { return r.json(); })
-                .then(function(visits) {
-                    allVisits = visits;
-                    if (currentChartType === 'visits') render();
+                    updateStatusCounts(orders);
                 })
                 .catch(function() {});
 
