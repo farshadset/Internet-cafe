@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
-const { connect } = require('@tursodatabase/serverless');
 
 const app = express();
 const rootDir = path.resolve(__dirname);
@@ -61,32 +60,35 @@ function getDefaultDB() {
 let tursoAvailable = false;
 let dbCache = null;
 let dbInitialized = false;
-let tursoConn = null;
 
-function getTursoConn() {
-    if (tursoConn) return tursoConn;
+function getTursoUrl() {
     var url = process.env.TURSO_DATABASE_URL || '';
-    var token = process.env.TURSO_AUTH_TOKEN;
-    if (!url || !token) return null;
-    tursoConn = connect({ url: url, authToken: token });
-    return tursoConn;
+    if (!url || !process.env.TURSO_AUTH_TOKEN) return null;
+    if (url.startsWith('libsql://')) url = 'https://' + url.slice('libsql://'.length);
+    if (!url.endsWith('/')) url += '/';
+    return url;
 }
 
-async function tursoQuery(sql, args) {
-    var conn = getTursoConn();
-    if (!conn) throw new Error('No Turso connection');
-    var isSelect = sql.trim().toUpperCase().startsWith('SELECT');
-    var stmt = conn.prepare(sql);
-    if (isSelect) {
-        if (args && args.length > 0) {
-            return await stmt.get(args);
-        }
-        return await stmt.all();
-    }
+async function tursoExec(sql, args) {
+    var baseUrl = getTursoUrl();
+    if (!baseUrl) throw new Error('No Turso connection');
+    var token = process.env.TURSO_AUTH_TOKEN;
+    var stmt = { sql: sql };
     if (args && args.length > 0) {
-        return await conn.execute(sql, args);
+        stmt.args = args.map(function(a) { return { type: 'text', value: String(a) }; });
     }
-    return await conn.execute(sql);
+    var resp = await fetch(baseUrl + 'v2/pipeline', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests: [{ type: 'execute', stmt: stmt }] })
+    });
+    var data = await resp.json();
+    if (data.results && data.results[0]) {
+        var r = data.results[0].response;
+        if (r && r.type === 'error') throw new Error(r.error.message || 'Turso error');
+        if (r && r.result) return r.result;
+    }
+    throw new Error(JSON.stringify(data));
 }
 
 async function initDatabase() {
@@ -97,16 +99,18 @@ async function initDatabase() {
         return;
     }
     try {
-        await tursoQuery('CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-        var row = await tursoQuery('SELECT value FROM kv WHERE key = ?', ['main_db']);
-        if (row && row.value) {
-            dbCache = JSON.parse(row.value);
+        await tursoExec('CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+        var result = await tursoExec('SELECT value FROM kv WHERE key = ?', ['main_db']);
+        if (result && result.rows && result.rows.length > 0 && result.rows[0] && result.rows[0][0] != null) {
+            var raw = result.rows[0][0];
+            var val = (typeof raw === 'object' && raw.value) ? raw.value : String(raw);
+            dbCache = JSON.parse(val);
         } else {
             dbCache = getDefaultDB();
         }
         tursoAvailable = true;
         dbInitialized = true;
-        console.log('Turso initialized successfully, banners:', (dbCache.banners || []).length);
+        console.log('Turso initialized, banners:', (dbCache.banners || []).length);
     } catch (e) {
         console.error('Turso init error:', e.message || e);
         try {
@@ -149,7 +153,7 @@ async function writeDB(data) {
         try { fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2)); } catch(_){}
         if (tursoAvailable) {
             try {
-                await tursoQuery('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', ['main_db', JSON.stringify(data)]);
+                await tursoExec('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', ['main_db', JSON.stringify(data)]);
             } catch (e) {
                 console.error('Turso write error:', e.message || e);
             }
