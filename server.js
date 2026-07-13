@@ -62,9 +62,11 @@ let dbCache = null;
 let dbInitialized = false;
 
 async function tursoQuery(sql, args) {
-    const url = process.env.TURSO_DATABASE_URL;
+    var url = process.env.TURSO_DATABASE_URL || '';
+    if (url.startsWith('libsql://')) url = 'https://' + url.slice('libsql://'.length);
+    if (!url.endsWith('/')) url += '/';
     const token = process.env.TURSO_AUTH_TOKEN;
-    const resp = await fetch(url + '/v2/pipeline', {
+    const resp = await fetch(url + 'v2/pipeline', {
         method: 'POST',
         headers: {
             'Authorization': 'Bearer ' + token,
@@ -80,6 +82,44 @@ async function tursoQuery(sql, args) {
     }
     throw new Error(JSON.stringify(data));
 }
+
+app.get('/api/debug', async (req, res) => {
+    var url = process.env.TURSO_DATABASE_URL || 'NOT_SET';
+    var token = process.env.TURSO_AUTH_TOKEN ? 'SET (len=' + process.env.TURSO_AUTH_TOKEN.length + ')' : 'NOT_SET';
+    var info = {
+        isVercel: isVercel,
+        useTurso: useTurso,
+        tursoAvailable: tursoAvailable,
+        dbInitialized: dbInitialized,
+        TURSO_DATABASE_URL: url,
+        TURSO_AUTH_TOKEN: token,
+        dbCacheHasBanners: dbCache ? (dbCache.banners || []).length : 'dbCache is null'
+    };
+    if (useTurso && dbInitialized) {
+        try {
+            var httpUrl = url;
+            if (httpUrl.startsWith('libsql://')) httpUrl = 'https://' + httpUrl.slice('libsql://'.length);
+            if (!httpUrl.endsWith('/')) httpUrl += '/';
+            var testResp = await fetch(httpUrl + 'v2/pipeline', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + process.env.TURSO_AUTH_TOKEN,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    requests: [{ type: 'execute', stmt: { sql: 'SELECT 1 as test' } }]
+                })
+            });
+            var testData = await testResp.json();
+            info.tursoConnection = testResp.status === 200 ? 'OK' : 'FAILED';
+            info.tursoResponse = JSON.stringify(testData).slice(0, 500);
+        } catch(e) {
+            info.tursoConnection = 'ERROR';
+            info.tursoError = e.message;
+        }
+    }
+    res.json(info);
+});
 
 async function initDatabase() {
     if (dbInitialized) return;
