@@ -57,10 +57,29 @@ function getDefaultDB() {
     return { users: [], orders: [], banners: [], chat: [], chatMeta: {}, visits: {}, pricing: [], chatConversations: [] };
 }
 
-let tursoClient = null;
 let tursoAvailable = false;
 let dbCache = null;
 let dbInitialized = false;
+
+async function tursoQuery(sql, args) {
+    const url = process.env.TURSO_DATABASE_URL;
+    const token = process.env.TURSO_AUTH_TOKEN;
+    const resp = await fetch(url + '/v2/pipeline', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            requests: [{ type: 'execute', stmt: { sql: sql, args: args || [] } }]
+        })
+    });
+    const data = await resp.json();
+    if (data.results && data.results[0] && data.results[0].response && data.results[0].response.result) {
+        return data.results[0].response.result;
+    }
+    throw new Error(JSON.stringify(data));
+}
 
 async function initDatabase() {
     if (dbInitialized) return;
@@ -70,21 +89,12 @@ async function initDatabase() {
         return;
     }
     try {
-        const mod = require('@libsql/client');
-        tursoClient = mod.createClient({
-            url: process.env.TURSO_DATABASE_URL,
-            authToken: process.env.TURSO_AUTH_TOKEN,
-        });
-        await Promise.race([
-            tursoClient.sync(),
-            new Promise(function(_, rej) { setTimeout(function() { rej(new Error('sync timeout')); }, 10000); })
-        ]);
-        await tursoClient.execute('CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-        var result = await tursoClient.execute({ sql: 'SELECT value FROM kv WHERE key = ?', args: ['main_db'] });
-        dbCache = result.rows.length > 0 ? JSON.parse(result.rows[0].value) : getDefaultDB();
+        await tursoQuery('CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+        var result = await tursoQuery('SELECT value FROM kv WHERE key = ?', ['main_db']);
+        dbCache = (result.rows && result.rows.length > 0) ? JSON.parse(result.rows[0].value) : getDefaultDB();
         tursoAvailable = true;
         dbInitialized = true;
-        console.log('Turso database initialized successfully');
+        console.log('Turso HTTP API initialized successfully');
     } catch (e) {
         console.error('Turso init error:', e.message || e);
         try {
@@ -125,12 +135,9 @@ async function writeDB(data) {
     if (isVercel) {
         dbCache = data;
         try { fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2)); } catch(_){}
-        if (tursoAvailable && tursoClient) {
+        if (tursoAvailable) {
             try {
-                await tursoClient.execute({
-                    sql: 'INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)',
-                    args: ['main_db', JSON.stringify(data)]
-                });
+                await tursoQuery('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', ['main_db', JSON.stringify(data)]);
             } catch (e) {
                 console.error('Turso write error:', e.message || e);
             }
