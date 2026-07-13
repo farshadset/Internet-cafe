@@ -104,17 +104,21 @@ function migrateChatData(db) {
             changed = true;
         }
     });
-    if (changed) writeDB(db);
+    if (changed) await writeDB(db);
 }
 
-function writeDB(data) {
+async function writeDB(data) {
     if (isVercel) {
         dbCache = data;
         if (tursoClient) {
-            tursoClient.execute({
-                sql: 'INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)',
-                args: ['main_db', JSON.stringify(data)]
-            }).catch(e => console.error('Turso write error:', e));
+            try {
+                await tursoClient.execute({
+                    sql: 'INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)',
+                    args: ['main_db', JSON.stringify(data)]
+                });
+            } catch (e) {
+                console.error('Turso write error:', e);
+            }
         }
     } else {
         fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
@@ -129,7 +133,7 @@ app.post('/api/register', async (req, res) => {
         return res.status(400).json({ error: 'کاربر وجود دارد' });
     }
     db.users.push({ username, password });
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -165,7 +169,7 @@ app.post('/api/order', async (req, res) => {
     const db = readDB();
     db.orders = db.orders || [];
     db.orders.push(order);
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true, trackingCode });
 });
 
@@ -222,7 +226,7 @@ app.post('/api/order-attachment', async (req, res) => {
         order.attachments.push(savedAttachment);
     }
     order.updated_at = new Date().toISOString();
-    writeDB(db);
+    await writeDB(db);
 
     res.json({ success: true, attachment: savedAttachment });
 });
@@ -236,7 +240,7 @@ app.post('/api/order/confirm', async (req, res) => {
     }
     order.status = 'pending';
     order.confirmed_at = new Date().toISOString();
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -252,7 +256,7 @@ app.post('/api/order/status', async (req, res) => {
     }
     order.status = status;
     order.updated_at = new Date().toISOString();
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -269,7 +273,7 @@ app.post('/api/order/result', async (req, res) => {
         delete order.result;
     }
     order.result_at = new Date().toISOString();
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -286,7 +290,7 @@ app.post('/api/order/price-proposal', async (req, res) => {
     order.proposedPrice = proposedPrice;
     order.priceStatus = 'usercounter';
     order.updated_at = new Date().toISOString();
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -303,7 +307,7 @@ app.post('/api/order/price-counter', async (req, res) => {
     order.adminProposedPrice = adminProposedPrice;
     order.priceStatus = 'countersent';
     order.updated_at = new Date().toISOString();
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -320,7 +324,7 @@ app.post('/api/order/price-accept', async (req, res) => {
     order.priceStatus = 'accepted';
     order.cost = 'قیمت توافقی - ' + (order.adminProposedPrice || order.proposedPrice);
     order.updated_at = new Date().toISOString();
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -340,7 +344,7 @@ app.post('/api/order/pay', async (req, res) => {
     order.paid = true;
     order.paymentStatus = 'paid';
     order.updated_at = new Date().toISOString();
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -355,7 +359,7 @@ app.post('/api/change-password', async (req, res) => {
         return res.status(400).json({ error: 'رمز عبور فعلی اشتباه است' });
     }
     user.password = newPassword;
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -373,7 +377,7 @@ app.post('/api/track-visit', async (req, res) => {
     lastVisitTime[ip] = now.getTime();
     const key = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     db.visits[key] = (db.visits[key] || 0) + 1;
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true, counted: true });
 });
 
@@ -480,7 +484,7 @@ app.post('/api/pricing', async (req, res) => {
     } else {
         db.pricing.push({ service, price });
     }
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -502,7 +506,7 @@ app.post('/api/banner', async (req, res) => {
         group: targetGroup,
         date: new Date().toISOString()
     });
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -527,7 +531,7 @@ app.delete('/api/banner/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const db = readDB();
     db.banners = (db.banners || []).filter(b => b.id != id);
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -561,7 +565,7 @@ app.put('/api/banner/:id', async (req, res) => {
         banner.duration = parseInt(duration) || 5;
         banner.group = newGroup;
         banner.date = new Date().toISOString();
-        writeDB(db);
+        await writeDB(db);
         res.json({ success: true });
     } else {
         res.status(404).json({ error: 'بنر پیدا نشد' });
@@ -601,7 +605,7 @@ app.post('/api/chat', async (req, res) => {
         attachments: Array.isArray(attachments) ? attachments : []
     };
     db.chat.push(message);
-    writeDB(db);
+    await writeDB(db);
     res.json(message);
 });
 
@@ -621,7 +625,7 @@ app.post('/api/admin/chat/read', async (req, res) => {
     if (lastReadAt) {
         db.chatMeta.lastReadAt = lastReadAt;
     }
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
 });
 
@@ -642,7 +646,7 @@ app.post('/api/admin/chat', async (req, res) => {
         attachments: Array.isArray(attachments) ? attachments : []
     };
     db.chat.push(message);
-    writeDB(db);
+    await writeDB(db);
     res.json(message);
 });
 
@@ -737,7 +741,7 @@ app.post('/api/chat/conversation', async (req, res) => {
         status: 'open'
     };
     db.chatConversations.push(conv);
-    writeDB(db);
+    await writeDB(db);
     res.json(conv);
 });
 
