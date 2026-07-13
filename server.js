@@ -58,27 +58,41 @@ function getDefaultDB() {
 }
 
 let tursoClient = null;
+let tursoAvailable = false;
 let dbCache = null;
 let dbInitialized = false;
 
 async function initDatabase() {
     if (dbInitialized) return;
-    if (!useTurso) { dbInitialized = true; return; }
+    if (!useTurso) {
+        dbCache = null;
+        dbInitialized = true;
+        return;
+    }
     try {
-        const { createClient } = require('@libsql/client');
-        tursoClient = createClient({
+        const mod = require('@libsql/client');
+        tursoClient = mod.createClient({
             url: process.env.TURSO_DATABASE_URL,
             authToken: process.env.TURSO_AUTH_TOKEN,
         });
-        await tursoClient.sync();
-        await tursoClient.execute(`CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
-        const result = await tursoClient.execute({ sql: 'SELECT value FROM kv WHERE key = ?', args: ['main_db'] });
+        await Promise.race([
+            tursoClient.sync(),
+            new Promise(function(_, rej) { setTimeout(function() { rej(new Error('sync timeout')); }, 10000); })
+        ]);
+        await tursoClient.execute('CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+        var result = await tursoClient.execute({ sql: 'SELECT value FROM kv WHERE key = ?', args: ['main_db'] });
         dbCache = result.rows.length > 0 ? JSON.parse(result.rows[0].value) : getDefaultDB();
+        tursoAvailable = true;
         dbInitialized = true;
         console.log('Turso database initialized successfully');
     } catch (e) {
-        console.error('Turso init error:', e);
-        dbCache = getDefaultDB();
+        console.error('Turso init error:', e.message || e);
+        try {
+            var fileData = fs.readFileSync(DB_PATH, 'utf8');
+            dbCache = JSON.parse(fileData);
+        } catch (_) {
+            dbCache = getDefaultDB();
+        }
         dbInitialized = true;
     }
 }
@@ -104,20 +118,21 @@ function migrateChatData(db) {
             changed = true;
         }
     });
-    if (changed) await writeDB(db);
+    if (changed) writeDB(db);
 }
 
 async function writeDB(data) {
     if (isVercel) {
         dbCache = data;
-        if (tursoClient) {
+        try { fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2)); } catch(_){}
+        if (tursoAvailable && tursoClient) {
             try {
                 await tursoClient.execute({
                     sql: 'INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)',
                     args: ['main_db', JSON.stringify(data)]
                 });
             } catch (e) {
-                console.error('Turso write error:', e);
+                console.error('Turso write error:', e.message || e);
             }
         }
     } else {
