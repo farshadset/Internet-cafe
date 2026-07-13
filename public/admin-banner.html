@@ -165,25 +165,18 @@
 
         function openPopup() {
             var selectedGroup = getSelectedBannerGroup();
-            // Fetch fresh data to check group limit
-            fetch('/api/banner')
-                .then(r => r.json())
-                .then(allBanners => {
-                    var groupBanners = allBanners.filter(b => (b.group || 1) == selectedGroup);
-                    if (groupBanners.length >= 3) {
-                        alert('حداکثر تعداد بنرهای هر گروه ۳ عدد است. برای افزودن بنر جدید، یکی از بنرهای موجود را حذف کنید.');
-                        return;
-                    }
-                    document.getElementById('bannerPopup').style.display = 'flex';
-                    document.getElementById('popupTitle').textContent = 'افزودن بنر جدید';
-                    document.getElementById('popupPreviewImg').src = 'https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین';
-                    document.getElementById('popupBannerUpload').value = '';
-                    document.getElementById('popupBannerLink').value = '';
-                    document.getElementById('popupBannerDuration').value = '5';
-                    editingBannerId = null;
-                    editingBannerGroup = null;
-                })
-                .catch(() => {});
+            if (bannersData && bannersData.length >= 3) {
+                alert('حداکثر تعداد بنرهای هر گروه ۳ عدد است. برای افزودن بنر جدید، یکی از بنرهای موجود را حذف کنید.');
+                return;
+            }
+            document.getElementById('bannerPopup').style.display = 'flex';
+            document.getElementById('popupTitle').textContent = 'افزودن بنر جدید';
+            document.getElementById('popupPreviewImg').src = 'https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین';
+            document.getElementById('popupBannerUpload').value = '';
+            document.getElementById('popupBannerLink').value = '';
+            document.getElementById('popupBannerDuration').value = '5';
+            editingBannerId = null;
+            editingBannerGroup = null;
         }
 
         document.addEventListener('DOMContentLoaded', function() {
