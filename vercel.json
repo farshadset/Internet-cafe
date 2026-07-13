@@ -1,11 +1,5 @@
 {
   "version": 2,
-  "outputDirectory": "public",
-  "functions": {
-    "api/index.js": {
-      "includeFiles": "public/**"
-    }
-  },
   "routes": [
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/api/index.js" }
