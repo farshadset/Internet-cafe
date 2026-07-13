@@ -83,44 +83,6 @@ async function tursoQuery(sql, args) {
     throw new Error(JSON.stringify(data));
 }
 
-app.get('/api/debug', async (req, res) => {
-    var url = process.env.TURSO_DATABASE_URL || 'NOT_SET';
-    var token = process.env.TURSO_AUTH_TOKEN ? 'SET (len=' + process.env.TURSO_AUTH_TOKEN.length + ')' : 'NOT_SET';
-    var info = {
-        isVercel: isVercel,
-        useTurso: useTurso,
-        tursoAvailable: tursoAvailable,
-        dbInitialized: dbInitialized,
-        TURSO_DATABASE_URL: url,
-        TURSO_AUTH_TOKEN: token,
-        dbCacheHasBanners: dbCache ? (dbCache.banners || []).length : 'dbCache is null'
-    };
-    if (useTurso && dbInitialized) {
-        try {
-            var httpUrl = url;
-            if (httpUrl.startsWith('libsql://')) httpUrl = 'https://' + httpUrl.slice('libsql://'.length);
-            if (!httpUrl.endsWith('/')) httpUrl += '/';
-            var testResp = await fetch(httpUrl + 'v2/pipeline', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + process.env.TURSO_AUTH_TOKEN,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    requests: [{ type: 'execute', stmt: { sql: 'SELECT 1 as test' } }]
-                })
-            });
-            var testData = await testResp.json();
-            info.tursoConnection = testResp.status === 200 ? 'OK' : 'FAILED';
-            info.tursoResponse = JSON.stringify(testData).slice(0, 500);
-        } catch(e) {
-            info.tursoConnection = 'ERROR';
-            info.tursoError = e.message;
-        }
-    }
-    res.json(info);
-});
-
 async function initDatabase() {
     if (dbInitialized) return;
     if (!useTurso) {
@@ -131,10 +93,14 @@ async function initDatabase() {
     try {
         await tursoQuery('CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
         var result = await tursoQuery('SELECT value FROM kv WHERE key = ?', ['main_db']);
-        dbCache = (result.rows && result.rows.length > 0) ? JSON.parse(result.rows[0].value) : getDefaultDB();
+        if (result.rows && result.rows.length > 0 && result.rows[0] && result.rows[0][0]) {
+            dbCache = JSON.parse(result.rows[0][0].value);
+        } else {
+            dbCache = getDefaultDB();
+        }
         tursoAvailable = true;
         dbInitialized = true;
-        console.log('Turso HTTP API initialized successfully');
+        console.log('Turso HTTP API initialized successfully, banners:', (dbCache.banners || []).length);
     } catch (e) {
         console.error('Turso init error:', e.message || e);
         try {
