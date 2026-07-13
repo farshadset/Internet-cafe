@@ -1,5 +1,6 @@
-const server = require('../server.js');
+const app = require('../server.js');
 
 module.exports = async (req, res) => {
-  await server(req, res);
+  if (app.dbReady) await app.dbReady;
+  return app(req, res);
 };

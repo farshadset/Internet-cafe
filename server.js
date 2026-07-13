@@ -28,6 +28,7 @@ app.use('/public', express.static(path.join(rootDir, 'public'), staticOptions));
 app.use(express.static(path.join(rootDir, 'public'), staticOptions));
 
 const isVercel = !!process.env.VERCEL;
+const useTurso = isVercel && !!process.env.TURSO_DATABASE_URL;
 const DB_PATH = isVercel
     ? path.join('/tmp', 'database.json')
     : path.join(rootDir, 'database.json');
@@ -52,11 +53,44 @@ function decodeDataUrl(dataUrl) {
     };
 }
 
+function getDefaultDB() {
+    return { users: [], orders: [], banners: [], chat: [], chatMeta: {}, visits: {}, pricing: [], chatConversations: [] };
+}
+
+let tursoClient = null;
+let dbCache = null;
+let dbInitialized = false;
+
+async function initDatabase() {
+    if (dbInitialized) return;
+    if (!useTurso) { dbInitialized = true; return; }
+    try {
+        const { createClient } = require('@libsql/client');
+        tursoClient = createClient({
+            url: process.env.TURSO_DATABASE_URL,
+            authToken: process.env.TURSO_AUTH_TOKEN,
+        });
+        await tursoClient.sync();
+        await tursoClient.execute(`CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+        const result = await tursoClient.execute({ sql: 'SELECT value FROM kv WHERE key = ?', args: ['main_db'] });
+        dbCache = result.rows.length > 0 ? JSON.parse(result.rows[0].value) : getDefaultDB();
+        dbInitialized = true;
+        console.log('Turso database initialized successfully');
+    } catch (e) {
+        console.error('Turso init error:', e);
+        dbCache = getDefaultDB();
+        dbInitialized = true;
+    }
+}
+
+const dbReady = initDatabase();
+
 function readDB() {
+    if (dbCache) return dbCache;
     try {
         return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     } catch {
-        return { users: [], orders: [], banners: [], chat: [] };
+        return getDefaultDB();
     }
 }
 
@@ -74,7 +108,15 @@ function migrateChatData(db) {
 }
 
 function writeDB(data) {
-    if (!isVercel) {
+    if (isVercel) {
+        dbCache = data;
+        if (tursoClient) {
+            tursoClient.execute({
+                sql: 'INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)',
+                args: ['main_db', JSON.stringify(data)]
+            }).catch(e => console.error('Turso write error:', e));
+        }
+    } else {
         fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
     }
 }
@@ -778,4 +820,5 @@ function emitChatEvent(io, event, data) {
 
 const ORIGINAL_POST_CHAT = app._router && app._router.stack ? null : null;
 
+app.dbReady = dbReady;
 module.exports = app;
