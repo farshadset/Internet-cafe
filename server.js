@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
+const { connect } = require('@tursodatabase/serverless');
 
 const app = express();
 const rootDir = path.resolve(__dirname);
@@ -60,27 +61,32 @@ function getDefaultDB() {
 let tursoAvailable = false;
 let dbCache = null;
 let dbInitialized = false;
+let tursoConn = null;
+
+function getTursoConn() {
+    if (tursoConn) return tursoConn;
+    var url = process.env.TURSO_DATABASE_URL || '';
+    var token = process.env.TURSO_AUTH_TOKEN;
+    if (!url || !token) return null;
+    tursoConn = connect({ url: url, authToken: token });
+    return tursoConn;
+}
 
 async function tursoQuery(sql, args) {
-    var url = process.env.TURSO_DATABASE_URL || '';
-    if (url.startsWith('libsql://')) url = 'https://' + url.slice('libsql://'.length);
-    if (!url.endsWith('/')) url += '/';
-    const token = process.env.TURSO_AUTH_TOKEN;
-    const resp = await fetch(url + 'v2/pipeline', {
-        method: 'POST',
-        headers: {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            requests: [{ type: 'execute', stmt: { sql: sql, args: args || [] } }]
-        })
-    });
-    const data = await resp.json();
-    if (data.results && data.results[0] && data.results[0].response && data.results[0].response.result) {
-        return data.results[0].response.result;
+    var conn = getTursoConn();
+    if (!conn) throw new Error('No Turso connection');
+    var isSelect = sql.trim().toUpperCase().startsWith('SELECT');
+    var stmt = conn.prepare(sql);
+    if (isSelect) {
+        if (args && args.length > 0) {
+            return await stmt.get(args);
+        }
+        return await stmt.all();
     }
-    throw new Error(JSON.stringify(data));
+    if (args && args.length > 0) {
+        return await conn.execute(sql, args);
+    }
+    return await conn.execute(sql);
 }
 
 async function initDatabase() {
@@ -92,15 +98,15 @@ async function initDatabase() {
     }
     try {
         await tursoQuery('CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-        var result = await tursoQuery('SELECT value FROM kv WHERE key = ?', ['main_db']);
-        if (result.rows && result.rows.length > 0 && result.rows[0] && result.rows[0][0]) {
-            dbCache = JSON.parse(result.rows[0][0].value);
+        var row = await tursoQuery('SELECT value FROM kv WHERE key = ?', ['main_db']);
+        if (row && row.value) {
+            dbCache = JSON.parse(row.value);
         } else {
             dbCache = getDefaultDB();
         }
         tursoAvailable = true;
         dbInitialized = true;
-        console.log('Turso HTTP API initialized successfully, banners:', (dbCache.banners || []).length);
+        console.log('Turso initialized successfully, banners:', (dbCache.banners || []).length);
     } catch (e) {
         console.error('Turso init error:', e.message || e);
         try {
