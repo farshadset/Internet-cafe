@@ -2,13 +2,190 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
+const db = require('./db');
+
+const isVercel = !!process.env.VERCEL;
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('FATAL: JWT_SECRET environment variable is required. Set it in Vercel dashboard.');
+    process.exit(1);
+}
+
+// ==================== PASSWORD HASHING ====================
+function hashPassword(password) {
+    const salt = crypto.randomBytes(32).toString('hex');
+    const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+    return salt + ':' + hash;
+}
+
+function verifyPassword(password, stored) {
+    if (!stored) return false;
+    if (!stored.includes(':')) return false;
+    var parts = stored.split(':');
+    var salt = parts[0];
+    var hash = parts[1];
+    var verify = crypto.scryptSync(String(password), salt, 64).toString('hex');
+    return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(verify, 'hex'));
+}
+
+function isHashed(stored) {
+    return stored && stored.includes(':') && stored.split(':')[1].length === 128;
+}
+
+// ==================== RATE LIMITER (in-memory) ====================
+function rateLimit(windowMs, max) {
+    var store = {};
+    return function(req, res, next) {
+        var key = (req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || 'unknown').split(',')[0].trim();
+        var now = Date.now();
+        if (!store[key]) store[key] = [];
+        store[key] = store[key].filter(function(t) { return t > now - windowMs; });
+        if (store[key].length >= max) {
+            return res.status(429).json({ error: 'تعداد درخواست‌ها بیش از حد مجاز است. لطفاً چند لحظه صبر کنید.' });
+        }
+        store[key].push(now);
+        next();
+    };
+}
+
+// ==================== ACCOUNT LOCKOUT ====================
+const loginAttempts = {};
+const LOCKOUT_THRESHOLD = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000;
+
+function checkLockout(key) {
+    var attempts = loginAttempts[key];
+    if (!attempts) return false;
+    if (attempts.count >= LOCKOUT_THRESHOLD && (now = Date.now()) - attempts.lastAttempt < LOCKOUT_DURATION) {
+        return true;
+    }
+    if (attempts.count >= LOCKOUT_THRESHOLD && Date.now() - attempts.lastAttempt >= LOCKOUT_DURATION) {
+        delete loginAttempts[key];
+    }
+    return false;
+}
+
+function recordFailedAttempt(key) {
+    if (!loginAttempts[key]) loginAttempts[key] = { count: 0, lastAttempt: 0 };
+    loginAttempts[key].count++;
+    loginAttempts[key].lastAttempt = Date.now();
+}
+
+function clearAttempts(key) {
+    delete loginAttempts[key];
+}
+
+// ==================== SECURITY HEADERS ====================
+function securityHeaders(req, res, next) {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.setHeader('X-DNS-Prefetch-Control', 'off');
+    if (isVercel) {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob:; connect-src 'self' ws: wss:; frame-ancestors 'self'");
+    res.removeHeader('X-Powered-By');
+    next();
+}
+
+// ==================== INPUT SANITIZATION ====================
+function sanitize(str) {
+    if (typeof str !== 'string') return str;
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;');
+}
+
+function sanitizeObject(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    var cleaned = Array.isArray(obj) ? [] : {};
+    Object.keys(obj).forEach(function(key) {
+        if (typeof obj[key] === 'string') {
+            cleaned[key] = sanitize(obj[key]);
+        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+            cleaned[key] = sanitizeObject(obj[key]);
+        } else {
+            cleaned[key] = obj[key];
+        }
+    });
+    return cleaned;
+}
+
+function sanitizeMiddleware(req, res, next) {
+    var url = req.originalUrl || '';
+    if (url.indexOf('/api/banner') !== -1 || url.indexOf('/api/login') !== -1 || url.indexOf('/api/register') !== -1) return next();
+    if (req.body && typeof req.body === 'object') {
+        req.body = sanitizeObject(req.body);
+    }
+    if (req.query && typeof req.query === 'object') {
+        req.query = sanitizeObject(req.query);
+    }
+    if (req.params && typeof req.params === 'object') {
+        req.params = sanitizeObject(req.params);
+    }
+    next();
+}
+
+function signJWT(payload) {
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+    const body = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() })).toString('base64url');
+    const sig = crypto.createHmac('sha256', JWT_SECRET).update(header + '.' + body).digest('base64url');
+    return header + '.' + body + '.' + sig;
+}
+
+function verifyJWT(token) {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        const sig = crypto.createHmac('sha256', JWT_SECRET).update(parts[0] + '.' + parts[1]).digest('base64url');
+        if (sig !== parts[2]) return null;
+        return JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+    } catch { return null; }
+}
+
+function getToken(req) {
+    const auth = req.headers.authorization;
+    if (auth && auth.startsWith('Bearer ')) return auth.slice(7);
+    const cookie = req.headers.cookie || '';
+    const m = cookie.match(/(?:^|;\s*)token=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+}
+
+function requireAdmin(req, res, next) {
+    var token = getToken(req);
+    if (!token) {
+        var auth = req.headers.authorization || '';
+        if (auth.startsWith('Bearer ')) token = auth.slice(7);
+    }
+    const payload = verifyJWT(token);
+    if (!payload || !payload.isAdmin) return res.status(401).json({ error: 'دسترسی غیرمجاز' });
+    req.user = payload;
+    next();
+}
 
 const app = express();
 const rootDir = path.resolve(__dirname);
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true }));
+// Security headers
+app.use(securityHeaders);
+
+// Rate limit: 5 requests per minute for login/register
+const authRateLimit = rateLimit(60 * 1000, 5);
+// Rate limit: 10 requests per minute for write operations
+const writeRateLimit = rateLimit(60 * 1000, 30);
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false }));
+app.use(sanitizeMiddleware);
 
 const oneYear = 1000 * 60 * 60 * 24 * 365;
 const staticOptions = {
@@ -24,17 +201,23 @@ const staticOptions = {
     }
   }
 };
+app.use(function(req, res, next) {
+    var p = req.path;
+    if (p === '/admin.html' || p === '/admin' || /^\/admin-[\w-]+\.html$/.test(p)) {
+        var payload = verifyJWT(getToken(req));
+        if (!payload || !payload.isAdmin) return res.redirect('/login.html');
+    }
+    next();
+});
+
 app.use('/public', express.static(path.join(rootDir, 'public'), staticOptions));
 app.use(express.static(path.join(rootDir, 'public'), staticOptions));
 
-const isVercel = !!process.env.VERCEL;
-const useTurso = isVercel && !!process.env.TURSO_DATABASE_URL;
-const DB_PATH = isVercel
-    ? path.join('/tmp', 'database.json')
-    : path.join(rootDir, 'database.json');
 const ATTACHMENTS_DIR = path.join(rootDir, 'public', 'uploads', 'attachments');
+const BANNERS_DIR = path.join(rootDir, 'public', 'uploads', 'banners');
 
-fs.mkdirSync(ATTACHMENTS_DIR, { recursive: true });
+try { fs.mkdirSync(ATTACHMENTS_DIR, { recursive: true }); } catch(e) {}
+try { fs.mkdirSync(BANNERS_DIR, { recursive: true }); } catch(e) {}
 
 function sanitizeAttachmentName(name) {
     const safeName = String(name || 'attachment')
@@ -53,175 +236,157 @@ function decodeDataUrl(dataUrl) {
     };
 }
 
-function getDefaultDB() {
-    return { users: [], orders: [], banners: [], chat: [], chatMeta: {}, visits: {}, pricing: [], chatConversations: [] };
-}
-
-let tursoAvailable = false;
-let dbCache = null;
-let dbInitialized = false;
-
-function getTursoUrl() {
-    var url = process.env.TURSO_DATABASE_URL || '';
-    if (!url || !process.env.TURSO_AUTH_TOKEN) return null;
-    if (url.startsWith('libsql://')) url = 'https://' + url.slice('libsql://'.length);
-    if (!url.endsWith('/')) url += '/';
-    return url;
-}
-
-async function tursoExec(sql, args) {
-    var baseUrl = getTursoUrl();
-    if (!baseUrl) throw new Error('No Turso connection');
-    var token = process.env.TURSO_AUTH_TOKEN;
-    var stmt = { sql: sql };
-    if (args && args.length > 0) {
-        stmt.args = args.map(function(a) { return { type: 'text', value: String(a) }; });
-    }
-    var resp = await fetch(baseUrl + 'v2/pipeline', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requests: [{ type: 'execute', stmt: stmt }] })
-    });
-    var data = await resp.json();
-    if (data.results && data.results[0]) {
-        var r = data.results[0].response;
-        if (r && r.type === 'error') throw new Error(r.error.message || 'Turso error');
-        if (r && r.result) return r.result;
-    }
-    throw new Error(JSON.stringify(data));
-}
-
-async function initDatabase() {
-    if (dbInitialized) return;
-    if (!useTurso) {
-        dbCache = null;
-        dbInitialized = true;
-        return;
-    }
+// ==================== DATABASE INIT ====================
+const dbReady = db.initDB().then(async () => {
     try {
-        await tursoExec('CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-        var result = await tursoExec('SELECT value FROM kv WHERE key = ?', ['main_db']);
-        if (result && result.rows && result.rows.length > 0 && result.rows[0] && result.rows[0][0] != null) {
-            var raw = result.rows[0][0];
-            var val = (typeof raw === 'object' && raw.value) ? raw.value : String(raw);
-            dbCache = JSON.parse(val);
-        } else {
-            dbCache = getDefaultDB();
-        }
-        tursoAvailable = true;
-        dbInitialized = true;
-        console.log('Turso initialized, banners:', (dbCache.banners || []).length);
+        await db.migrateFromJSON();
+        console.log('Database initialized with @libsql/client');
     } catch (e) {
-        console.error('Turso init error:', e.message || e);
-        try {
-            var fileData = fs.readFileSync(DB_PATH, 'utf8');
-            dbCache = JSON.parse(fileData);
-        } catch (_) {
-            dbCache = getDefaultDB();
-        }
-        dbInitialized = true;
+        console.error('DB init migration error:', e.message || e);
     }
-}
 
-const dbReady = initDatabase();
-
-function readDB() {
-    if (dbCache) return dbCache;
     try {
-        return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-    } catch {
-        return getDefaultDB();
-    }
-}
-
-function migrateChatData(db) {
-    if (!db.chat) db.chat = [];
-    db.chatMeta = db.chatMeta || {};
-    var changed = false;
-    db.chat.forEach(function(msg) {
-        if (msg.role === 'customer' && !msg.username) {
-            msg.username = 'مهمان';
-            changed = true;
+        // Ensure admin user exists from env vars
+        var adminUsername = process.env.ADMIN_USERNAME;
+        var adminPassword = process.env.ADMIN_PASSWORD;
+        console.log('ADMIN_USERNAME:', adminUsername ? 'set (' + adminUsername + ')' : 'NOT SET');
+        console.log('ADMIN_PASSWORD:', adminPassword ? 'set' : 'NOT SET');
+        if (adminUsername && adminPassword) {
+            var existingAdmin = await db.getUser(adminUsername);
+            if (!existingAdmin) {
+                await db.createUser(adminUsername, hashPassword(adminPassword), true);
+                console.log('Admin user CREATED. Username: ' + adminUsername);
+            } else {
+                // Always update password and admin flag from env vars
+                await db.setAdminUser(adminUsername, true);
+                await db.updateUserPassword(adminUsername, hashPassword(adminPassword));
+                console.log('Admin user UPDATED. Username: ' + adminUsername);
+            }
+        } else {
+            console.warn('WARNING: ADMIN_USERNAME and ADMIN_PASSWORD env vars not set.');
         }
-    });
-    if (changed) writeDB(db);
-}
 
-async function writeDB(data) {
-    if (isVercel) {
-        dbCache = data;
-        try { fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2)); } catch(_){}
-        if (tursoAvailable) {
-            try {
-                await tursoExec('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', ['main_db', JSON.stringify(data)]);
-            } catch (e) {
-                console.error('Turso write error:', e.message || e);
+        // Hash any remaining plaintext passwords
+        var client = db.getClient();
+        var allUsers = await client.execute('SELECT username, password FROM users');
+        for (const u of allUsers.rows) {
+            if (u.password && !isHashed(u.password)) {
+                await db.updateUserPassword(u.username, hashPassword(u.password));
             }
         }
-    } else {
-        fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+    } catch (e) {
+        console.error('Admin migration error:', e.message || e);
     }
-}
+}).catch(function(e) {
+    console.error('dbReady error:', e.message || e);
+});
 
-// Auth routes
-app.post('/api/register', async (req, res) => {
+// ==================== AUTH ROUTES ====================
+app.post('/api/register', authRateLimit, async (req, res) => {
     const { username, password } = req.body;
-    const db = readDB();
-    if (db.users.find(u => u.username === username)) {
+    if (!username || !password) return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
+    if (String(username).length < 3 || String(username).length > 30) return res.status(400).json({ error: 'نام کاربری باید بین ۳ تا ۳۰ کاراکتر باشد' });
+    if (String(password).length < 8) return res.status(400).json({ error: 'رمز عبور باید حداقل ۸ کاراکتر باشد' });
+    if (!/[A-Z]/.test(String(password)) || !/[a-z]/.test(String(password)) || !/[0-9]/.test(String(password))) {
+        return res.status(400).json({ error: 'رمز عبور باید شامل حروف بزرگ، کوچک و اعداد باشد' });
+    }
+    if (!/^[a-zA-Z0-9_\u0600-\u06FF]+$/.test(String(username))) return res.status(400).json({ error: 'نام کاربری فقط شامل حروف، اعداد و _ باشد' });
+    const existing = await db.getUser(username);
+    if (existing) {
         return res.status(400).json({ error: 'کاربر وجود دارد' });
     }
-    db.users.push({ username, password });
-    await writeDB(db);
+    await db.createUser(username, hashPassword(password), false);
     res.json({ success: true });
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authRateLimit, async (req, res) => {
     const { username, password } = req.body;
-    const db = readDB();
-    const user = db.users.find(u => u.username === username && u.password === password);
-    if (user) {
-        res.json({ success: true });
-    } else {
-        res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
+    if (!username || !password) return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
+    const lockKey = 'user:' + username;
+    if (checkLockout(lockKey)) return res.status(429).json({ error: 'حساب شما به دلیل تلاش‌های ناموفق زیاد قفل شده است. ۱۵ دقیقه صبر کنید.' });
+    const user = await db.getUserWithPassword(username);
+    if (!user || !verifyPassword(password, user.password)) {
+        recordFailedAttempt(lockKey);
+        return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
     }
+    clearAttempts(lockKey);
+    if (!isHashed(user.password)) {
+        await db.updateUserPassword(username, hashPassword(password));
+    }
+    res.json({ success: true });
 });
 
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', authRateLimit, async (req, res) => {
     const { username, password } = req.body;
-    if (username === 'sedeb' && password === 'sedeb75') {
-        res.json({ success: true, token: 'admin-token' });
-    } else {
-        res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
+    if (!username || !password) return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
+    const lockKey = 'admin:' + username;
+    if (checkLockout(lockKey)) {
+        console.log('Admin lockout active for:', username);
+        return res.status(429).json({ error: 'حساب مدیر به دلیل تلاش‌های ناموفق زیاد قفل شده است. ۱۵ دقیقه صبر کنید.' });
     }
+    const admin = await db.getUserWithPassword(username);
+    if (!admin || !admin.isAdmin || !verifyPassword(password, admin.password)) {
+        recordFailedAttempt(lockKey);
+        return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
+    }
+    clearAttempts(lockKey);
+    if (!isHashed(admin.password)) {
+        await db.updateUserPassword(username, hashPassword(password));
+    }
+    var token = signJWT({ username: username, isAdmin: true });
+    var cookieFlags = 'Path=/; HttpOnly; SameSite=Strict; Max-Age=86400';
+    if (isVercel) cookieFlags += '; Secure';
+    res.setHeader('Set-Cookie', 'token=' + encodeURIComponent(token) + '; ' + cookieFlags);
+    res.json({ success: true, token: token });
 });
 
-// Order routes
-app.post('/api/order', async (req, res) => {
+app.get('/api/debug-admin', async (req, res) => {
+    var adminUsername = process.env.ADMIN_USERNAME || '(not set)';
+    var adminPassword = process.env.ADMIN_PASSWORD;
+    var pwInfo = adminPassword ? 'length=' + adminPassword.length + ', chars=' + Array.from(adminPassword).map(function(c) { return 'U+' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0'); }).join(' ') : '(not set)';
+    var admin = null;
+    try {
+        admin = await db.getUserWithPassword(adminUsername);
+    } catch (e) {}
+    res.json({
+        envUsername: adminUsername,
+        envPasswordInfo: pwInfo,
+        dbUserFound: !!admin,
+        isAdmin: admin ? !!admin.isAdmin : false,
+        passwordStored: admin ? admin.password.substring(0, 20) + '...' : null
+    });
+});
+
+// ==================== ORDER ROUTES ====================
+app.post('/api/order', writeRateLimit, async (req, res) => {
     const trackingCode = 'CFT-' + Date.now().toString().slice(-8);
-    const order = {
-        username: (req.body.username || '').trim() || null,
-        ...req.body,
-        trackingCode,
-        created_at: new Date()
-    };
-    const db = readDB();
-    db.orders = db.orders || [];
-    db.orders.push(order);
-    await writeDB(db);
+    const allowedFields = ['username', 'serviceType', 'title', 'description', 'phone', 'nationalId',
+        'postalCode', 'address', 'plateNumber', 'violationNumber', 'appealReason',
+        'applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay',
+        'marriageYear', 'marriageMonth', 'marriageDay', 'idNumber', 'additionalNotes',
+        'regionCode', 'educationLevel', 'familyCount', 'iban', 'contractNumber',
+        'depositAmount', 'passportNumber', 'examType', 'city', 'operator', 'internetType',
+        'ownershipStatus'];
+    const order = { trackingCode, created_at: new Date() };
+    const username = (req.body.username || '').trim();
+    if (username) order.username = username;
+    for (const field of allowedFields) {
+        if (req.body[field] !== undefined) order[field] = req.body[field];
+    }
+    await db.createOrder(order);
     res.json({ success: true, trackingCode });
 });
 
-app.get('/api/order/:trackingCode', async (req, res) => {
+app.get('/api/order/:trackingCode', requireAdmin, async (req, res) => {
     const { trackingCode } = req.params;
-    const db = readDB();
-    const order = (db.orders || []).find(o => o.trackingCode === trackingCode);
+    const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
     res.json(order);
 });
 
-app.post('/api/order-attachment', async (req, res) => {
+app.post('/api/order-attachment', writeRateLimit, async (req, res) => {
     const { trackingCode, attachment } = req.body;
     if (!trackingCode || !/^[A-Za-z0-9-]+$/.test(trackingCode)) {
         return res.status(400).json({ error: 'کد سفارش نامعتبر است' });
@@ -234,9 +399,15 @@ app.post('/api/order-attachment', async (req, res) => {
     if (!decoded || decoded.buffer.length === 0) {
         return res.status(400).json({ error: 'داده فایل نامعتبر است' });
     }
+    var allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    if (!allowedMimes.includes(decoded.type)) {
+        return res.status(400).json({ error: 'فقط فایل‌های تصویری (jpg, png, gif, webp) و PDF مجاز هستند' });
+    }
+    if (decoded.buffer.length > 5 * 1024 * 1024) {
+        return res.status(400).json({ error: 'حجم فایل نباید بیش از ۵ مگابایت باشد' });
+    }
 
-    const db = readDB();
-    const order = (db.orders || []).find(o => o.trackingCode === trackingCode);
+    const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
@@ -256,156 +427,145 @@ app.post('/api/order-attachment', async (req, res) => {
         uploadedAt: attachment.uploadedAt || new Date().toISOString()
     };
 
-    order.attachments = order.attachments || [];
-    const existingIndex = order.attachments.findIndex(a => a.id === savedAttachment.id);
+    var attachments = order.attachments || [];
+    const existingIndex = attachments.findIndex(a => a.id === savedAttachment.id);
     if (existingIndex >= 0) {
-        order.attachments[existingIndex] = savedAttachment;
+        attachments[existingIndex] = savedAttachment;
     } else {
-        order.attachments.push(savedAttachment);
+        attachments.push(savedAttachment);
     }
-    order.updated_at = new Date().toISOString();
-    await writeDB(db);
+    await db.updateOrder(trackingCode, { attachments });
 
     res.json({ success: true, attachment: savedAttachment });
 });
 
-app.post('/api/order/confirm', async (req, res) => {
+app.post('/api/order/confirm', requireAdmin, writeRateLimit, async (req, res) => {
     const { trackingCode } = req.body;
-    const db = readDB();
-    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
-    order.status = 'pending';
-    order.confirmed_at = new Date().toISOString();
-    await writeDB(db);
+    await db.updateOrder(trackingCode, { status: 'pending', confirmed_at: new Date().toISOString() });
     res.json({ success: true });
 });
 
-app.post('/api/order/status', async (req, res) => {
+app.post('/api/order/status', requireAdmin, writeRateLimit, async (req, res) => {
     const { trackingCode, status } = req.body;
     if (!['pending', 'processing', 'completed'].includes(status)) {
         return res.status(400).json({ error: 'وضعیت نامعتبر' });
     }
-    const db = readDB();
-    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
-    order.status = status;
-    order.updated_at = new Date().toISOString();
-    await writeDB(db);
+    await db.updateOrder(trackingCode, { status, updated_at: new Date().toISOString() });
     res.json({ success: true });
 });
 
-app.post('/api/order/result', async (req, res) => {
+app.post('/api/order/result', requireAdmin, writeRateLimit, async (req, res) => {
     const { trackingCode, result } = req.body;
-    const db = readDB();
-    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
+    var updates = { result_at: new Date().toISOString() };
     if (result && result.trim()) {
-        order.result = result.trim();
+        updates.result = result.trim();
     } else {
-        delete order.result;
+        updates.result = null;
     }
-    order.result_at = new Date().toISOString();
-    await writeDB(db);
+    await db.updateOrder(trackingCode, updates);
     res.json({ success: true });
 });
 
-app.post('/api/order/price-proposal', async (req, res) => {
+app.post('/api/order/price-proposal', writeRateLimit, async (req, res) => {
     const { trackingCode, proposedPrice } = req.body;
     if (!trackingCode || !proposedPrice) {
         return res.status(400).json({ error: 'کد سفارش و قیمت الزامی است' });
     }
-    const db = readDB();
-    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
-    order.proposedPrice = proposedPrice;
-    order.priceStatus = 'usercounter';
-    order.updated_at = new Date().toISOString();
-    await writeDB(db);
+    await db.updateOrder(trackingCode, { proposedPrice, priceStatus: 'usercounter', updated_at: new Date().toISOString() });
     res.json({ success: true });
 });
 
-app.post('/api/order/price-counter', async (req, res) => {
+app.post('/api/order/price-counter', requireAdmin, writeRateLimit, async (req, res) => {
     const { trackingCode, adminProposedPrice } = req.body;
     if (!trackingCode || !adminProposedPrice) {
         return res.status(400).json({ error: 'کد سفارش و قیمت الزامی است' });
     }
-    const db = readDB();
-    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
-    order.adminProposedPrice = adminProposedPrice;
-    order.priceStatus = 'countersent';
-    order.updated_at = new Date().toISOString();
-    await writeDB(db);
+    await db.updateOrder(trackingCode, { adminProposedPrice, priceStatus: 'countersent', updated_at: new Date().toISOString() });
     res.json({ success: true });
 });
 
-app.post('/api/order/price-accept', async (req, res) => {
+app.post('/api/order/price-accept', requireAdmin, writeRateLimit, async (req, res) => {
     const { trackingCode } = req.body;
     if (!trackingCode) {
         return res.status(400).json({ error: 'کد سفارش الزامی است' });
     }
-    const db = readDB();
-    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
-    order.priceStatus = 'accepted';
-    order.cost = 'قیمت توافقی - ' + (order.adminProposedPrice || order.proposedPrice);
-    order.updated_at = new Date().toISOString();
-    await writeDB(db);
+    await db.updateOrder(trackingCode, {
+        priceStatus: 'accepted',
+        cost: 'قیمت توافقی - ' + (order.adminProposedPrice || order.proposedPrice),
+        updated_at: new Date().toISOString()
+    });
     res.json({ success: true });
 });
 
-app.post('/api/order/pay', async (req, res) => {
+app.post('/api/order/pay', requireAdmin, writeRateLimit, async (req, res) => {
     const { trackingCode } = req.body;
     if (!trackingCode) {
         return res.status(400).json({ error: 'کد سفارش الزامی است' });
     }
-    const db = readDB();
-    const order = db.orders.find(o => o.trackingCode === trackingCode);
+    const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
     if (order.priceStatus !== 'accepted') {
         return res.status(400).json({ error: 'قیمت هنوز تایید نشده است' });
     }
-    order.paid = true;
-    order.paymentStatus = 'paid';
-    order.updated_at = new Date().toISOString();
-    await writeDB(db);
+    await db.updateOrder(trackingCode, { paid: true, paymentStatus: 'paid', updated_at: new Date().toISOString() });
     res.json({ success: true });
 });
 
-app.post('/api/change-password', async (req, res) => {
+app.post('/api/change-password', authRateLimit, async (req, res) => {
     const { username, currentPassword, newPassword } = req.body;
-    const db = readDB();
-    const user = db.users.find(u => u.username === username);
-    if (!user) {
-        return res.status(404).json({ error: 'کاربر پیدا نشد' });
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'رمز فعلی و رمز جدید الزامی است' });
+    if (String(newPassword).length < 8) return res.status(400).json({ error: 'رمز جدید باید حداقل ۸ کاراکتر باشد' });
+    if (!/[A-Z]/.test(String(newPassword)) || !/[a-z]/.test(String(newPassword)) || !/[0-9]/.test(String(newPassword))) {
+        return res.status(400).json({ error: 'رمز جدید باید شامل حروف بزرگ، کوچک و اعداد باشد' });
     }
-    if (user.password !== currentPassword) {
+    var token = getToken(req);
+    var payload = token ? verifyJWT(token) : null;
+    var targetUsername = username;
+    if (!payload || !payload.isAdmin) {
+        if (!payload || payload.username !== username) {
+            return res.status(403).json({ error: 'فقط می‌توانید رمز خودتان را تغییر دهید' });
+        }
+        targetUsername = payload.username;
+    }
+    const user = await db.getUserWithPassword(targetUsername);
+    if (!user) return res.status(404).json({ error: 'کاربر پیدا نشد' });
+    if (!verifyPassword(currentPassword, user.password)) {
         return res.status(400).json({ error: 'رمز عبور فعلی اشتباه است' });
     }
-    user.password = newPassword;
-    await writeDB(db);
+    await db.updateUserPassword(targetUsername, hashPassword(newPassword));
     res.json({ success: true });
 });
 
+// ==================== VISIT TRACKING ====================
 const lastVisitTime = {};
 
-app.post('/api/track-visit', async (req, res) => {
-    const db = readDB();
-    db.visits = db.visits || {};
+app.post('/api/track-visit', rateLimit(30 * 60 * 1000, 20), async (req, res) => {
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
     const now = new Date();
     const COOLDOWN = 30 * 60 * 1000;
@@ -414,52 +574,41 @@ app.post('/api/track-visit', async (req, res) => {
     }
     lastVisitTime[ip] = now.getTime();
     const key = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    db.visits[key] = (db.visits[key] || 0) + 1;
-    await writeDB(db);
+    await db.trackVisit(key);
     res.json({ success: true, counted: true });
 });
 
 app.get('/api/visits', async (req, res) => {
-    const db = readDB();
-    res.json(db.visits || {});
+    const visits = await db.getAllVisits();
+    res.json(visits);
 });
 
-app.get('/api/orders', async (req, res) => {
+// ==================== ORDERS LIST ====================
+app.get('/api/orders', requireAdmin, async (req, res) => {
     const { status } = req.query;
-    const db = readDB();
-    let orders = db.orders || [];
-    if (status) {
-        orders = orders.filter(o => o.status === status);
-    }
-    orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const orders = await db.getAllOrders(status);
     res.json(orders);
 });
 
-app.get('/api/orders/user', async (req, res) => {
+app.get('/api/orders/user', requireAdmin, async (req, res) => {
     const { username, status } = req.query;
     if (!username) {
         return res.status(400).json({ error: 'نام کاربری الزامی است' });
     }
-    const db = readDB();
-    let userOrders = (db.orders || []).filter(o => o.username === username);
-    if (status) {
-        userOrders = userOrders.filter(o => o.status === status);
-    }
-    userOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const userOrders = await db.getUserOrders(username, status);
     res.json(userOrders);
 });
 
-app.get('/api/admin/customers', async (req, res) => {
-    const db = readDB();
-    const completedOrders = (db.orders || []).filter(o => o.status === 'completed');
-    
+app.get('/api/admin/customers', requireAdmin, async (req, res) => {
+    const completedOrders = await db.getCompletedOrders();
+
     var customerStats = {};
     var uniqueCustomers = new Set();
     completedOrders.forEach(function(order) {
         var username = order.username;
         if (!username) return;
         uniqueCustomers.add(username);
-        
+
         if (!customerStats[username]) {
             customerStats[username] = {
                 username: username,
@@ -468,7 +617,7 @@ app.get('/api/admin/customers', async (req, res) => {
                 orders: []
             };
         }
-        
+
         customerStats[username].totalOrders += 1;
         customerStats[username].orders.push({
             trackingCode: order.trackingCode,
@@ -476,7 +625,7 @@ app.get('/api/admin/customers', async (req, res) => {
             created_at: order.created_at,
             result: order.result
         });
-        
+
         var orderCost = 0;
         if (order.paid && order.adminProposedPrice) {
             var priceStr = String(order.adminProposedPrice).replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
@@ -491,85 +640,123 @@ app.get('/api/admin/customers', async (req, res) => {
             costStr = costStr.replace(/[,٬٫]/g, '').replace(/[^\d]/g, '');
             if (costStr) orderCost = parseInt(costStr, 10);
         }
-        
+
         customerStats[username].totalSpent += orderCost;
     });
-    
-    var customersList = Object.keys(customerStats).map(function(k) { 
-        return customerStats[k]; 
+
+    var customersList = Object.keys(customerStats).map(function(k) {
+        return customerStats[k];
     });
     customersList.sort(function(a, b) { return b.totalSpent - a.totalSpent; });
-    
+
     res.json({ customers: customersList, totalCustomers: uniqueCustomers.size });
 });
 
-// Pricing routes
+// ==================== PRICING ====================
 app.get('/api/pricing', async (req, res) => {
-    const db = readDB();
-    res.json(db.pricing || []);
+    const pricing = await db.getPricing();
+    res.json(pricing);
 });
 
-app.post('/api/pricing', async (req, res) => {
+app.post('/api/pricing', requireAdmin, writeRateLimit, async (req, res) => {
     const { service, price } = req.body;
     if (!service) {
         return res.status(400).json({ error: 'سرویس الزامی است' });
     }
-    const db = readDB();
-    db.pricing = db.pricing || [];
-    const existing = db.pricing.find(p => p.service === service);
-    if (existing) {
-        existing.price = price;
-    } else {
-        db.pricing.push({ service, price });
-    }
-    await writeDB(db);
+    await db.upsertPricing(service, price);
     res.json({ success: true });
 });
 
-// Banner routes
-app.post('/api/banner', async (req, res) => {
-    const { src, link, duration, group } = req.body;
-    const db = readDB();
-    db.banners = db.banners || [];
-    const targetGroup = [1, 2].includes(parseInt(group, 10)) ? parseInt(group, 10) : 1;
-    const groupBanners = db.banners.filter(b => (parseInt(b.group, 10) || 1) == targetGroup);
-    if (groupBanners.length >= 3) {
-        return res.status(400).json({ error: 'حداکثر تعداد بنرهای هر گروه ۳ عدد است' });
+function sanitizeBannerLink(link) {
+    if (!link || typeof link !== 'string') return '';
+    var trimmed = link.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:')) return '';
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('/')) return '';
+    return trimmed;
+}
+
+function sanitizeBannerSrc(src) {
+    if (!src || typeof src !== 'string') return '';
+    var trimmed = src.trim();
+    if (trimmed.startsWith('data:image/')) return trimmed;
+    if (trimmed.startsWith('/uploads/')) return trimmed;
+    return '';
+}
+
+// ==================== BANNER UPLOAD ====================
+app.post('/api/banner/upload', requireAdmin, writeRateLimit, async (req, res) => {
+    try {
+        var image = req.body && req.body.image;
+        if (!image || !image.dataUrl || !image.name) {
+            return res.status(400).json({ error: 'فایل تصویر نامعتبر است' });
+        }
+        var dataUrl = String(image.dataUrl).trim();
+        var match = dataUrl.match(/^data:image\/([a-z0-9.+-]+);base64,(.+)$/i);
+        if (!match) {
+            return res.status(400).json({ error: 'فرمت تصویر پشتیبانی نمی‌شود' });
+        }
+        var buffer = Buffer.from(match[2], 'base64');
+        if (buffer.length > 2 * 1024 * 1024) {
+            return res.status(400).json({ error: 'حجم تصویر نباید بیش از ۲ مگابایت باشد' });
+        }
+        res.json({ success: true, url: dataUrl, name: image.name });
+    } catch (e) {
+        console.error('Banner upload error:', e.message);
+        res.status(500).json({ error: 'خطا در آپلود تصویر' });
     }
-    db.banners.push({
-        id: Date.now(),
-        src,
-        link: link || '',
-        duration: parseInt(duration) || 5,
-        group: targetGroup,
-        date: new Date().toISOString()
-    });
-    await writeDB(db);
+});
+
+// ==================== BANNER ROUTES ====================
+app.post('/api/banner', requireAdmin, writeRateLimit, async (req, res) => {
+    const { src, link, duration, group } = req.body;
+    var safeLink = sanitizeBannerLink(link);
+    var safeSrc = sanitizeBannerSrc(src);
+    if (!safeSrc) {
+        return res.status(400).json({ error: 'منبع تصویر نامعتبر است' });
+    }
+    const targetGroup = [1, 2].includes(parseInt(group, 10)) ? parseInt(group, 10) : 1;
+    const groupBanners = await db.getBanners(targetGroup);
+    if (groupBanners.length >= 6) {
+        return res.status(400).json({ error: 'حداکثر تعداد بنرهای هر گروه ۶ عدد است' });
+    }
+    await db.createBanner(
+        Date.now(),
+        safeSrc,
+        safeLink,
+        parseInt(duration) || 5,
+        targetGroup,
+        new Date().toISOString()
+    );
     res.json({ success: true });
 });
 
 app.get('/api/banner', async (req, res) => {
     const { group } = req.query;
-    const db = readDB();
-    var allBanners = db.banners || [];
-    allBanners.forEach(b => {
-        if (!b.group) b.group = 1;
-        if (!b.duration) b.duration = 5;
-    });
     if (group) {
         const groupNum = parseInt(group);
         if (!Number.isNaN(groupNum)) {
-            return res.json(allBanners.filter(b => parseInt(b.group, 10) == groupNum));
+            const banners = await db.getBanners(groupNum);
+            return res.json(banners);
         }
     }
+    const allBanners = await db.getBanners();
     res.json(allBanners);
 });
 
-app.delete('/api/banner/:id', async (req, res) => {
+app.delete('/api/banner/:id', requireAdmin, writeRateLimit, async (req, res) => {
     const id = parseInt(req.params.id);
-    const db = readDB();
-    db.banners = (db.banners || []).filter(b => b.id != id);
-    await writeDB(db);
+    const banner = await db.getBannerById(id);
+    if (banner && banner.src && banner.src.startsWith('/uploads/banners/')) {
+        try {
+            const filename = decodeURIComponent(banner.src.replace('/uploads/banners/', ''));
+            const filepath = path.resolve(BANNERS_DIR, filename);
+            if (filepath.startsWith(path.resolve(BANNERS_DIR)) && fs.existsSync(filepath)) {
+                fs.unlinkSync(filepath);
+            }
+        } catch (e) {}
+    }
+    await db.deleteBanner(id);
     res.json({ success: true });
 });
 
@@ -585,54 +772,50 @@ app.get('/api/mega-menu', async (req, res) => {
   }
 });
 
-app.put('/api/banner/:id', async (req, res) => {
+app.put('/api/banner/:id', requireAdmin, writeRateLimit, async (req, res) => {
     const id = parseInt(req.params.id);
     const { src, link, duration, group } = req.body;
-    const db = readDB();
-    const banner = (db.banners || []).find(b => b.id == id);
-    if (banner) {
-        var newGroup = [1, 2].includes(parseInt(group, 10)) ? parseInt(group, 10) : (parseInt(banner.group, 10) || 1);
-        if (newGroup !== parseInt(banner.group, 10)) {
-            var groupBanners = (db.banners || []).filter(b => (parseInt(b.group, 10) || 1) == newGroup);
-            if (groupBanners.length >= 3) {
-                return res.status(400).json({ error: 'حداکثر تعداد بنرهای هر گروه ۳ عدد است' });
-            }
+    var safeLink = sanitizeBannerLink(link);
+    var safeSrc = sanitizeBannerSrc(src);
+    if (!safeSrc) {
+        return res.status(400).json({ error: 'منبع تصویر نامعتبر است' });
+    }
+    const banner = await db.getBannerById(id);
+    if (!banner) {
+        return res.status(404).json({ error: 'بنر پیدا نشد' });
+    }
+    var newGroup = [1, 2].includes(parseInt(group, 10)) ? parseInt(group, 10) : (parseInt(banner.group, 10) || 1);
+    if (newGroup !== parseInt(banner.group, 10)) {
+        var groupBanners = await db.getBanners(newGroup);
+        if (groupBanners.length >= 6) {
+            return res.status(400).json({ error: 'حداکثر تعداد بنرهای هر گروه ۶ عدد است' });
         }
-        banner.src = src;
-        banner.link = link || '';
-        banner.duration = parseInt(duration) || 5;
-        banner.group = newGroup;
-        banner.date = new Date().toISOString();
-        await writeDB(db);
-        res.json({ success: true });
-    } else {
-        res.status(404).json({ error: 'بنر پیدا نشد' });
     }
+    if (banner.src !== src && banner.src && banner.src.startsWith('/uploads/banners/')) {
+        try {
+            const oldFile = decodeURIComponent(banner.src.replace('/uploads/banners/', ''));
+            const oldPath = path.resolve(BANNERS_DIR, oldFile);
+            if (oldPath.startsWith(path.resolve(BANNERS_DIR)) && fs.existsSync(oldPath)) {
+                fs.unlinkSync(oldPath);
+            }
+        } catch (e) {}
+    }
+    await db.updateBanner(id, safeSrc, safeLink, parseInt(duration) || 5, newGroup);
+    res.json({ success: true });
 });
 
-// Chat routes
-app.get('/api/chat', async (req, res) => {
+// ==================== CHAT ROUTES ====================
+app.get('/api/chat', requireAdmin, async (req, res) => {
     const { username } = req.query;
-    const db = readDB();
-    migrateChatData(db);
-    if (username) {
-        const messages = (db.chat || []).filter(m =>
-            (m.role === 'customer' && m.username === username) ||
-            (m.role === 'admin')
-        );
-        res.json(messages);
-    } else {
-        res.json((db.chat || []).filter(m => m.role === 'customer'));
-    }
+    const messages = await db.getChatMessages(username);
+    res.json(messages);
 });
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', writeRateLimit, async (req, res) => {
     const { username, text, conversationId, attachments } = req.body;
     if (!text || !text.trim()) {
         return res.status(400).json({ error: 'متن پیام الزامی است' });
     }
-    const db = readDB();
-    if (!db.chat) db.chat = [];
     const message = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: 'customer',
@@ -642,38 +825,28 @@ app.post('/api/chat', async (req, res) => {
         conversationId: conversationId || null,
         attachments: Array.isArray(attachments) ? attachments : []
     };
-    db.chat.push(message);
-    await writeDB(db);
+    await db.addChatMessage(message);
     res.json(message);
 });
 
-app.get('/api/admin/chat', async (req, res) => {
-    const db = readDB();
-    migrateChatData(db);
-    res.json({
-        messages: db.chat || [],
-        lastReadAt: db.chatMeta && db.chatMeta.lastReadAt ? db.chatMeta.lastReadAt : null
-    });
+app.get('/api/admin/chat', requireAdmin, async (req, res) => {
+    const { messages, lastReadAt } = await db.getAdminChatData();
+    res.json({ messages, lastReadAt });
 });
 
-app.post('/api/admin/chat/read', async (req, res) => {
+app.post('/api/admin/chat/read', requireAdmin, writeRateLimit, async (req, res) => {
     const { lastReadAt } = req.body;
-    const db = readDB();
-    db.chatMeta = db.chatMeta || {};
     if (lastReadAt) {
-        db.chatMeta.lastReadAt = lastReadAt;
+        await db.setChatMeta('lastReadAt', lastReadAt);
     }
-    await writeDB(db);
     res.json({ success: true });
 });
 
-app.post('/api/admin/chat', async (req, res) => {
+app.post('/api/admin/chat', requireAdmin, writeRateLimit, async (req, res) => {
     const { text, username, conversationId, attachments } = req.body;
     if (!text || !text.trim()) {
         return res.status(400).json({ error: 'متن پیام الزامی است' });
     }
-    const db = readDB();
-    if (!db.chat) db.chat = [];
     const message = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: 'admin',
@@ -683,34 +856,31 @@ app.post('/api/admin/chat', async (req, res) => {
         conversationId: conversationId || null,
         attachments: Array.isArray(attachments) ? attachments : []
     };
-    db.chat.push(message);
-    await writeDB(db);
+    await db.addChatMessage(message);
     res.json(message);
 });
 
-app.get('/api/admin/chat/conversation', async (req, res) => {
+app.get('/api/admin/chat/conversation', requireAdmin, async (req, res) => {
     const { username } = req.query;
     if (!username) {
         return res.status(400).json({ error: 'نام کاربری الزامی است' });
     }
-    const db = readDB();
-    migrateChatData(db);
-    var messages = (db.chat || []).filter(function(m) {
+    var allMessages = await db.getChatMessages();
+    var messages = allMessages.filter(function(m) {
         return (m.role === 'customer' && m.username === username) || (m.role === 'admin' && !m.username);
     });
     messages.sort(function(a, b) { return new Date(a.timestamp) - new Date(b.timestamp); });
     res.json(messages);
 });
 
-app.get('/api/admin/chat/conversations', async (req, res) => {
+app.get('/api/admin/chat/conversations', requireAdmin, async (req, res) => {
     const { username } = req.query;
     if (!username) {
         return res.status(400).json({ error: 'نام کاربری الزامی است' });
     }
-    const db = readDB();
-    migrateChatData(db);
+    var allMessages = await db.getChatMessages();
     var convs = {};
-    (db.chat || []).forEach(function(m) {
+    allMessages.forEach(function(m) {
         if (m.role === 'customer' && m.username === username && m.conversationId) {
             if (!convs[m.conversationId]) {
                 convs[m.conversationId] = {
@@ -732,21 +902,16 @@ app.get('/api/admin/chat/conversations', async (req, res) => {
     res.json(list);
 });
 
-app.get('/api/admin/chat/conversation/:id', async (req, res) => {
+app.get('/api/admin/chat/conversation/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const db = readDB();
-    var messages = (db.chat || []).filter(function(m) {
-        return m.conversationId === id;
-    });
-    messages.sort(function(a, b) { return new Date(a.timestamp) - new Date(b.timestamp); });
+    const messages = await db.getChatMessagesForConversation(id);
     res.json(messages);
 });
 
-app.get('/api/admin/chat/customers', async (req, res) => {
-    const db = readDB();
-    migrateChatData(db);
+app.get('/api/admin/chat/customers', requireAdmin, async (req, res) => {
+    var allMessages = await db.getChatMessages();
     var customers = {};
-    (db.chat || []).forEach(function(m) {
+    allMessages.forEach(function(m) {
         if (m.role === 'customer') {
             if (!customers[m.username]) {
                 customers[m.username] = { username: m.username, lastMessage: m.text, lastTimestamp: m.timestamp, unread: 0 };
@@ -755,10 +920,10 @@ app.get('/api/admin/chat/customers', async (req, res) => {
             customers[m.username].lastTimestamp = m.timestamp;
         }
     });
-    var lastAdminGlobal = db.chatMeta && db.chatMeta.lastReadAt ? db.chatMeta.lastReadAt : null;
+    var lastAdminGlobal = await db.getChatMeta('lastReadAt');
     Object.keys(customers).forEach(function(key) {
         var customer = customers[key];
-        var hasAdminReply = (db.chat || []).some(function(m) {
+        var hasAdminReply = allMessages.some(function(m) {
             return m.role === 'admin' && (!m.username || m.username === customer.username) && m.timestamp >= customer.lastTimestamp;
         });
         if (!hasAdminReply) customer.unread = 1;
@@ -768,40 +933,27 @@ app.get('/api/admin/chat/customers', async (req, res) => {
     res.json(list);
 });
 
-app.post('/api/chat/conversation', async (req, res) => {
+app.post('/api/chat/conversation', writeRateLimit, async (req, res) => {
     const { username } = req.body;
-    const db = readDB();
-    if (!db.chatConversations) db.chatConversations = [];
-    const conv = {
-        id: 'conv_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        username: username || 'مهمان',
-        createdAt: new Date().toISOString(),
-        status: 'open'
-    };
-    db.chatConversations.push(conv);
-    await writeDB(db);
+    const conv = await db.createConversation(username || 'مهمان');
     res.json(conv);
 });
 
-app.get('/api/chat/conversation/:id', async (req, res) => {
+app.get('/api/chat/conversation/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { username } = req.query;
-    const db = readDB();
-    var messages = (db.chat || []).filter(function(m) {
-        return m.conversationId === id;
-    });
-    messages.sort(function(a, b) { return new Date(a.timestamp) - new Date(b.timestamp); });
+    var messages = await db.getChatMessagesForConversation(id);
     if (username && !messages.some(function(m) { return m.role === 'customer' && m.username === username; })) {
         messages = messages.filter(function(m) { return m.role === 'admin'; });
     }
     res.json(messages);
 });
 
-app.get('/api/chat/conversations', async (req, res) => {
+app.get('/api/chat/conversations', requireAdmin, async (req, res) => {
     const { username } = req.query;
-    const db = readDB();
+    var allMessages = await db.getChatMessages();
     var convs = {};
-    (db.chat || []).forEach(function(m) {
+    allMessages.forEach(function(m) {
         if (!m.conversationId) return;
         if (!convs[m.conversationId]) {
             convs[m.conversationId] = {
@@ -825,15 +977,27 @@ app.get('/api/chat/conversations', async (req, res) => {
     res.json(list);
 });
 
+// ==================== SERVER ====================
 const PORT = process.env.PORT || 3003;
 let server;
 if (!isVercel && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
     server = http.createServer(app);
     const io = new Server(server, { path: '/socket.io' });
 
+    io.use((socket, next) => {
+        const token = socket.handshake.auth && socket.handshake.auth.token;
+        if (!token) return next(new Error('Authentication required'));
+        const payload = verifyJWT(token);
+        if (!payload) return next(new Error('Invalid token'));
+        socket.user = payload;
+        next();
+    });
+
     io.on('connection', (socket) => {
         socket.on('join-admin-room', () => {
-            socket.join('admin-room');
+            if (socket.user && socket.user.isAdmin) {
+                socket.join('admin-room');
+            }
         });
         socket.on('customer-typing', (data) => {
             socket.to('admin-room').emit('customer-typing', data);
@@ -859,8 +1023,6 @@ function emitChatEvent(io, event, data) {
         }
     } catch (e) {}
 }
-
-const ORIGINAL_POST_CHAT = app._router && app._router.stack ? null : null;
 
 app.dbReady = dbReady;
 module.exports = app;

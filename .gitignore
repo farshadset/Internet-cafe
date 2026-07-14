@@ -1,4 +1,10 @@
 node_modules/
 database.json
+database.db
 .env
+.env.local
+.env.*.local
 .vercel
+test-results/
+*.tgz
+public/uploads/

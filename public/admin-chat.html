@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+    </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -94,6 +97,7 @@
         </main>
     </div>
     <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
         document.addEventListener('DOMContentLoaded', function() {
             var listEl = document.getElementById('customersList');
 
@@ -112,10 +116,10 @@
                             a.className = 'customer-item';
                             var initial = (c.username || '?')[0];
                             a.innerHTML =
-                                '<div class="avatar">' + initial + '</div>' +
+                                '<div class="avatar">' + escapeHtml(initial) + '</div>' +
                                 '<div class="customer-info">' +
-                                    '<div class="customer-name">' + (c.username || 'مهمان') + '</div>' +
-                                    '<div class="customer-last-msg">' + (c.lastMessage || '') + '</div>' +
+                                    '<div class="customer-name">' + escapeHtml(c.username || 'مهمان') + '</div>' +
+                                    '<div class="customer-last-msg">' + escapeHtml(c.lastMessage || '') + '</div>' +
                                 '</div>' +
                                 (c.unread > 0 ? '<span class="badge">' + c.unread + '</span>' : '');
                             listEl.appendChild(a);

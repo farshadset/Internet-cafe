@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت بنرها</title>
+    <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+    </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,15 +56,24 @@
                 <img id="popupPreviewImg" src="https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین" alt="بنر" style="max-width: 100%;">
             </div>
             <div class="banner-info">
-                <small>ابعاد پیشنهادی: 800×200 پیکسل - حداکثر حجم: 200KB - قالب: JPG یا PNG</small>
+                <small>ابعاد پیشنهادی: 1920×600 پیکسل - حداکثر حجم: 2MB - قالب: JPG یا PNG</small>
             </div>
             <div class="form-group">
                 <label for="popupBannerUpload">آپلود بنر</label>
                 <input type="file" id="popupBannerUpload" accept="image/*">
+                <div id="uploadProgress" style="display: none; margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <small id="uploadStatus" style="color: #667eea; font-weight: 600;">پردازش تصویر...</small>
+                        <small id="uploadPercent" style="color: #667eea; font-weight: 600;">0%</small>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden;">
+                        <div id="uploadBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 4px; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
             </div>
             <div class="form-group">
                 <label for="popupBannerLink">لینک بنر (اختیاری)</label>
-                <input type="text" id="popupBannerLink" placeholder="https://example.com">
+                <input type="text" id="popupBannerLink" placeholder="https://example.com" dir="ltr">
             </div>
             <div class="form-group">
                 <label for="popupBannerDuration">مدت زمان نمایش (ثانیه)</label>
@@ -74,22 +86,30 @@
         </div>
     </div>
     <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
         var bannersData = [];
+        var pendingBannerSrc = null;
         
-        function compressImage(file, maxWidth = 1920, maxHeight = 600, quality = 0.95) {
-            return new Promise((resolve) => {
+        function compressImage(file, maxWidth = 1920, maxHeight = 600, quality = 0.92) {
+            return new Promise((resolve, reject) => {
                 var canvas = document.createElement('canvas');
                 var ctx = canvas.getContext('2d');
                 var img = new Image();
                 img.onload = function() {
-                    var ratio = Math.min(maxWidth / img.width, maxHeight / img.height);
-                    var width = Math.round(img.width * Math.min(ratio, 1));
-                    var height = Math.round(img.height * Math.min(ratio, 1));
+                    var ratio = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+                    var width = Math.round(img.width * ratio);
+                    var height = Math.round(img.height * ratio);
                     canvas.width = width;
                     canvas.height = height;
                     ctx.drawImage(img, 0, 0, width, height);
-                    canvas.toBlob(resolve, 'image/jpeg', quality);
+                    var name = (file.name || '').toLowerCase();
+                    var mime = (file.type || '').toLowerCase();
+                    var isPng = mime === 'image/png' || name.endsWith('.png');
+                    var outputType = isPng ? 'image/png' : 'image/jpeg';
+                    var dataUrl = canvas.toDataURL(outputType, isPng ? undefined : quality);
+                    resolve(dataUrl);
                 };
+                img.onerror = function() { reject(new Error('Image load failed')); };
                 img.src = URL.createObjectURL(file);
             });
         }
@@ -107,15 +127,15 @@
                     bannersData = groupBanners;
                     var list = document.getElementById('bannersList');
                     var addBtn = document.getElementById('addBannerBtn');
-                    addBtn.disabled = groupBanners.length >= 3;
-                    addBtn.style.opacity = groupBanners.length >= 3 ? '0.5' : '1';
+                    addBtn.disabled = groupBanners.length >= 6;
+                    addBtn.style.opacity = groupBanners.length >= 6 ? '0.5' : '1';
                     if (groupBanners.length === 0) {
                         list.innerHTML = '<p style="text-align: center; color: #666;">هیچ بنری برای این گروه ثبت نشده است</p>';
                         return;
                     }
                     list.innerHTML = groupBanners.map(function(banner) {
                         return '<div class="banner-item" data-id="' + banner.id + '" style="display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 8px;">' +
-                            '<img src="' + banner.src + '" style="width: 120px; height: 30px; object-fit: cover; margin-left: 10px; border-radius: 4px;">' +
+                            '<img src="' + banner.src + '" style="width: 120px; height: 60px; object-fit: cover; margin-left: 10px; border-radius: 4px;">' +
                             '<div style="display: flex; align-items: center; gap: 8px; margin-right: auto; direction: ltr;">' +
                             '<button class="delete-banner-btn" data-id="' + banner.id + '" style="background: none; border: none; color: #e74c3c; cursor: pointer;"><i class="fas fa-trash"></i></button>' +
                             '<button class="edit-banner-btn" data-id="' + banner.id + '" style="background: none; border: none; color: #667eea; cursor: pointer;"><i class="fas fa-edit"></i></button>' +
@@ -165,16 +185,25 @@
 
         function openPopup() {
             var selectedGroup = getSelectedBannerGroup();
-            if (bannersData && bannersData.length >= 3) {
-                alert('حداکثر تعداد بنرهای هر گروه ۳ عدد است. برای افزودن بنر جدید، یکی از بنرهای موجود را حذف کنید.');
+            if (bannersData && bannersData.length >= 6) {
+                alert('حداکثر تعداد بنرهای هر گروه ۶ عدد است. برای افزودن بنر جدید، یکی از بنرهای موجود را حذف کنید.');
                 return;
             }
+            pendingBannerSrc = null;
             document.getElementById('bannerPopup').style.display = 'flex';
             document.getElementById('popupTitle').textContent = 'افزودن بنر جدید';
             document.getElementById('popupPreviewImg').src = 'https://placehold.co/800x200/667eea/ffffff?text=کافینت+آنلاین';
             document.getElementById('popupBannerUpload').value = '';
+            document.getElementById('popupBannerUpload').disabled = false;
             document.getElementById('popupBannerLink').value = '';
             document.getElementById('popupBannerDuration').value = '5';
+            document.getElementById('uploadProgress').style.display = 'none';
+            document.getElementById('uploadBar').style.width = '0%';
+            document.getElementById('uploadBar').style.background = 'linear-gradient(90deg, #667eea, #764ba2)';
+            document.getElementById('uploadStatus').textContent = 'پردازش تصویر...';
+            document.getElementById('uploadPercent').textContent = '0%';
+            document.getElementById('saveBannerPopupBtn').disabled = false;
+            document.getElementById('saveBannerPopupBtn').textContent = 'ذخیره';
             editingBannerId = null;
             editingBannerGroup = null;
         }
@@ -187,29 +216,114 @@
                 document.getElementById('bannerPopup').style.display = 'none';
             });
 
-            document.getElementById('popupBannerUpload').addEventListener('change', function(e) {
-                var file = e.target.files[0];
-                if (file) {
-                    compressImage(file).then(blob => {
-                        var reader = new FileReader();
-                        reader.onload = function(event) {
-                            document.getElementById('popupPreviewImg').src = event.target.result;
-                        };
-                        reader.readAsDataURL(blob);
-                    });
-                }
+                var fileInput = document.getElementById('popupBannerUpload');
+                fileInput.addEventListener('change', function(e) {
+                    var file = e.target.files[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('حجم فایل نباید بیش از ۵ مگابایت باشد');
+                        return;
+                    }
+                    fileInput.disabled = true;
+                    var progressEl = document.getElementById('uploadProgress');
+                var barEl = document.getElementById('uploadBar');
+                var statusEl = document.getElementById('uploadStatus');
+                var percentEl = document.getElementById('uploadPercent');
+                progressEl.style.display = 'block';
+                barEl.style.width = '0%';
+                statusEl.textContent = 'پردازش تصویر...';
+                percentEl.textContent = '0%';
+                pendingBannerSrc = null;
+
+                compressImage(file).then(function(dataUrl) {
+                    document.getElementById('popupPreviewImg').src = dataUrl;
+                    statusEl.textContent = 'آپلود تصویر...';
+
+                    var serverInterval = null;
+                    var serverProgress = 30;
+
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/banner/upload', true);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    xhr.upload.onprogress = function(e) {
+                        if (e.lengthComputable) {
+                            var pct = Math.round((e.loaded / e.total) * 60) + 30;
+                            barEl.style.width = pct + '%';
+                            percentEl.textContent = pct + '%';
+                        }
+                    };
+                    xhr.onload = function() {
+                        statusEl.textContent = 'ذخیره در سرور...';
+                        serverProgress = 90;
+                        barEl.style.width = '90%';
+                        percentEl.textContent = '90%';
+                        serverInterval = setInterval(function() {
+                            if (serverProgress < 98) {
+                                serverProgress++;
+                                barEl.style.width = serverProgress + '%';
+                                percentEl.textContent = serverProgress + '%';
+                            }
+                        }, 200);
+                        try {
+                            var res = JSON.parse(xhr.responseText);
+                            clearInterval(serverInterval);
+                            if (res.success && res.url) {
+                                pendingBannerSrc = res.url;
+                                barEl.style.width = '100%';
+                                percentEl.textContent = '100%';
+                                statusEl.textContent = 'آپلود موفق';
+                                fileInput.disabled = false;
+                                setTimeout(function() { progressEl.style.display = 'none'; }, 1200);
+                            } else {
+                                statusEl.textContent = 'خطا';
+                                barEl.style.background = '#e74c3c';
+                                fileInput.disabled = false;
+                                alert(res.error || 'خطا در آپلود تصویر');
+                            }
+                        } catch(ex) {
+                            clearInterval(serverInterval);
+                            statusEl.textContent = 'خطا';
+                            barEl.style.background = '#e74c3c';
+                            fileInput.disabled = false;
+                            alert('خطا در آپلود تصویر');
+                        }
+                    };
+                    xhr.onerror = function() {
+                        if (serverInterval) clearInterval(serverInterval);
+                        statusEl.textContent = 'خطا';
+                        barEl.style.background = '#e74c3c';
+                        fileInput.disabled = false;
+                        alert('خطا در آپلود تصویر');
+                    };
+                    xhr.send(JSON.stringify({ image: { name: file.name, dataUrl: dataUrl } }));
+                }).catch(function() { alert('خطا در پردازش تصویر'); progressEl.style.display = 'none'; fileInput.disabled = false; });
             });
 
             document.getElementById('saveBannerPopupBtn').addEventListener('click', function() {
-                var bannerSrc = document.getElementById('popupPreviewImg').src;
+                var bannerSrc = pendingBannerSrc;
+                if (!bannerSrc) {
+                    alert('لطفاً ابتدا تصویر بنر را آپلود کنید');
+                    return;
+                }
+                var saveBtn = document.getElementById('saveBannerPopupBtn');
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'در حال ذخیره...';
                 var bannerLink = document.getElementById('popupBannerLink').value;
                 var bannerDuration = parseInt(document.getElementById('popupBannerDuration').value, 10) || 5;
                 var selectedGroup = parseInt(getSelectedBannerGroup(), 10) || 1;
                 var bannerGroup = editingBannerId ? (editingBannerGroup || selectedGroup) : selectedGroup;
 
                 function finish() {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'ذخیره';
                     document.getElementById('bannerPopup').style.display = 'none';
+                    pendingBannerSrc = null;
                     loadBanners();
+                }
+                function fail(errMsg) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'ذخیره';
+                    alert(errMsg);
                 }
 
                 if (editingBannerId) {
@@ -217,22 +331,22 @@
                         method: 'PUT',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ src: bannerSrc, link: bannerLink, duration: bannerDuration, group: bannerGroup })
-                    }).then(() => {
+                    }).then(function() {
                         finish();
-                        showToast('بنر با موفقیت ویرایش شد');
-                    }).catch(err => alert('خطا: ' + err.message));
+                        showToast('بنر با موفقیت ویرایش شd');
+                    }).catch(function(err) { fail('خطا: ' + err.message); });
                 } else {
                     fetch('/api/banner', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ src: bannerSrc, link: bannerLink, duration: bannerDuration, group: bannerGroup })
                     })
-                    .then(r => r.json())
-                    .then(() => {
+                    .then(function(r) { return r.json(); })
+                    .then(function() {
                         finish();
                         showToast('بنر با موفقیت ذخیره شد');
                     })
-                    .catch(err => alert('خطا در ذخیره بنر: ' + err.message));
+                    .catch(function(err) { fail('خطا در ذخیره بنر: ' + err.message); });
                 }
             });
 
@@ -251,10 +365,12 @@
             document.getElementById('popupTitle').textContent = 'ویرایش بنر';
             document.getElementById('popupPreviewImg').src = src;
             document.getElementById('popupBannerUpload').value = '';
+            document.getElementById('popupBannerUpload').disabled = false;
             document.getElementById('popupBannerLink').value = link || '';
             document.getElementById('popupBannerDuration').value = duration || 5;
             editingBannerId = id;
             editingBannerGroup = parseInt(group, 10) || 1;
+            pendingBannerSrc = src;
         }
 
         function showToast(message) {
