@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت</title>
+    <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+    </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,38 +61,38 @@
                 </div>
             </div>
             <div class="form-card" id="adminPanel">
-                <a href="admin-orders.html" class="profile-option" style="display: flex; align-items: center;">
+                <a href="admin-orders.html" class="profile-option">
                     <i class="fas fa-list"></i>
                     <span>لیست سفارش‌ها</span>
                     <span class="badge" id="ordersBadge" style="display:inline-block;">0</span>
                 </a>
-                <a href="admin-customers.html" class="profile-option" style="display: flex; align-items: center;">
+                <a href="admin-customers.html" class="profile-option">
                     <i class="fas fa-users"></i>
                     <span>مشتریان</span>
                     <span class="badge" id="customersBadge" style="display: none;">0</span>
                 </a>
-                <a href="admin-chat.html" class="profile-option" style="display: flex; align-items: center;">
+                <a href="admin-chat.html" class="profile-option">
                     <i class="fas fa-comments"></i>
                     <span>چت با مشتری</span>
                     <span class="badge" id="chatBadge" style="display: none;">0</span>
                 </a>
-                <a href="admin-transactions.html" class="profile-option" style="display: flex; align-items: center;">
+                <a href="admin-transactions.html" class="profile-option">
                     <i class="fas fa-money-bill-wave"></i>
                     <span>تراکنش‌های مالی</span>
                 </a>
-                <a href="admin-pricing.html" class="profile-option" style="display: flex; align-items: center;">
+                <a href="admin-pricing.html" class="profile-option">
                     <i class="fas fa-tag"></i>
                     <span>قیمت گذاری</span>
                 </a>
-                <a href="admin-chart.html" class="profile-option" style="display: flex; align-items: center;">
+                <a href="admin-chart.html" class="profile-option">
                     <i class="fas fa-chart-line"></i>
                     <span>نمودار</span>
                 </a>
-                <a href="admin-banner.html" class="profile-option" style="display: flex; align-items: center;">
+                <a href="admin-banner.html" class="profile-option">
                     <i class="fas fa-image"></i>
                     <span>بنر</span>
                 </a>
-                <a href="admin-social.html" class="profile-option" style="display: flex; align-items: center;">
+                <a href="admin-social.html" class="profile-option">
                     <i class="fas fa-share-alt"></i>
                     <span>اطلاعات تماس</span>
                 </a>
@@ -102,6 +105,7 @@
     </div>
     <script src="app.js" defer></script>
     <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
         document.addEventListener('DOMContentLoaded', function() {
             function toFa(n) { return n.toLocaleString('fa-IR'); }
 

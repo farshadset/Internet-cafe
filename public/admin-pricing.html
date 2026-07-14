@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>قیمت‌گذاری</title>
+    <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+    </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
@@ -29,11 +32,11 @@
             <h3>ثبت قیمت سرویس</h3>
             <div style="margin-bottom:1rem;">
                 <label style="display:block;margin-bottom:0.5rem;font-weight:700;color:#333;">نام سرویس:</label>
-                <input type="text" id="serviceNameInput" readonly style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:8px;">
+                <input type="text" id="serviceNameInput" readonly style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:8px;" dir="auto">
             </div>
             <div style="margin-bottom:1rem;">
                 <label style="display:block;margin-bottom:0.5rem;font-weight:700;color:#333;">قیمت (تومان):</label>
-                <input type="text" id="servicePriceInput" inputmode="numeric" placeholder="0" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:8px;">
+                <input type="text" id="servicePriceInput" inputmode="numeric" placeholder="0" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:8px;" dir="ltr">
             </div>
             <div class="form-actions" style="justify-content:flex-end;">
                 <button class="btn-next" id="savePriceBtn">ذخیره</button>
@@ -42,8 +45,8 @@
         </div>
     </div>
      <script src="app.js"></script>
-    <script src="app.js"></script>
     <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
         function formatPrice(price) {
             var numStr = (price !== undefined && price !== null && price !== '') ? String(price) : '0';
             numStr = numStr.replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
@@ -405,7 +408,7 @@
                             } else {
                                 priceText = '-';
                             }
-                            groupHeader.innerHTML = '<span>' + service.title + '</span>' +
+                            groupHeader.innerHTML = '<span>' + serviceName + '</span>' +
                                 '<span style="font-weight:400;font-size:0.9rem;color:#666;margin-left:0.5rem;">' + priceText + '</span>' +
                                 '<i class="fas fa-chevron-left" style="transform:' + (grpExpanded ? 'rotate(-90deg)' : '') + ';"></i>';
                             groupHeader.addEventListener('click', function(e) {
@@ -466,10 +469,11 @@
                 });
             }
 
+            var pricingMap = {};
+
             fetch('/api/pricing')
                 .then(function(r) { return r.json(); })
                 .then(function(pricing) {
-                    var pricingMap = {};
                     pricing.forEach(function(p) { pricingMap[p.service] = p.price; });
                     renderPricing(pricingMap);
                 })
@@ -488,8 +492,9 @@
                 .then(function(r) { return r.json(); })
                 .then(function(res) {
                     if (res.success) {
+                        pricingMap[currentServiceKey] = price;
                         pricePopup.classList.remove('active');
-                        location.reload();
+                        renderPricing(pricingMap);
                     }
                 })
                 .catch(function() {

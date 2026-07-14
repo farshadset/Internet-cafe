@@ -253,6 +253,11 @@ main{padding:40px 0 70px;background:#1C5E52}
 <script src="app.js"></script>
 <script src="service-extra-configs.js"></script>
 <script>
+function escapeHtml(v) {
+    return String(v || '').replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
+    });
+}
 window.EXTRA_SERVICE_CONFIGS = EXTRA_SERVICE_OPTIONS;
 // --- field templates -------------------------------------------------
 var F = {
@@ -335,7 +340,7 @@ function fieldHTML(f){
          +   '<input type="file" id="f_attachInput" accept="image/*,.pdf,.doc,.docx" style="display:none" multiple>'
          +   '<span class="err"></span></div>';
   }
-  var extra_attrs = (f.ph?' placeholder="'+f.ph+'"':'')+(f.val?' value="'+f.val+'" class="phone-default"':'')+(f.opt?'':' required')+(f.digits?' inputmode="numeric" data-digits="'+f.digits+'"':'')+(f.key==='phone'?' style="direction:ltr;text-align:left;color:#999;font-weight:400" onfocus="if(this.value===\'09123456789\'){this.value=\'\';this.style.color=\'#122A33\';this.style.fontWeight=\'400\'}" onblur="if(!this.value){this.value=\'09123456789\';this.style.color=\'#999\';this.style.fontWeight=\'400\'}"':'');
+  var extra_attrs = (f.ph?' placeholder="'+f.ph+'"':'')+(f.val?' value="'+f.val+'" class="phone-default"':'')+(f.opt?'':' required')+(f.digits?' inputmode="numeric" data-digits="'+f.digits+'"':'')+(f.key==='phone'?' style="direction:ltr;text-align:left;color:#999;font-weight:400" dir="ltr"':' dir="auto"');
   var input = '<input id="f_'+f.key+'" name="'+f.key+'" type="text"'+extra_attrs+'>';
   return '<div class="f-field'+(f.full?' full':'')+'">'
        +   '<label for="f_'+f.key+'">'+f.label+(f.opt?' <span class="opt">(اختیاری)</span>':'')+'</label>'
@@ -778,7 +783,7 @@ function generateInvoice(){
   var timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
 
   var rows = '';
-  rows += '<tr><td>۱</td><td>' + service + '</td><td>' + cat + '</td><td>' + (window._formattedPrice || '—') + '</td></tr>';
+  rows += '<tr><td>۱</td><td>' + escapeHtml(service) + '</td><td>' + escapeHtml(cat) + '</td><td>' + escapeHtml(window._formattedPrice || '—') + '</td></tr>';
 
   var extraHtml = '';
   Object.keys(data).forEach(function(key){
@@ -787,7 +792,7 @@ function generateInvoice(){
     var label = FIELD_LABELS[key] || key;
     var displayVal = val;
     if (key === 'phone' || key === 'nationalId') displayVal = faDigits(val);
-    extraHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eee;font-size:12px"><span style="color:#666">' + label + '</span><span style="color:#1a1a2e;font-weight:600">' + displayVal + '</span></div>';
+    extraHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eee;font-size:12px"><span style="color:#666">' + escapeHtml(label) + '</span><span style="color:#1a1a2e;font-weight:600">' + escapeHtml(displayVal) + '</span></div>';
   });
 
   var invoiceHtml = '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>فاکتور - ' + code + '</title>'
@@ -824,7 +829,7 @@ function generateInvoice(){
     + '<div class="inv-header"><div><h1>فاکتور رسمی</h1><div style="font-size:12px;opacity:.8;margin-top:4px">مرکز خدمات کافینت</div></div><div class="inv-logo">CAFENET</div></div>'
     // Meta
     + '<div class="inv-meta">'
-    + '<div><span>شماره فاکتور</span><b>' + code + '</b></div>'
+    + '<div><span>شماره فاکتور</span><b>' + escapeHtml(code) + '</b></div>'
     + '<div><span>تاریخ صدور</span><b>' + dateStr + '</b></div>'
     + '<div><span>ساعت</span><b>' + timeStr + '</b></div>'
     + '<div><span>وضعیت</span><b style="color:#27ae60">تایید شده</b></div>'
@@ -834,10 +839,10 @@ function generateInvoice(){
     // Customer info
     + '<div class="inv-section-title">اطلاعات مشتری</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;padding:15px;background:#f8fdfd;border-radius:8px;border:1px solid #eee">'
-    + '<div style="font-size:12px"><span style="color:#888">نام:</span> <b>' + (data.name || '—') + '</b></div>'
-    + '<div style="font-size:12px"><span style="color:#888">تلفن:</span> <b>' + (data.phone ? faDigits(data.phone) : '—') + '</b></div>'
-    + '<div style="font-size:12px"><span style="color:#888">کد ملی:</span> <b>' + (data.nationalId ? faDigits(data.nationalId) : '—') + '</b></div>'
-    + '<div style="font-size:12px"><span style="color:#888">خدمت:</span> <b>' + service + '</b></div>'
+    + '<div style="font-size:12px"><span style="color:#888">نام:</span> <b>' + escapeHtml(data.name || '—') + '</b></div>'
+    + '<div style="font-size:12px"><span style="color:#888">تلفن:</span> <b>' + escapeHtml(data.phone ? faDigits(data.phone) : '—') + '</b></div>'
+    + '<div style="font-size:12px"><span style="color:#888">کد ملی:</span> <b>' + escapeHtml(data.nationalId ? faDigits(data.nationalId) : '—') + '</b></div>'
+    + '<div style="font-size:12px"><span style="color:#888">خدمت:</span> <b>' + escapeHtml(service) + '</b></div>'
     + '</div>'
     // Table
     + '<div class="inv-section-title">جزئیات سفارش</div>'
@@ -846,7 +851,7 @@ function generateInvoice(){
     // Extra fields
     + (extraHtml ? '<div class="inv-section-title">اطلاعات تکمیلی</div><div class="inv-extra">' + extraHtml + '</div>' : '')
     // Note
-    + (data.note ? '<div class="inv-note"><b>توضیحات:</b> ' + data.note + '</div>' : '')
+    + (data.note ? '<div class="inv-note"><b>توضیحات:</b> ' + escapeHtml(data.note) + '</div>' : '')
     // Total
     + '<div class="inv-total"><div class="inv-total-box"><div class="inv-total-label">مبلغ قابل پرداخت</div><div class="inv-total-value">' + (window._formattedPrice || '—') + '</div></div></div>'
     + '</div>'

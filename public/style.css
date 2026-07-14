@@ -933,6 +933,32 @@ header.site {
 input[type=number]{-moz-appearance:textfield;appearance:textfield}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 
+/* RTL/LTR auto-detection for text inputs */
+input[type="text"],
+input[type="tel"],
+input[type="email"],
+input[type="url"],
+input[type="search"],
+textarea {
+    unicode-bidi: plaintext;
+    text-align: start;
+}
+
+/* Password fields are always LTR */
+input[type="password"] {
+    direction: ltr;
+    text-align: left;
+    unicode-bidi: isolate;
+}
+
+/* Number/amount fields LTR */
+input[type="number"],
+input[inputmode="numeric"] {
+    direction: ltr;
+    text-align: left;
+    unicode-bidi: isolate;
+}
+
 .form-card .f-field .small {
     font-size: 12px;
     color: var(--muted);
@@ -1700,7 +1726,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 
 .toggle-password {
     position: absolute;
-    left: 10px;
+    right: 10px;
     top: 50%;
     transform: translateY(-50%);
     cursor: pointer;
@@ -1849,10 +1875,15 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 }
 
 .banner-preview img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 2 / 1;
+    object-fit: cover;
+    border-radius: 16px;
     margin-top: 0.5rem;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .logo-icon {
@@ -1918,7 +1949,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 
 .toggle-password {
     position: absolute;
-    left: 10px;
+    right: 10px;
     top: 50%;
     transform: translateY(-50%);
     cursor: pointer;
@@ -1937,7 +1968,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 
 .input-wrapper .toggle-password {
     position: absolute;
-    left: 10px;
+    right: 10px;
     top: 50%;
     transform: translateY(-50%);
     cursor: pointer;
@@ -1951,7 +1982,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 }
 
 .input-wrapper input {
-    padding-left: 2.5rem !important;
+    padding-right: 2.5rem !important;
+    padding-left: 0.75rem !important;
 }
 
 .pricing-category-list,
@@ -1988,7 +2020,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     align-items: center;
     justify-content: space-between;
     padding: 0.9rem 1rem;
-    background: #f8f9fa;
+    background: #9BD198;
     border-radius: 8px;
     margin-bottom: 0.5rem;
     border-right: 3px solid #27ae60;
@@ -2076,13 +2108,12 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     color: #5568d3;
 }
 
-.category-header,
-.group-header {
+.category-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0.85rem 1rem;
-    background: #f8f9fa;
+    background: #d9f2d8;
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.2s;
@@ -2091,9 +2122,26 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     user-select: none;
 }
 
-.category-header:hover,
-.group-header:hover {
+.category-header:hover {
     background: #eef1ff;
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    background: #CCE7CB;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-weight: 700;
+    color: #333;
+    user-select: none;
+}
+
+.group-header:hover {
+    background: #b5ddb3;
 }
 
 .category-header .fa-chevron-left,
@@ -2108,6 +2156,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     padding-right: 0.8rem;
     margin-top: 0.35rem;
     overflow: hidden;
+    background: #d9f2d8;
+    border-radius: 8px;
 }
 
 .pricing-group-list {
@@ -2560,6 +2610,17 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     color: #155724;
 }
 
+.profile-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-option i {
+    min-width: 20px;
+    text-align: center;
+}
+
 .badge {
     background: #e74c3c;
     color: white;
@@ -2682,6 +2743,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 }
 
 /* Desktop Sidebar */
+.admin-only{display:none !important}
 .desktop-sidebar{display:none}
 
 @media (min-width:1024px){
@@ -2703,6 +2765,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   .desktop-sidebar-toggle:hover{background:#1C5E52}
   .desktop-sidebar-toggle i{transition:transform .3s}
   .desktop-sidebar.expanded .desktop-sidebar-toggle i{transform:rotate(180deg)}
+  .admin-only{display:none !important}
   .container{transition:none}
   .mega-menu-wrap{margin-left:80px}
   .desktop-sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000}
