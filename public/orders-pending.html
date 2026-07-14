@@ -130,14 +130,14 @@ function renderOrders(orders) {
                     }
                     
                     div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
-                        '<div class="order-title">' + serviceTitle + '</div>' +
+                        '<div class="order-title">' + escapeHtml(serviceTitle) + '</div>' +
                         '<small style="color:#666;">' + dateStr + '</small>' +
                         '</div>' +
                         '<div style="margin-bottom:0.25rem;text-align:center;">' +
-                        '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
+                        '<strong>کد سفارش: ' + escapeHtml(order.trackingCode) + '</strong>' +
                         '</div>' +
                         priceSection +
-                        (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + order.result + '</span></div>' : '') +
+                        (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + escapeHtml(order.result) + '</span></div>' : '') +
                         '<div class="order-actions" style="text-align:center;">' +
                         '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
                     container.appendChild(div);

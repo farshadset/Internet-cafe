@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نمودار</title>
+    <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+    </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,6 +45,7 @@
         </main>
     </div>
     <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
         document.addEventListener('DOMContentLoaded', function() {
             var incomeChart = null;
             var allOrders = [];

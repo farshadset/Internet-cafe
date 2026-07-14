@@ -183,24 +183,32 @@
                 showBanner(0);
             }
 
-            Promise.all([
-                fetch('/api/banner?group=1').then(r => r.json()),
-                fetch('/api/banner?group=2').then(r => r.json())
-            ]).then(function(results) {
-                showBanners(results[0], 'bannersContainer1');
-                showBanners(results[1], 'bannersContainer2');
-                _skelReady.banners=true;
-                hideSkeleton();
-            }).catch(function(){
-                _skelReady.banners=true;
-                hideSkeleton();
-            });
+            function fetchBanners(retryCount) {
+                Promise.all([
+                    fetch('/api/banner?group=1').then(function(r){return r.json();}),
+                    fetch('/api/banner?group=2').then(function(r){return r.json();})
+                ]).then(function(results) {
+                    showBanners(results[0], 'bannersContainer1');
+                    showBanners(results[1], 'bannersContainer2');
+                    _skelReady.banners=true;
+                    hideSkeleton();
+                }).catch(function(){
+                    if (retryCount < 3) {
+                        setTimeout(function(){ fetchBanners(retryCount + 1); }, 1000);
+                    } else {
+                        _skelReady.banners=true;
+                        hideSkeleton();
+                    }
+                });
+            }
+            fetchBanners(0);
+
             setTimeout(function(){
                 _skelReady.banners=true;
                 _skelReady.mega=true;
                 _skelReady.allLoaded=true;
                 hideSkeleton();
-            }, 5000);
+            }, 8000);
         });
     </script>
 </head>
@@ -255,8 +263,10 @@
         <div class="sidebar-brand"><img src="logooo.png" alt="لیمو نت" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
         <hr class="sidebar-divider">
         <a href="index.html" title="خانه"><i class="fas fa-home"></i><span>خانه</span></a>
-        <a href="admin-orders.html" title="لیست سفارش‌ها"><i class="fas fa-list"></i><span>لیست سفارش‌ها</span></a>
-        <a href="admin-chat.html" title="چت با مشتری"><i class="fas fa-comments"></i><span>چت با مشتری</span></a>
+        <a href="orders.html" class="user-only" title="سفارش‌ها"><i class="fas fa-list-alt"></i><span>سفارش‌ها</span></a>
+        <a href="admin-orders.html" class="admin-only" title="لیست سفارش‌ها"><i class="fas fa-list"></i><span>لیست سفارش‌ها</span></a>
+        <a href="#" class="user-only" title="چت با پشتیبانی" id="sidebarSupportBtn"><i class="fas fa-headset"></i><span>چت با پشتیبانی</span></a>
+        <a href="admin-chat.html" class="admin-only" title="چت با مشتری"><i class="fas fa-comments"></i><span>چت با مشتری</span></a>
         <button id="sidebarProfileBtn" title="پروفایل"><i class="fas fa-user"></i><span>پروفایل</span></button>
         <a href="articles-research.html" title="اخبار"><i class="fas fa-newspaper"></i><span>اخبار</span></a>
         <a href="faq.html" title="آموزش"><i class="fas fa-graduation-cap"></i><span>آموزش</span></a>
@@ -311,12 +321,14 @@
     <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn"><i class="fas fa-headset"></i></a>
     <nav class="bottom-nav">
         <a href="index.html"><i class="fas fa-home"></i><span>خانه</span></a>
-        <a href="admin-orders.html"><i class="fas fa-list"></i><span>لیست سفارش‌ها</span></a>
+        <a href="orders.html" class="user-only"><i class="fas fa-list-alt"></i><span>سفارش‌ها</span></a>
+        <a href="admin-orders.html" class="admin-only"><i class="fas fa-list"></i><span>لیست سفارش‌ها</span></a>
         <button class="bottom-menu-btn" id="bottomMenuBtn" aria-label="باز و بسته کردن منو">
             <i class="fas fa-bars"></i>
             <span>منو</span>
         </button>
-        <a href="admin-chat.html"><i class="fas fa-comments"></i><span>چت با مشتری</span></a>
+        <a href="#" class="user-only" id="bottomSupportBtn"><i class="fas fa-headset"></i><span>پشتیبانی</span></a>
+        <a href="admin-chat.html" class="admin-only"><i class="fas fa-comments"></i><span>چت با مشتری</span></a>
         <a href="#" id="profileBtnBottom"><i class="fas fa-user"></i><span>پروفایل</span></a>
     </nav>
     

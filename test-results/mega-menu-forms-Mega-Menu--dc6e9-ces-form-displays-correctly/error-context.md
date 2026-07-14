@@ -7,7 +7,7 @@
 # Test info
 
 - Name: mega-menu-forms.spec.js >> Mega Menu Service Forms >> banking services form displays correctly
-- Location: tests/mega-menu-forms.spec.js:190:9
+- Location: tests/mega-menu-forms.spec.js:156:9
 
 # Error details
 
@@ -16,9 +16,9 @@ Test timeout of 60000ms exceeded.
 ```
 
 ```
-Error: locator.click: Test timeout of 60000ms exceeded.
+Error: locator.hover: Test timeout of 60000ms exceeded.
 Call log:
-  - waiting for locator('[data-menu="finance"]').locator('ul a').filter({ hasText: 'افتتاح حساب' })
+  - waiting for locator('[data-menu="finance"]')
 
 ```
 
@@ -26,429 +26,266 @@ Call log:
 
 ```yaml
 - generic [active] [ref=e1]:
-  - generic [ref=e3]:
-    - generic [ref=e4]:
-      - text: پاسخگویی همه‌روزه
-      - strong [ref=e5]: ۸ صبح تا ۱۱ شب
-      - text: •حتی روزهای تعطیل
-    - generic [ref=e6]:
-      - text: "تماس و واتساپ:"
-      - strong [ref=e7]: ۰۲۱-۹۱۰۰۹۹۰۰
-  - banner [ref=e8]:
-    - generic [ref=e9]:
-      - link " کافینت خدمات آنلاین" [ref=e10] [cursor=pointer]:
-        - /url: index.html
-        - generic [ref=e12]: 
-        - generic [ref=e13]:
-          - text: کافینت
-          - generic [ref=e14]: خدمات آنلاین
-      - generic [ref=e15]:
-        - link "پیگیری سفارش" [ref=e16] [cursor=pointer]:
-          - /url: "#"
-        - link "ثبت درخواست" [ref=e17] [cursor=pointer]:
-          - /url: form.html
-    - navigation "منوی اصلی" [ref=e18]:
-      - list [ref=e20]:
-        - listitem [ref=e21]:
-          - button "خدمات هویتی و قضایی" [ref=e22] [cursor=pointer]:
-            - text: خدمات هویتی و قضایی
-            - img [ref=e23]
-        - listitem [ref=e25]:
-          - button "بانکی، مالی و بورسی" [ref=e26] [cursor=pointer]:
-            - text: بانکی، مالی و بورسی
-            - img [ref=e27]
-        - listitem [ref=e29]:
-          - button "خودرو و حمل و نقل" [ref=e30] [cursor=pointer]:
-            - text: خودرو و حمل و نقل
-            - img [ref=e31]
-        - listitem [ref=e33]:
-          - button "آموزش و آزمون‌ها" [ref=e34] [cursor=pointer]:
-            - text: آموزش و آزمون‌ها
-            - img [ref=e35]
-        - listitem [ref=e37]:
-          - button "مالیات، مجوز و کسب‌وکار" [ref=e38] [cursor=pointer]:
-            - text: مالیات، مجوز و کسب‌وکار
-            - img [ref=e39]
-        - listitem [ref=e41]:
-          - button "سامانه‌های دولتی" [ref=e42] [cursor=pointer]:
-            - text: سامانه‌های دولتی
-            - img [ref=e43]
-  - generic [ref=e46]:
-    - generic [ref=e47]:
-      - text: بیش از
-      - generic [ref=e48]: ۱۲۰ خدمت آنلاین
-      - text: بدون نیاز به مراجعه حضوری
-    - heading "کارهای اداری‌ات را بسپار به ما، از خانه انجامش می‌دهیم" [level=1] [ref=e49]:
-      - text: کارهای اداری‌ات را بسپار به ما،
-      - text: از خانه
-      - emphasis [ref=e50]: انجامش می‌دهیم
-    - generic [ref=e51]:
-      - textbox [ref=e53]
+  - navigation [ref=e2]:
+    - img "لیمو نت" [ref=e4]
+    - separator [ref=e5]
+    - link " خانه" [ref=e6] [cursor=pointer]:
+      - /url: index.html
+      - generic [ref=e7]: 
+      - generic: خانه
+    - link " لیست سفارش‌ها" [ref=e8] [cursor=pointer]:
+      - /url: admin-orders.html
+      - generic [ref=e9]: 
+      - generic: لیست سفارش‌ها
+    - link " چت با مشتری" [ref=e10] [cursor=pointer]:
+      - /url: admin-chat.html
+      - generic [ref=e11]: 
+      - generic: چت با مشتری
+    - button " پروفایل" [ref=e12] [cursor=pointer]:
+      - generic [ref=e13]: 
+      - generic: پروفایل
+    - link " اخبار" [ref=e14] [cursor=pointer]:
+      - /url: articles-research.html
+      - generic [ref=e15]: 
+      - generic: اخبار
+    - link " آموزش" [ref=e16] [cursor=pointer]:
+      - /url: faq.html
+      - generic [ref=e17]: 
+      - generic: آموزش
+  - generic [ref=e18]:
+    - banner [ref=e19]:
+      - heading "کافینت آنلاین" [level=1] [ref=e20]
+      - navigation "منوی اصلی" [ref=e23]:
+        - list [ref=e25]:
+          - listitem [ref=e26]:
+            - button "خدمات هویتی و قضایی" [ref=e27] [cursor=pointer]:
+              - text: خدمات هویتی و قضایی
+              - img [ref=e28]
+          - listitem [ref=e30]:
+            - button "بانکی، مالی و بورسی" [ref=e31] [cursor=pointer]:
+              - text: بانکی، مالی و بورسی
+              - img [ref=e32]
+          - listitem [ref=e34]:
+            - button "خودرو و حمل و نقل" [ref=e35] [cursor=pointer]:
+              - text: خودرو و حمل و نقل
+              - img [ref=e36]
+          - listitem [ref=e38]:
+            - button "آموزش و آزمون‌ها" [ref=e39] [cursor=pointer]:
+              - text: آموزش و آزمون‌ها
+              - img [ref=e40]
+          - listitem [ref=e42]:
+            - button "مالیات، مجوز و کسب‌وکار" [ref=e43] [cursor=pointer]:
+              - text: مالیات، مجوز و کسب‌وکار
+              - img [ref=e44]
+          - listitem [ref=e46]:
+            - button "سامانه‌های دولتی" [ref=e47] [cursor=pointer]:
+              - text: سامانه‌های دولتی
+              - img [ref=e48]
+    - generic [ref=e50]:
+      - textbox [ref=e52]
       - generic:
-        - generic: کنکور سراسری.
-    - generic [ref=e54]:
-      - generic [ref=e55]: "پرتکرارها:"
-      - link "ثبت نام ثنا" [ref=e56] [cursor=pointer]:
-        - /url: service.html?service=sanaRegistration
-      - link "کارت سوخت" [ref=e57] [cursor=pointer]:
-        - /url: fuel-card.html
-      - link "سهام عدالت" [ref=e58] [cursor=pointer]:
-        - /url: justice-stocks.html
-      - link "استعلام خلافی" [ref=e59] [cursor=pointer]:
-        - /url: fine-inquiry.html
-      - link "اظهارنامه مالیاتی" [ref=e60] [cursor=pointer]:
-        - /url: service.html?service=tax
-  - generic [ref=e62]:
-    - generic [ref=e63]:
-      - generic [ref=e64]: دسته‌بندی خدمات
-      - heading "هر کاری با سامانه‌های دولتی داری، اینجا هست" [level=2] [ref=e65]
-      - paragraph [ref=e66]: شش دسته اصلی خدمات؛ روی هر کدام بزنید تا فهرست کامل را در منو ببینید.
-    - generic [ref=e67]:
-      - link " خدمات هویتی و قضایی کارت ملی، شناسنامه، گذرنامه، سامانه ثنا و گواهی عدم سوء پیشینه. مشاهده ۱۸ خدمت" [ref=e68] [cursor=pointer]:
-        - /url: "#"
-        - generic [ref=e70]: 
-        - heading "خدمات هویتی و قضایی" [level=3] [ref=e71]
-        - paragraph [ref=e72]: کارت ملی، شناسنامه، گذرنامه، سامانه ثنا و گواهی عدم سوء پیشینه.
-        - generic [ref=e73]:
-          - text: مشاهده ۱۸ خدمت
-          - img [ref=e74]
-      - link " بانکی، مالی و بورسی وام و تسهیلات، یارانه، سهام عدالت، سجام و احراز هویت بانکی. مشاهده ۱۵ خدمت" [ref=e76] [cursor=pointer]:
-        - /url: "#"
-        - generic [ref=e78]: 
-        - heading "بانکی، مالی و بورسی" [level=3] [ref=e79]
-        - paragraph [ref=e80]: وام و تسهیلات، یارانه، سهام عدالت، سجام و احراز هویت بانکی.
-        - generic [ref=e81]:
-          - text: مشاهده ۱۵ خدمت
-          - img [ref=e82]
-      - link " خودرو و حمل و نقل کارت سوخت، تعویض پلاک، استعلام خلافی و ثبت‌نام خودروسازها. مشاهده ۱۷ خدمت" [ref=e84] [cursor=pointer]:
-        - /url: "#"
-        - generic [ref=e86]: 
-        - heading "خودرو و حمل و نقل" [level=3] [ref=e87]
-        - paragraph [ref=e88]: کارت سوخت، تعویض پلاک، استعلام خلافی و ثبت‌نام خودروسازها.
-        - generic [ref=e89]:
-          - text: مشاهده ۱۷ خدمت
-          - img [ref=e90]
-      - link " آموزش و آزمون‌ها ثبت‌نام مدارس و دانشگاه، کنکور، آزمون‌های استخدامی و بین‌المللی. مشاهده ۱۷ خدمت" [ref=e92] [cursor=pointer]:
-        - /url: "#"
-        - generic [ref=e94]: 
-        - heading "آموزش و آزمون‌ها" [level=3] [ref=e95]
-        - paragraph [ref=e96]: ثبت‌نام مدارس و دانشگاه، کنکور، آزمون‌های استخدامی و بین‌المللی.
-        - generic [ref=e97]:
-          - text: مشاهده ۱۷ خدمت
-          - img [ref=e98]
-      - link " مالیات، مجوز و کسب‌وکار اظهارنامه، تبصره ۱۰۰، ثبت شرکت و برند، جواز کسب و مجوز صنفی. مشاهده ۱۶ خدمت" [ref=e100] [cursor=pointer]:
-        - /url: "#"
-        - generic [ref=e102]: 
-        - heading "مالیات، مجوز و کسب‌وکار" [level=3] [ref=e103]
-        - paragraph [ref=e104]: اظهارنامه، تبصره ۱۰۰، ثبت شرکت و برند، جواز کسب و مجوز صنفی.
-        - generic [ref=e105]:
-          - text: مشاهده ۱۶ خدمت
-          - img [ref=e106]
-      - link " سامانه‌های دولتی میخک، سخا، ستاد ایران، املاک و اسکان، تأمین اجتماعی و توکن. مشاهده ۲۲ خدمت" [ref=e108] [cursor=pointer]:
-        - /url: "#"
-        - generic [ref=e110]: 
-        - heading "سامانه‌های دولتی" [level=3] [ref=e111]
-        - paragraph [ref=e112]: میخک، سخا، ستاد ایران، املاک و اسکان، تأمین اجتماعی و توکن.
-        - generic [ref=e113]:
-          - text: مشاهده ۲۲ خدمت
-          - img [ref=e114]
-  - generic [ref=e117]:
-    - generic [ref=e118]:
-      - generic [ref=e119]: روند انجام کار
-      - heading "در چهارقدم، بدون صف و بدون مراجعه" [level=2] [ref=e120]
-    - generic [ref=e121]:
-      - generic [ref=e122]:
-        - heading "خدمت را انتخاب کنید" [level=3] [ref=e123]
-        - paragraph [ref=e124]: از منو یا جست‌وجو، خدمت موردنظر را پیدا کنید و مدارک لازم را ببینید.
-      - generic [ref=e125]:
-        - heading "مدارک را بفرستید" [level=3] [ref=e126]
-        - paragraph [ref=e127]: عکس مدارک را از طریق واتساپ یا فرم سایت برای کارشناس ارسال کنید.
-      - generic [ref=e128]:
-        - heading "ما ثبت می‌کنیم" [level=3] [ref=e129]
-        - paragraph [ref=e130]: کارشناس، درخواست را در سامانه رسمی ثبت می‌کند و از شما تأیید می‌گیرد.
-      - generic [ref=e131]:
-        - heading "رسید تحویل بگیرید" [level=3] [ref=e132]
-        - paragraph [ref=e133]: کد رهگیری و رسید رسمی برایتان ارسال می‌شود و تا نتیجه، پیگیر می‌مانیم.
-  - main [ref=e134]:
-    - generic [ref=e135]:
-      - heading "خدمات ویژه" [level=2] [ref=e136]
-      - generic [ref=e137]:
-        - link "رزومه و استخدام رزومه و استخدام" [ref=e138] [cursor=pointer]:
+        - generic: وام ازدواج...
+    - main [ref=e53]:
+      - img "بنر کافینت" [ref=e56]
+      - heading "خدمات ویژه" [level=2] [ref=e61]
+      - generic [ref=e62]:
+        - link "رزومه و استخدام رزومه و استخدام" [ref=e63] [cursor=pointer]:
           - /url: resume-employment.html
-          - img "رزومه و استخدام" [ref=e139]
-          - generic [ref=e140]: رزومه و استخدام
-        - link "خدمات سفارشی خدمات سفارشی" [ref=e141] [cursor=pointer]:
+          - img "رزومه و استخدام" [ref=e64]
+          - generic [ref=e65]: رزومه و استخدام
+        - link "خدمات سفارشی خدمات سفارشی" [ref=e66] [cursor=pointer]:
           - /url: custom-services.html
-          - img "خدمات سفارشی" [ref=e142]
-          - generic [ref=e143]: خدمات سفارشی
-        - link "مقاله و تحقیق مقاله و تحقیق" [ref=e144] [cursor=pointer]:
+          - img "خدمات سفارشی" [ref=e67]
+          - generic [ref=e68]: خدمات سفارشی
+        - link "مقاله و تحقیق مقاله و تحقیق" [ref=e69] [cursor=pointer]:
           - /url: articles-research.html
-          - img "مقاله و تحقیق" [ref=e145]
-          - generic [ref=e146]: مقاله و تحقیق
-      - link "بنر کافینت" [ref=e148] [cursor=pointer]:
+          - img "مقاله و تحقیق" [ref=e70]
+          - generic [ref=e71]: مقاله و تحقیق
+      - link "بنر کافینت" [ref=e73] [cursor=pointer]:
         - /url: www.google.com
-        - img "بنر کافینت" [ref=e150]
-      - link "بنر کافینت" [ref=e156] [cursor=pointer]:
-        - /url: www.google.com
-        - img "بنر کافینت" [ref=e158]
-  - contentinfo [ref=e161]:
-    - generic [ref=e162]:
-      - generic [ref=e163]:
-        - generic [ref=e164]:
-          - heading "کافینت آنلاین" [level=4] [ref=e165]
-          - paragraph [ref=e166]: کافینت آنلاین خدمات دولتی؛ ثبت‌نام‌ها، استعلام‌ها و پیگیری‌های اداری شما را از راه دور و با رسید رسمی انجام می‌دهیم.
-        - generic [ref=e167]:
-          - heading "خدمات پرتکرار" [level=4] [ref=e168]
-          - list [ref=e169]:
-            - listitem [ref=e170]:
-              - link "ثبت نام ثنا" [ref=e171] [cursor=pointer]:
-                - /url: service.html?service=sanaRegistration
-            - listitem [ref=e172]:
-              - link "کارت ملی هوشمند" [ref=e173] [cursor=pointer]:
-                - /url: smart-national-card.html
-            - listitem [ref=e174]:
-              - link "صدور کارت سوخت" [ref=e175] [cursor=pointer]:
-                - /url: fuel-card.html
-            - listitem [ref=e176]:
-              - link "اظهارنامه مالیاتی" [ref=e177] [cursor=pointer]:
-                - /url: service.html?service=tax
-            - listitem [ref=e178]:
-              - link "سهام عدالت" [ref=e179] [cursor=pointer]:
-                - /url: justice-stocks.html
-        - generic [ref=e180]:
-          - heading "دسترسی سریع" [level=4] [ref=e181]
-          - list [ref=e182]:
-            - listitem [ref=e183]:
-              - link "همه خدمات" [ref=e184] [cursor=pointer]:
-                - /url: "#services"
-            - listitem [ref=e185]:
-              - link "ثبت درخواست" [ref=e186] [cursor=pointer]:
-                - /url: "#order"
-            - listitem [ref=e187]:
-              - link "پیگیری سفارش" [ref=e188] [cursor=pointer]:
-                - /url: "#"
-            - listitem [ref=e189]:
-              - link "سؤالات متداول" [ref=e190] [cursor=pointer]:
-                - /url: "#"
-            - listitem [ref=e191]:
-              - link "تماس با ما" [ref=e192] [cursor=pointer]:
-                - /url: "#"
-        - generic [ref=e193]:
-          - heading "راه‌های ارتباطی" [level=4] [ref=e194]
-          - list [ref=e195]:
-            - listitem [ref=e196]: "تلفن: ۰۲۱-۹۱۰۰۹۹۰۰"
-            - listitem [ref=e197]: "واتساپ: ۰۹۱۲-۰۰۰-۰۰۰۰"
-            - listitem [ref=e198]: "ایمیل: info@caffint.ir"
-            - listitem [ref=e199]: "ساعت کاری: هر روز ۸ تا ۲۳"
-      - generic [ref=e201]: © ۱۴۰۵ کافینت آنلاین — تمام حقوق محفوظ است.
-  - link "" [ref=e202] [cursor=pointer]:
-    - /url: "#"
-    - generic [ref=e203]: 
-  - link "" [ref=e204] [cursor=pointer]:
-    - /url: "#"
-    - generic [ref=e205]: 
-  - text: +  
+        - img "بنر کافینت" [ref=e75]
+  - text:         +  
+  - generic [ref=e80]:
+    - heading "منو" [level=3] [ref=e81]
+    - button "×" [ref=e82] [cursor=pointer]
 ```
 
 # Test source
 
 ```ts
-  98  |         await page.waitForURL(/service\.html\?service=/, { timeout: 10000 });
-  99  |         await expect(page.locator('#serviceTitle')).toHaveText('نوبت‌دهی قضایی');
-  100 | 
-  101 |         await page.waitForTimeout(800);
-  102 | 
-  103 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
-  104 |         const fieldCount = await formFields.count();
-  105 |         expect(fieldCount).toBeGreaterThan(0);
-  106 | 
-  107 |         await page.fill('input[name="phone"]', '09123456789');
-  108 |         await page.fill('input[name="nationalId"]', '1234567890');
-  109 |         await page.fill('input[name="birthYear"]', '1370');
-  110 |         await page.fill('input[name="birthMonth"]', '1');
-  111 |         await page.fill('input[name="birthDay"]', '1');
-  112 |         await page.selectOption('select[name="serviceType"]', { label: 'نوبت‌دهی قضایی' });
-  113 |         await page.fill('input[name="idNumber"]', '123');
-  114 | 
-  115 |         // Wait for form to be ready
-  116 |         const submitButton = page.locator('#serviceForm button[type="submit"]');
-  117 |         await expect(submitButton).toBeVisible({ timeout: 5000 });
-  118 |         await expect(submitButton).toBeEnabled({ timeout: 5000 });
-  119 |         
-  120 |         // Submit form data manually (simulating form submission flow)
-  121 |         // Note: Using EXTRA_SERVICE_CONFIGS directly since SERVICE_CONFIGS is scoped inside DOMContentLoaded
-  122 |         await page.evaluate(async () => {
-  123 |             const form = document.getElementById('serviceForm');
-  124 |             const key = 'judicial';
-  125 |             const config = window.EXTRA_SERVICE_CONFIGS?.[key];
-  126 |             const raw = Object.fromEntries(new FormData(form));
-  127 |             const transformed = config.transform(raw);
-  128 |             const body = {
-  129 |                 ...transformed,
-  130 |                 title: transformed.title || config.title,
-  131 |                 cost: config.cost,
-  132 |                 status: 'pending',
-  133 |                 serviceKey: key,
-  134 |                 priceStatus: 'pending'
-  135 |             };
-  136 |             const response = await fetch('/api/order', {
-  137 |                 method: 'POST',
-  138 |                 headers: {'Content-Type': 'application/json'},
-  139 |                 body: JSON.stringify(body)
-  140 |             });
-  141 |             const result = await response.json();
-  142 |             localStorage.setItem('lastTrackingCode', result.trackingCode);
-  143 |             localStorage.setItem('registrationData', JSON.stringify({
-  144 |                 ...raw,
-  145 |                 serviceKey: key,
-  146 |                 serviceTitle: config.title,
-  147 |                 cost: config.cost
-  148 |             }));
-  149 |         });
-  150 |         
-  151 |         // Navigate to review page
-  152 |         await page.goto(`${BASE_URL}/review.html`);
-  153 |         await page.waitForTimeout(2000);
-  154 |         
-  155 |         await expect(page.locator('#reviewData')).toBeVisible({ timeout: 5000 });
-  156 |         const pageContent = await page.locator('#reviewData').textContent();
-  157 |         expect(pageContent).toContain('کد سفارش');
-  158 |         await expect(page.locator('#confirmPaymentBtn')).toBeVisible();
-  159 | 
-  160 |         const [confirmResponse] = await Promise.all([
-  161 |             page.waitForResponse('**/api/order/confirm', { timeout: 30000 }),
-  162 |             page.click('#confirmPaymentBtn')
-  163 |         ]);
-  164 | 
-  165 |         expect(confirmResponse.status()).toBe(200);
-  166 |         await page.waitForTimeout(2000);
-  167 | 
-  168 |         await expect(page).toHaveURL(/success\.html/);
-  169 |         await expect(page.locator('#trackingCode')).toBeVisible();
-  170 |     });
-  171 | 
-  172 |     test('tax objection form displays correctly', async ({ page }) => {
-  173 |         await page.waitForTimeout(500);
-  174 | 
-  175 |         const menuItem = page.locator('[data-menu="business-tax"]');
-  176 |         await menuItem.hover({ force: true });
-  177 |         await page.waitForTimeout(500);
-  178 | 
-  179 |         const link = menuItem.locator('ul a').filter({ hasText: 'اعتراض مالیاتی' });
-  180 |         await link.click();
-  181 | 
-  182 |         await expect(page).toHaveURL(/service\.html\?service=/);
-  183 |         await page.waitForTimeout(1500);
-  184 | 
-  185 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
-  186 |         const fieldCount = await formFields.count();
-  187 |         expect(fieldCount).toBeGreaterThan(0);
-  188 |     });
-  189 | 
-  190 |     test('banking services form displays correctly', async ({ page }) => {
-  191 |         await page.waitForTimeout(500);
-  192 | 
-  193 |         const menuItem = page.locator('[data-menu="finance"]');
-  194 |         await menuItem.hover({ force: true });
-  195 |         await page.waitForTimeout(500);
-  196 | 
-  197 |         const link = menuItem.locator('ul a').filter({ hasText: 'افتتاح حساب' });
-> 198 |         await link.click();
-      |                    ^ Error: locator.click: Test timeout of 60000ms exceeded.
-  199 | 
-  200 |         await expect(page).toHaveURL(/service\.html\?service=/);
-  201 |         await page.waitForTimeout(1500);
-  202 | 
-  203 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
-  204 |         const fieldCount = await formFields.count();
-  205 |         expect(fieldCount).toBeGreaterThan(0);
-  206 |     });
-  207 | 
-  208 |     test('vehicle services form displays correctly', async ({ page }) => {
-  209 |         await page.waitForTimeout(500);
-  210 |         await page.evaluate(() => {
-  211 |           localStorage.setItem('userData', JSON.stringify({ username: 'testuser' }));
-  212 |         });
-  213 | 
-  214 |         const menuItem = page.locator('[data-menu="automotive"]');
-  215 |         await menuItem.hover({ force: true });
-  216 |         await page.waitForTimeout(500);
-  217 | 
-  218 |         const link = menuItem.locator('ul a').filter({ hasText: 'سایپا' });
-  219 |         await link.click();
-  220 | 
-  221 |         await expect(page).toHaveURL(/service\.html\?service=/);
-  222 |         await page.waitForTimeout(1500);
-  223 | 
-  224 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
-  225 |         const fieldCount = await formFields.count();
-  226 |         expect(fieldCount).toBeGreaterThan(0);
-  227 |     });
-  228 | 
-  229 |     test('education services form displays correctly', async ({ page }) => {
-  230 |         await page.waitForTimeout(500);
-  231 |         await page.evaluate(() => {
-  232 |           localStorage.setItem('userData', JSON.stringify({ username: 'testuser' }));
-  233 |         });
-  234 | 
-  235 |         const menuItem = page.locator('[data-menu="education"]');
-  236 |         await menuItem.hover({ force: true });
-  237 |         await page.waitForTimeout(500);
-  238 | 
-  239 |         const link = menuItem.locator('ul a').filter({ hasText: 'سامانه‌های آموزشی' });
-  240 |         await link.click();
-  241 | 
-  242 |         await expect(page).toHaveURL(/service\.html\?service=/);
-  243 |         await page.waitForTimeout(1500);
-  244 | 
-  245 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
-  246 |         const fieldCount = await formFields.count();
-  247 |         expect(fieldCount).toBeGreaterThan(0);
-  248 |     });
-  249 | 
-  250 |     test('international services form displays correctly', async ({ page }) => {
-  251 |         await page.waitForTimeout(500);
-  252 |         await page.evaluate(() => {
-  253 |             localStorage.setItem('userData', JSON.stringify({ username: 'testuser' }));
-  254 |         });
-  255 | 
-  256 |         const menuItem = page.locator('[data-menu="education"]');
-  257 |         await menuItem.hover({ force: true });
-  258 |         await page.waitForTimeout(500);
-  259 | 
-  260 |         const link = menuItem.locator('ul a').filter({ hasText: 'تافل و آیلتس' });
-  261 |         await link.click();
-  262 | 
-  263 |         await expect(page).toHaveURL(/service\.html\?service=/);
-  264 |         await page.waitForTimeout(1500);
-  265 | 
-  266 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
-  267 |         const fieldCount = await formFields.count();
-  268 |         expect(fieldCount).toBeGreaterThan(0);
-  269 |     });
-  270 | 
-  271 |     test('all six mega menu categories have dynamic service links', async ({ page }) => {
-  272 |         await page.waitForTimeout(500);
-  273 | 
-  274 |         const menus = [
-  275 |             'identity-judicial',
-  276 |             'finance',
-  277 |             'automotive',
-  278 |             'education',
-  279 |             'business-tax',
-  280 |             'government-services'
-  281 |         ];
-  282 | 
-  283 |         for (const menuKey of menus) {
-  284 |             const menuItem = page.locator(`[data-menu="${menuKey}"]`);
-  285 |             await menuItem.hover({ force: true });
-  286 |             await page.waitForTimeout(300);
-  287 | 
-  288 |             const links = menuItem.locator('ul a');
-  289 |             const count = await links.count();
-  290 |             expect(count).toBeGreaterThan(0);
-  291 |         }
-  292 |     });
-  293 | });
-  294 | 
+  60  |         });
+  61  |         expect(response.ok()).toBeTruthy();
+  62  |         const data = await response.json();
+  63  |         expect(data.success).toBe(true);
+  64  |     });
+  65  | 
+  66  |     test('POST /api/login rejects invalid credentials', async ({ request }) => {
+  67  |         const response = await request.post(`${BASE_URL}/api/login`, {
+  68  |             data: {
+  69  |                 username: 'wrong',
+  70  |                 password: 'wrong'
+  71  |             }
+  72  |         });
+  73  |         expect(response.status()).toBe(401);
+  74  |         const data = await response.json();
+  75  |         expect(data.error).toBeTruthy();
+  76  |     });
+  77  | });
+  78  | 
+  79  | test.describe('Mega Menu Service Forms', () => {
+  80  |     test.beforeEach(async ({ page }) => {
+  81  |         await page.goto(`${BASE_URL}/index.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  82  |         await page.evaluate(() => {
+  83  |             localStorage.setItem('userData', JSON.stringify({ username: 'testuser' }));
+  84  |         });
+  85  |     });
+  86  | 
+  87  |     test('judicial service form displays and submits correctly', async ({ page }) => {
+  88  |         await page.waitForTimeout(500);
+  89  | 
+  90  |         const menuItem = page.locator('[data-menu="identity-judicial"]');
+  91  |         await menuItem.hover({ force: true });
+  92  |         await page.waitForTimeout(500);
+  93  | 
+  94  |         const link = menuItem.locator('ul a').filter({ hasText: 'نوبت‌دهی قضایی' });
+  95  |         await link.click();
+  96  | 
+  97  |         await expect(page).toHaveURL(/service\.html\?service=/);
+  98  |         await expect(page.locator('#serviceTitle')).toHaveText('نوبت‌دهی قضایی');
+  99  | 
+  100 |         await page.waitForTimeout(800);
+  101 | 
+  102 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
+  103 |         const fieldCount = await formFields.count();
+  104 |         expect(fieldCount).toBeGreaterThan(0);
+  105 | 
+  106 |         await page.fill('input[name="phone"]', '09123456789');
+  107 |         await page.fill('input[name="nationalId"]', '1234567890');
+  108 |         await page.fill('input[name="birthYear"]', '1370');
+  109 |         await page.fill('input[name="birthMonth"]', '1');
+  110 |         await page.fill('input[name="birthDay"]', '1');
+  111 |         await page.selectOption('select[name="serviceType"]', { label: 'نوبت‌دهی قضایی' });
+  112 |         await page.fill('input[name="idNumber"]', '123');
+  113 | 
+  114 |         const [response] = await Promise.all([
+  115 |             page.waitForResponse('**/api/order', { timeout: 30000 }),
+  116 |             page.click('#serviceForm button[type="submit"]')
+  117 |         ]);
+  118 | 
+  119 |         expect(response.status()).toBe(200);
+  120 |         await page.waitForTimeout(2000);
+  121 | 
+  122 |         await expect(page).toHaveURL(/review\.html/);
+  123 |         await expect(page.locator('#reviewData')).toContainText('09123456789');
+  124 |         await expect(page.locator('#confirmPaymentBtn')).toBeVisible();
+  125 | 
+  126 |         const [confirmResponse] = await Promise.all([
+  127 |             page.waitForResponse('**/api/order/confirm', { timeout: 30000 }),
+  128 |             page.click('#confirmPaymentBtn')
+  129 |         ]);
+  130 | 
+  131 |         expect(confirmResponse.status()).toBe(200);
+  132 |         await page.waitForTimeout(2000);
+  133 | 
+  134 |         await expect(page).toHaveURL(/success\.html/);
+  135 |         await expect(page.locator('#trackingCode')).toBeVisible();
+  136 |     });
+  137 | 
+  138 |     test('tax objection form displays correctly', async ({ page }) => {
+  139 |         await page.waitForTimeout(500);
+  140 | 
+  141 |         const menuItem = page.locator('[data-menu="business-tax"]');
+  142 |         await menuItem.hover({ force: true });
+  143 |         await page.waitForTimeout(500);
+  144 | 
+  145 |         const link = menuItem.locator('ul a').filter({ hasText: 'اعتراض مالیاتی' });
+  146 |         await link.click();
+  147 | 
+  148 |         await expect(page).toHaveURL(/service\.html\?service=/);
+  149 |         await page.waitForTimeout(800);
+  150 | 
+  151 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
+  152 |         const fieldCount = await formFields.count();
+  153 |         expect(fieldCount).toBeGreaterThan(0);
+  154 |     });
+  155 | 
+  156 |     test('banking services form displays correctly', async ({ page }) => {
+  157 |         await page.waitForTimeout(500);
+  158 | 
+  159 |         const menuItem = page.locator('[data-menu="finance"]');
+> 160 |         await menuItem.hover({ force: true });
+      |                        ^ Error: locator.hover: Test timeout of 60000ms exceeded.
+  161 |         await page.waitForTimeout(500);
+  162 | 
+  163 |         const link = menuItem.locator('ul a').filter({ hasText: 'افتتاح حساب' });
+  164 |         await link.click();
+  165 | 
+  166 |         await expect(page).toHaveURL(/service\.html\?service=/);
+  167 |         await page.waitForTimeout(800);
+  168 | 
+  169 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
+  170 |         const fieldCount = await formFields.count();
+  171 |         expect(fieldCount).toBeGreaterThan(0);
+  172 |     });
+  173 | 
+  174 |     test('vehicle services form displays correctly', async ({ page }) => {
+  175 |         await page.waitForTimeout(500);
+  176 | 
+  177 |         const menuItem = page.locator('[data-menu="automotive"]');
+  178 |         await menuItem.hover({ force: true });
+  179 |         await page.waitForTimeout(500);
+  180 | 
+  181 |         const link = menuItem.locator('ul a').filter({ hasText: 'سایپا' });
+  182 |         await link.click();
+  183 | 
+  184 |         await expect(page).toHaveURL(/service\.html\?service=/);
+  185 |         await page.waitForTimeout(800);
+  186 | 
+  187 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
+  188 |         const fieldCount = await formFields.count();
+  189 |         expect(fieldCount).toBeGreaterThan(0);
+  190 |     });
+  191 | 
+  192 |     test('education services form displays correctly', async ({ page }) => {
+  193 |         await page.waitForTimeout(500);
+  194 | 
+  195 |         const menuItem = page.locator('[data-menu="education"]');
+  196 |         await menuItem.hover({ force: true });
+  197 |         await page.waitForTimeout(500);
+  198 | 
+  199 |         const link = menuItem.locator('ul a').filter({ hasText: 'سامانه‌های آموزشی' });
+  200 |         await link.click();
+  201 | 
+  202 |         await expect(page).toHaveURL(/service\.html\?service=/);
+  203 |         await page.waitForTimeout(800);
+  204 | 
+  205 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
+  206 |         const fieldCount = await formFields.count();
+  207 |         expect(fieldCount).toBeGreaterThan(0);
+  208 |     });
+  209 | 
+  210 |     test('all six mega menu categories have dynamic service links', async ({ page }) => {
+  211 |         await page.waitForTimeout(500);
+  212 | 
+  213 |         const menus = [
+  214 |             'identity-judicial',
+  215 |             'finance',
+  216 |             'automotive',
+  217 |             'education',
+  218 |             'business-tax',
+  219 |             'government-services'
+  220 |         ];
+  221 | 
+  222 |         for (const menuKey of menus) {
+  223 |             const menuItem = page.locator(`[data-menu="${menuKey}"]`);
+  224 |             await menuItem.hover({ force: true });
+  225 |             await page.waitForTimeout(300);
+  226 | 
+  227 |             const links = menuItem.locator('ul a');
+  228 |             const count = await links.count();
+  229 |             expect(count).toBeGreaterThan(0);
+  230 |         }
+  231 |     });
+  232 | });
+  233 | 
 ```

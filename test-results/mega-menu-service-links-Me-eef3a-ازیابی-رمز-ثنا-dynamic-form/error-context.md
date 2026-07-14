@@ -7,14 +7,14 @@
 # Test info
 
 - Name: mega-menu-service-links.spec.js >> Mega menu dynamic service links >> opens بازیابی رمز ثنا dynamic form
-- Location: tests/mega-menu-service-links.spec.js:63:9
+- Location: tests/mega-menu-service-links.spec.js:60:9
 
 # Error details
 
 ```
-Error: locator.click: Target page, context or browser has been closed
+Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3004/index.html
 Call log:
-  - waiting for locator('[data-menu="identity-judicial"]').locator('ul a').filter({ hasText: /^بازیابی رمز ثنا$/ })
+  - navigating to "http://localhost:3004/index.html", waiting until "networkidle"
 
 ```
 
@@ -76,26 +76,23 @@ Call log:
   53 | 
   54 | test.describe('Mega menu dynamic service links', () => {
   55 |   test.beforeEach(async ({ page }) => {
-  56 |     await page.goto('http://localhost:3003/index.html', { waitUntil: 'networkidle' });
-  57 |     await page.evaluate(() => {
-  58 |       localStorage.setItem('userData', JSON.stringify({ username: 'testuser' }));
-  59 |     });
-  60 |   });
-  61 | 
-  62 |   for (const item of dynamicServiceItems) {
-  63 |     test(`opens ${item.title} dynamic form`, async ({ page }) => {
-  64 |       const menuItem = page.locator(`[data-menu="${item.menu}"]`);
-  65 |       await menuItem.hover({ force: true });
-  66 | 
-  67 |       const escapedTitle = item.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  68 |       const link = menuItem.locator('ul a').filter({ hasText: new RegExp(`^${escapedTitle}$`) });
-> 69 |       await link.click();
-     |                  ^ Error: locator.click: Target page, context or browser has been closed
-  70 | 
-  71 |       await expect(page).toHaveURL(/service\.html\?service=/);
-  72 |       await expect(page.locator('#serviceTitle')).toHaveText(item.title);
-  73 |     });
-  74 |   }
-  75 | });
-  76 | 
+> 56 |     await page.goto('http://localhost:3004/index.html', { waitUntil: 'networkidle' });
+     |                ^ Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3004/index.html
+  57 |   });
+  58 | 
+  59 |   for (const item of dynamicServiceItems) {
+  60 |     test(`opens ${item.title} dynamic form`, async ({ page }) => {
+  61 |       const menuItem = page.locator(`[data-menu="${item.menu}"]`);
+  62 |       await menuItem.hover({ force: true });
+  63 | 
+  64 |       const escapedTitle = item.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  65 |       const link = menuItem.locator('ul a').filter({ hasText: new RegExp(`^${escapedTitle}$`) });
+  66 |       await link.click();
+  67 | 
+  68 |       await expect(page).toHaveURL(/service\.html\?service=/);
+  69 |       await expect(page.locator('#serviceTitle')).toHaveText(item.title);
+  70 |     });
+  71 |   }
+  72 | });
+  73 | 
 ```

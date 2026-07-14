@@ -1,3 +1,23 @@
+var _origFetch = window.fetch;
+window.fetch = function(url, opts) {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    var adminData = JSON.parse(localStorage.getItem('adminData') || 'null');
+    if (adminData && adminData.token && !opts.headers['Authorization']) {
+        var apiUrl = typeof url === 'string' ? url : (url.url || '');
+        if (apiUrl.indexOf('/api/') === 0) {
+            opts.headers['Authorization'] = 'Bearer ' + adminData.token;
+        }
+    }
+    return _origFetch.call(this, url, opts);
+};
+
+function escapeHtml(v) {
+    return String(v || '').replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
+    });
+}
+
 function formatPrice(price) {
     var numStr = (price !== undefined && price !== null && price !== '') ? String(price) : '0';
     numStr = numStr.replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
@@ -1268,7 +1288,6 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'index.html';
         });
     }
-
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', e => {
@@ -1276,41 +1295,38 @@ document.addEventListener('DOMContentLoaded', () => {
             const username = document.getElementById('loginUsername').value;
             const password = document.getElementById('loginPassword').value;
             
-            if (username === 'sedeb' && password === 'sedeb75') {
-                localStorage.setItem('adminData', JSON.stringify({ username }));
-                window.location.href = 'admin.html';
-                return;
-            }
-            
-            fetch('/api/login', {
+            fetch('/api/admin/login', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ username, password })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    localStorage.setItem('userData', JSON.stringify({ username }));
-                    window.location.href = 'index.html';
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success && data.token) {
+                    localStorage.setItem('adminData', JSON.stringify({ username: username, token: data.token }));
+                    window.location.href = 'admin.html';
                 } else {
-                    alert('نام کاربری یا رمز عبور اشتباه است!');
+                    fetch('/api/login', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ username: username, password: password })
+                    })
+                    .then(function(r2) { return r2.json(); })
+                    .then(function(data2) {
+                        if (data2.success) {
+                            localStorage.setItem('userData', JSON.stringify({ username: username }));
+                            window.location.href = 'index.html';
+                        } else {
+                            alert('نام کاربری یا رمز عبور اشتباه است!');
+                        }
+                    })
+                    .catch(function() { alert('نام کاربری یا رمز عبور اشتباه است!'); });
                 }
             })
-            .catch(() => {
-                const storedData = localStorage.getItem('userData');
-                if (storedData) {
-                    const user = JSON.parse(storedData);
-                    if (user.username) {
-                        localStorage.setItem('userData', JSON.stringify({ username }));
-                        window.location.href = 'index.html';
-                    }
-                } else {
-                    alert('نام کاربری یا رمز عبور اشتباه است!');
-                }
+            .catch(function() {
+                alert('خطا در اتصال به سرور. لطفاً دوباره تلاش کنید.');
             });
-
         });
-
     }
 
     // Eye icons
@@ -1333,7 +1349,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const adminLoggedIn = localStorage.getItem('adminData');
-    if (!adminLoggedIn && document.getElementById('adminPanel')) {
+    var _adminParsed = null;
+    try { _adminParsed = adminLoggedIn ? JSON.parse(adminLoggedIn) : null; } catch(e) {}
+    if ((!adminLoggedIn || !_adminParsed || !_adminParsed.token) && document.getElementById('adminPanel')) {
         window.location.href = 'login.html';
     }
 
@@ -1373,6 +1391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         adminLogoutBtn.addEventListener('click', e => {
             e.preventDefault();
             localStorage.removeItem('adminData');
+            document.cookie = 'token=; Path=/; Max-Age=0';
             window.location.href = 'login.html';
         });
     }
@@ -1754,6 +1773,23 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(setupInlineAttachments, 100);
         });
 
+        var sidebarSupportBtn = document.getElementById('sidebarSupportBtn');
+        var bottomSupportBtn = document.getElementById('bottomSupportBtn');
+        [sidebarSupportBtn, bottomSupportBtn].forEach(function(btn) {
+            if (btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (!isAuthenticated()) {
+                        redirectToLogin();
+                        return;
+                    }
+                    supportModal.classList.add('active');
+                    initializeChat();
+                    setTimeout(setupInlineAttachments, 100);
+                });
+            }
+        });
+
         if (newConversationBtn) {
             newConversationBtn.addEventListener('click', function() {
                 if (currentConversationId && conversationsData.some(function(c) { 
@@ -1833,6 +1869,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function isAuthenticated() {
         return !!(localStorage.getItem('adminData') || localStorage.getItem('userData'));
     }
+
+    function isAdmin() {
+        try {
+            var d = JSON.parse(localStorage.getItem('adminData') || 'null');
+            return !!(d && d.token);
+        } catch(e) { return false; }
+    }
+
+    if (isAdmin()) {
+        document.querySelectorAll('.admin-only').forEach(function(el) {
+            el.style.display = '';
+        });
+    }
+    document.querySelectorAll('.user-only').forEach(function(el) {
+        if (isAdmin()) el.style.display = 'none';
+    });
 
     function redirectToLogin() {
         window.location.href = 'login.html';

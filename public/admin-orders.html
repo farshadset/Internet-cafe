@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لیست سفارش‌ها</title>
+    <script>
+        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+    </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,7 +31,7 @@
                      <button class="status-btn status-btn-completed" data-filter="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>
                      <button class="status-btn" data-filter="all" title="همه"><i class="fas fa-list"></i></button>
                  </div>
-                 <input type="text" id="orderSearchInput" placeholder="جستجوی کد سفارش یا تاریخ..." style="padding:8px 14px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;width:220px;direction:rtl;">
+                 <input type="text" id="orderSearchInput" placeholder="جستجوی کد سفارش یا تاریخ..." style="padding:8px 14px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;width:220px;direction:rtl;" dir="auto">
              </div>
              <div class="form-card" id="adminOrdersList">
                  <p>بارگذاری...</p>
@@ -60,6 +63,7 @@
 
 <script src="app.js"></script>
     <script>
+            (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
             var currentTrackingCode = null;
             var currentOrderData = null;
             var SERVICE_TITLES = {
@@ -144,14 +148,14 @@
                     }
                     
                     div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
-                        '<div class="order-title">' + ((order.title && order.title !== '-') ? order.title : (order.serviceTitle || SERVICE_TITLES[order.serviceKey] || 'سرویس ناشناس')) + '</div>' +
+                        '<div class="order-title">' + escapeHtml((order.title && order.title !== '-') ? order.title : (order.serviceTitle || SERVICE_TITLES[order.serviceKey] || 'سرویس ناشناس')) + '</div>' +
                         '<small style="color:#666;">' + dateStr + '</small>' +
                         '</div>' +
                         priceSection +
                         '<div style="margin-bottom:0.25rem;">' +
-                        '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
+                        '<strong>کد سفارش: ' + escapeHtml(order.trackingCode) + '</strong>' +
                         '</div>' +
-                        (order.result ? '<div style="margin-bottom:0.25rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + order.result + '</span></div>' : '') +
+                        (order.result ? '<div style="margin-bottom:0.25rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + escapeHtml(order.result) + '</span></div>' : '') +
                         '<div style="margin-bottom:0.25rem;text-align:center;">' +
                         '<a href="order-detail.html?code=' + order.trackingCode + '" title="جزئیات سفارش" style="color:#667eea;font-size:1rem;text-decoration:none;margin-left:0.5rem;"><i class="fas fa-eye"></i></a>' +
                         '<button class="edit-result-btn" data-code="' + order.trackingCode + '" title="ثبت نتیجه" style="color:#667eea;font-size:1rem;background:none;border:none;cursor:pointer;"><i class="fas fa-edit"></i></button>' +
