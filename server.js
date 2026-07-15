@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const crypto = require('crypto');
+const helmet = require('helmet');
+const compression = require('compression');
 const { Server } = require('socket.io');
 const db = require('./db');
 
@@ -14,20 +16,21 @@ if (!JWT_SECRET) {
     process.exit(1);
 }
 
-// ==================== PASSWORD HASHING ====================
-function hashPassword(password) {
+// ==================== PASSWORD HASHING (async — non-blocking) ====================
+async function hashPassword(password) {
     const salt = crypto.randomBytes(32).toString('hex');
-    const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+    const hash = (await crypto.scrypt(String(password), salt, 64)).toString('hex');
     return salt + ':' + hash;
 }
 
-function verifyPassword(password, stored) {
+async function verifyPassword(password, stored) {
     if (!stored) return false;
     if (!stored.includes(':')) return false;
     var parts = stored.split(':');
     var salt = parts[0];
     var hash = parts[1];
-    var verify = crypto.scryptSync(String(password), salt, 64).toString('hex');
+    if (!salt || !hash || hash.length !== 128) return false;
+    var verify = (await crypto.scrypt(String(password), salt, 64)).toString('hex');
     return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(verify, 'hex'));
 }
 
@@ -35,11 +38,23 @@ function isHashed(stored) {
     return stored && stored.includes(':') && stored.split(':')[1].length === 128;
 }
 
+// Per-order locks for attachment uploads (prevents lost updates on concurrent writes)
+const orderLocks = {};
+function withOrderLock(key, fn) {
+    const prev = orderLocks[key] || Promise.resolve();
+    const curr = prev.then(fn, fn);
+    orderLocks[key] = curr;
+    curr.then(() => { if (orderLocks[key] === curr) delete orderLocks[key]; }, () => { if (orderLocks[key] === curr) delete orderLocks[key]; });
+    return curr;
+}
+
 // ==================== RATE LIMITER (in-memory) ====================
+const allRateLimitStores = [];
 function rateLimit(windowMs, max) {
     var store = {};
+    allRateLimitStores.push({ store: store, windowMs: windowMs });
     return function(req, res, next) {
-        var key = (req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || 'unknown').split(',')[0].trim();
+        var key = req.ip || req.connection.remoteAddress || 'unknown';
         var now = Date.now();
         if (!store[key]) store[key] = [];
         store[key] = store[key].filter(function(t) { return t > now - windowMs; });
@@ -56,10 +71,35 @@ const loginAttempts = {};
 const LOCKOUT_THRESHOLD = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000;
 
+// ==================== VISIT TRACKING ====================
+const lastVisitTime = {};
+
+// Cleanup stale rate limit keys every 5 minutes
+setInterval(function() {
+    var now = Date.now();
+    allRateLimitStores.forEach(function(entry) {
+        Object.keys(entry.store).forEach(function(key) {
+            entry.store[key] = entry.store[key].filter(function(t) { return t > now - entry.windowMs; });
+            if (entry.store[key].length === 0) delete entry.store[key];
+        });
+    });
+    Object.keys(loginAttempts).forEach(function(key) {
+        if (Date.now() - loginAttempts[key].lastAttempt >= LOCKOUT_DURATION) {
+            delete loginAttempts[key];
+        }
+    });
+    Object.keys(lastVisitTime).forEach(function(key) {
+        if (Date.now() - lastVisitTime[key] >= 30 * 60 * 1000) {
+            delete lastVisitTime[key];
+        }
+    });
+}, 5 * 60 * 1000).unref();
+
 function checkLockout(key) {
     var attempts = loginAttempts[key];
     if (!attempts) return false;
-    if (attempts.count >= LOCKOUT_THRESHOLD && (now = Date.now()) - attempts.lastAttempt < LOCKOUT_DURATION) {
+    var now = Date.now();
+    if (attempts.count >= LOCKOUT_THRESHOLD && now - attempts.lastAttempt < LOCKOUT_DURATION) {
         return true;
     }
     if (attempts.count >= LOCKOUT_THRESHOLD && Date.now() - attempts.lastAttempt >= LOCKOUT_DURATION) {
@@ -80,17 +120,18 @@ function clearAttempts(key) {
 
 // ==================== SECURITY HEADERS ====================
 function securityHeaders(req, res, next) {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     res.setHeader('X-DNS-Prefetch-Control', 'off');
     if (isVercel) {
         res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob:; connect-src 'self' ws: wss:; frame-ancestors 'self'");
-    res.removeHeader('X-Powered-By');
     next();
+}
+
+// ==================== NONCE GENERATOR ====================
+function generateNonce() {
+    return crypto.randomBytes(16).toString('base64');
 }
 
 // ==================== INPUT SANITIZATION ====================
@@ -122,7 +163,7 @@ function sanitizeObject(obj) {
 
 function sanitizeMiddleware(req, res, next) {
     var url = req.originalUrl || '';
-    if (url.indexOf('/api/banner') !== -1 || url.indexOf('/api/login') !== -1 || url.indexOf('/api/register') !== -1) return next();
+    if (url.indexOf('/api/banner') !== -1 || url.indexOf('/api/login') !== -1 || url.indexOf('/api/admin/login') !== -1 || url.indexOf('/api/register') !== -1 || url.indexOf('/api/order-attachment') !== -1 || url.indexOf('/api/change-password') !== -1) return next();
     if (req.body && typeof req.body === 'object') {
         req.body = sanitizeObject(req.body);
     }
@@ -137,18 +178,37 @@ function sanitizeMiddleware(req, res, next) {
 
 function signJWT(payload) {
     const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
-    const body = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() })).toString('base64url');
+    const jti = crypto.randomBytes(8).toString('hex');
+    const exp = Date.now() + (payload.isAdmin ? 8 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000);
+    const body = Buffer.from(JSON.stringify({ ...payload, iat: Date.now(), exp, jti })).toString('base64url');
     const sig = crypto.createHmac('sha256', JWT_SECRET).update(header + '.' + body).digest('base64url');
     return header + '.' + body + '.' + sig;
 }
+
+// ==================== TOKEN REVOCATION ====================
+const revokedTokens = new Map(); // jti -> exp timestamp
+function revokeToken(jti, exp) { revokedTokens.set(jti, exp || Date.now() + 86400000); }
+function isTokenRevoked(jti) { return revokedTokens.has(jti); }
+// Cleanup expired revoked tokens every 10 minutes
+setInterval(function() {
+    var now = Date.now();
+    revokedTokens.forEach(function(exp, jti) {
+        if (now > exp) revokedTokens.delete(jti);
+    });
+}, 10 * 60 * 1000).unref();
 
 function verifyJWT(token) {
     try {
         const parts = token.split('.');
         if (parts.length !== 3) return null;
         const sig = crypto.createHmac('sha256', JWT_SECRET).update(parts[0] + '.' + parts[1]).digest('base64url');
-        if (sig !== parts[2]) return null;
-        return JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+        const sigBuf = Buffer.from(sig, 'base64url');
+        const partsBuf = Buffer.from(parts[2], 'base64url');
+        if (sigBuf.length !== partsBuf.length || !crypto.timingSafeEqual(sigBuf, partsBuf)) return null;
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+        if (payload.exp && Date.now() > payload.exp) return null;
+        if (payload.jti && isTokenRevoked(payload.jti)) return null;
+        return payload;
     } catch { return null; }
 }
 
@@ -162,12 +222,16 @@ function getToken(req) {
 
 function requireAdmin(req, res, next) {
     var token = getToken(req);
-    if (!token) {
-        var auth = req.headers.authorization || '';
-        if (auth.startsWith('Bearer ')) token = auth.slice(7);
-    }
     const payload = verifyJWT(token);
     if (!payload || !payload.isAdmin) return res.status(401).json({ error: 'دسترسی غیرمجاز' });
+    req.user = payload;
+    next();
+}
+
+function requireUser(req, res, next) {
+    var token = getToken(req);
+    const payload = verifyJWT(token);
+    if (!payload) return res.status(401).json({ error: 'احراز هویت نشده' });
     req.user = payload;
     next();
 }
@@ -175,29 +239,113 @@ function requireAdmin(req, res, next) {
 const app = express();
 const rootDir = path.resolve(__dirname);
 
+app.set('trust proxy', 1);
+
+// Security headers via Helmet (CSP handled separately for nonce support)
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
+}));
+
+// Response compression (gzip + brotli)
+app.use(compression({
+    filter: (req, res) => {
+        if (req.headers['x-no-compression']) return false;
+        return compression.filter(req, res);
+    },
+    level: 6,
+    threshold: 1024
+}));
+
 // Security headers
 app.use(securityHeaders);
+
+// ==================== CSP WITH NONCE ====================
+app.use(function(req, res, next) {
+    if (req.path.endsWith('.html') || req.path === '/' || req.path === '/admin') {
+        const nonce = generateNonce();
+        res.locals.nonce = nonce;
+        const csp = [
+            "default-src 'self'",
+            "script-src 'self' 'nonce-" + nonce + "'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
+            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
+            "img-src 'self' data: blob:",
+            "connect-src 'self' ws: wss:",
+            "frame-src 'none'",
+            "object-src 'none'"
+        ].join('; ');
+        res.setHeader('Content-Security-Policy', csp);
+    }
+    next();
+});
+
+// ==================== HTML SERVING WITH NONCE INJECTION ====================
+const htmlRawCache = {}; // { filePath: { content: string, ts: number } }
+const HTML_RAW_CACHE_TTL = 30000; // 30 seconds
+app.use(function(req, res, next) {
+    if (req.method !== 'GET') return next();
+    if (!req.accepts('html')) return next();
+    var p = req.path;
+    if (!p.endsWith('.html') && p !== '/') return next();
+    var filename = p === '/' ? 'index.html' : p.replace(/^\//, '');
+    var filePath = path.join(rootDir, 'public', filename);
+    var publicDir = path.join(rootDir, 'public');
+    if (!filePath.startsWith(publicDir + path.sep) && filePath !== publicDir) {
+        return next();
+    }
+    var cached = htmlRawCache[filePath];
+    if (cached && Date.now() - cached.ts < HTML_RAW_CACHE_TTL) {
+        var nonce = generateNonce();
+        var html = cached.content.replace(/<script(?=[\s>])/gi, '<script nonce="' + nonce + '"');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+    }
+    fs.readFile(filePath, 'utf8', function(err, html) {
+        if (err) return next();
+        htmlRawCache[filePath] = { content: html, ts: Date.now() };
+        var nonce = generateNonce();
+        html = html.replace(/<script(?=[\s>])/gi, '<script nonce="' + nonce + '"');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    });
+});
 
 // Rate limit: 5 requests per minute for login/register
 const authRateLimit = rateLimit(60 * 1000, 5);
 // Rate limit: 10 requests per minute for write operations
 const writeRateLimit = rateLimit(60 * 1000, 30);
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false }));
+// Async route wrapper — catches rejected promises and passes to Express error handler
+function asyncHandler(fn) {
+    return function(req, res, next) {
+        Promise.resolve(fn(req, res, next)).catch(next);
+    };
+}
+
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use(sanitizeMiddleware);
 
 const oneYear = 1000 * 60 * 60 * 24 * 365;
+const oneWeek = 1000 * 60 * 60 * 24 * 7;
 const staticOptions = {
   maxAge: oneYear,
   etag: true,
   lastModified: true,
+  immutable: true,
   setHeaders: (res, filePath) => {
     const pathString = filePath.toString();
-    if (pathString.endsWith('.html') || pathString.endsWith('.js')) {
+    if (pathString.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else if (pathString.endsWith('.js')) {
+      res.setHeader('Cache-Control', 'public, max-age=' + oneWeek);
+    } else if (pathString.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'public, max-age=' + oneWeek);
+    } else if (pathString.match(/\.(jpg|jpeg|png|gif|svg|ico|webp|avif)$/i)) {
+      res.setHeader('Cache-Control', 'public, max-age=' + oneYear + ', immutable');
     } else {
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader('Cache-Control', 'public, max-age=' + oneYear + ', immutable');
     }
   }
 };
@@ -210,14 +358,26 @@ app.use(function(req, res, next) {
     next();
 });
 
-app.use('/public', express.static(path.join(rootDir, 'public'), staticOptions));
 app.use(express.static(path.join(rootDir, 'public'), staticOptions));
+
+// Block path traversal on uploads
+app.use('/uploads', function(req, res, next) {
+    try {
+        var decoded = decodeURIComponent(req.path);
+        if (decoded.indexOf('..') !== -1) {
+            return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+        }
+    } catch (e) {
+        return res.status(400).json({ error: 'آدرس نامعتبر' });
+    }
+    next();
+});
 
 const ATTACHMENTS_DIR = path.join(rootDir, 'public', 'uploads', 'attachments');
 const BANNERS_DIR = path.join(rootDir, 'public', 'uploads', 'banners');
 
-try { fs.mkdirSync(ATTACHMENTS_DIR, { recursive: true }); } catch(e) {}
-try { fs.mkdirSync(BANNERS_DIR, { recursive: true }); } catch(e) {}
+fs.promises.mkdir(ATTACHMENTS_DIR, { recursive: true }).catch(function(){});
+fs.promises.mkdir(BANNERS_DIR, { recursive: true }).catch(function(){});
 
 function sanitizeAttachmentName(name) {
     const safeName = String(name || 'attachment')
@@ -240,7 +400,6 @@ function decodeDataUrl(dataUrl) {
 const dbReady = db.initDB().then(async () => {
     try {
         await db.migrateFromJSON();
-        console.log('Database initialized with @libsql/client');
     } catch (e) {
         console.error('DB init migration error:', e.message || e);
     }
@@ -249,21 +408,14 @@ const dbReady = db.initDB().then(async () => {
         // Ensure admin user exists from env vars
         var adminUsername = process.env.ADMIN_USERNAME;
         var adminPassword = process.env.ADMIN_PASSWORD;
-        console.log('ADMIN_USERNAME:', adminUsername ? 'set (' + adminUsername + ')' : 'NOT SET');
-        console.log('ADMIN_PASSWORD:', adminPassword ? 'set' : 'NOT SET');
         if (adminUsername && adminPassword) {
             var existingAdmin = await db.getUser(adminUsername);
             if (!existingAdmin) {
-                await db.createUser(adminUsername, hashPassword(adminPassword), true);
-                console.log('Admin user CREATED. Username: ' + adminUsername);
+                await db.createUser(adminUsername, await hashPassword(adminPassword), true);
             } else {
-                // Always update password and admin flag from env vars
+                // Only update admin flag, never overwrite password on restart
                 await db.setAdminUser(adminUsername, true);
-                await db.updateUserPassword(adminUsername, hashPassword(adminPassword));
-                console.log('Admin user UPDATED. Username: ' + adminUsername);
             }
-        } else {
-            console.warn('WARNING: ADMIN_USERNAME and ADMIN_PASSWORD env vars not set.');
         }
 
         // Hash any remaining plaintext passwords
@@ -271,7 +423,7 @@ const dbReady = db.initDB().then(async () => {
         var allUsers = await client.execute('SELECT username, password FROM users');
         for (const u of allUsers.rows) {
             if (u.password && !isHashed(u.password)) {
-                await db.updateUserPassword(u.username, hashPassword(u.password));
+                await db.updateUserPassword(u.username, await hashPassword(u.password));
             }
         }
     } catch (e) {
@@ -282,11 +434,12 @@ const dbReady = db.initDB().then(async () => {
 });
 
 // ==================== AUTH ROUTES ====================
-app.post('/api/register', authRateLimit, async (req, res) => {
+app.post('/api/register', authRateLimit, asyncHandler(async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
     if (String(username).length < 3 || String(username).length > 30) return res.status(400).json({ error: 'نام کاربری باید بین ۳ تا ۳۰ کاراکتر باشد' });
     if (String(password).length < 8) return res.status(400).json({ error: 'رمز عبور باید حداقل ۸ کاراکتر باشد' });
+    if (String(password).length > 128) return res.status(400).json({ error: 'رمز عبور نباید بیش از ۱۲۸ کاراکتر باشد' });
     if (!/[A-Z]/.test(String(password)) || !/[a-z]/.test(String(password)) || !/[0-9]/.test(String(password))) {
         return res.status(400).json({ error: 'رمز عبور باید شامل حروف بزرگ، کوچک و اعداد باشد' });
     }
@@ -295,100 +448,111 @@ app.post('/api/register', authRateLimit, async (req, res) => {
     if (existing) {
         return res.status(400).json({ error: 'کاربر وجود دارد' });
     }
-    await db.createUser(username, hashPassword(password), false);
-    res.json({ success: true });
-});
+    await db.createUser(username, await hashPassword(password), false);
+    const token = signJWT({ username, isAdmin: false });
+    var cookieFlags = 'Path=/; HttpOnly; SameSite=Strict; Max-Age=86400' + (isVercel ? '; Secure' : '');
+    res.setHeader('Set-Cookie', 'token=' + encodeURIComponent(token) + '; ' + cookieFlags);
+    res.json({ success: true, token });
+}));
 
-app.post('/api/login', authRateLimit, async (req, res) => {
+app.post('/api/login', authRateLimit, asyncHandler(async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
     const lockKey = 'user:' + username;
     if (checkLockout(lockKey)) return res.status(429).json({ error: 'حساب شما به دلیل تلاش‌های ناموفق زیاد قفل شده است. ۱۵ دقیقه صبر کنید.' });
     const user = await db.getUserWithPassword(username);
-    if (!user || !verifyPassword(password, user.password)) {
+    if (!user || !(await verifyPassword(password, user.password))) {
         recordFailedAttempt(lockKey);
         return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
     }
     clearAttempts(lockKey);
     if (!isHashed(user.password)) {
-        await db.updateUserPassword(username, hashPassword(password));
+        await db.updateUserPassword(username, await hashPassword(password));
     }
-    res.json({ success: true });
-});
+    const token = signJWT({ username, isAdmin: false });
+    var cookieFlags = 'Path=/; HttpOnly; SameSite=Strict; Max-Age=86400' + (isVercel ? '; Secure' : '');
+    res.setHeader('Set-Cookie', 'token=' + encodeURIComponent(token) + '; ' + cookieFlags);
+    res.json({ success: true, token });
+}));
 
-app.post('/api/admin/login', authRateLimit, async (req, res) => {
+app.post('/api/admin/login', authRateLimit, asyncHandler(async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
     const lockKey = 'admin:' + username;
     if (checkLockout(lockKey)) {
-        console.log('Admin lockout active for:', username);
         return res.status(429).json({ error: 'حساب مدیر به دلیل تلاش‌های ناموفق زیاد قفل شده است. ۱۵ دقیقه صبر کنید.' });
     }
     const admin = await db.getUserWithPassword(username);
-    if (!admin || !admin.isAdmin || !verifyPassword(password, admin.password)) {
+    if (!admin || !admin.isAdmin || !(await verifyPassword(password, admin.password))) {
         recordFailedAttempt(lockKey);
         return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
     }
     clearAttempts(lockKey);
     if (!isHashed(admin.password)) {
-        await db.updateUserPassword(username, hashPassword(password));
+        await db.updateUserPassword(username, await hashPassword(password));
     }
     var token = signJWT({ username: username, isAdmin: true });
-    var cookieFlags = 'Path=/; HttpOnly; SameSite=Strict; Max-Age=86400';
-    if (isVercel) cookieFlags += '; Secure';
+    var cookieFlags = 'Path=/; HttpOnly; SameSite=Strict; Max-Age=86400' + (isVercel ? '; Secure' : '');
     res.setHeader('Set-Cookie', 'token=' + encodeURIComponent(token) + '; ' + cookieFlags);
     res.json({ success: true, token: token });
-});
+}));
 
-app.get('/api/debug-admin', async (req, res) => {
-    var adminUsername = process.env.ADMIN_USERNAME || '(not set)';
-    var adminPassword = process.env.ADMIN_PASSWORD;
-    var pwInfo = adminPassword ? 'length=' + adminPassword.length + ', chars=' + Array.from(adminPassword).map(function(c) { return 'U+' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0'); }).join(' ') : '(not set)';
-    var admin = null;
-    try {
-        admin = await db.getUserWithPassword(adminUsername);
-    } catch (e) {}
-    res.json({
-        envUsername: adminUsername,
-        envPasswordInfo: pwInfo,
-        dbUserFound: !!admin,
-        isAdmin: admin ? !!admin.isAdmin : false,
-        passwordStored: admin ? admin.password.substring(0, 20) + '...' : null
-    });
-});
+// ==================== LOGOUT ====================
+app.post('/api/logout', asyncHandler(async (req, res) => {
+    var token = getToken(req);
+    if (token) {
+        var payload = verifyJWT(token);
+        if (payload && payload.jti) revokeToken(payload.jti, payload.exp);
+    }
+    res.setHeader('Set-Cookie', 'token=; Path=/; HttpOnly; Max-Age=0');
+    res.json({ success: true });
+}));
 
 // ==================== ORDER ROUTES ====================
-app.post('/api/order', writeRateLimit, async (req, res) => {
-    const trackingCode = 'CFT-' + Date.now().toString().slice(-8);
-    const allowedFields = ['username', 'serviceType', 'title', 'description', 'phone', 'nationalId',
+app.post('/api/order', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    if (!req.body.title || typeof req.body.title !== 'string' || !req.body.title.trim()) {
+        return res.status(400).json({ error: 'عنوان خدمت الزامی است' });
+    }
+    const trackingCode = 'CFT-' + crypto.randomBytes(4).toString('hex');
+    const allowedFields = ['serviceType', 'title', 'description', 'phone', 'nationalId',
         'postalCode', 'address', 'plateNumber', 'violationNumber', 'appealReason',
         'applicantPhone', 'applicantNationalId', 'birthYear', 'birthMonth', 'birthDay',
         'marriageYear', 'marriageMonth', 'marriageDay', 'idNumber', 'additionalNotes',
         'regionCode', 'educationLevel', 'familyCount', 'iban', 'contractNumber',
         'depositAmount', 'passportNumber', 'examType', 'city', 'operator', 'internetType',
         'ownershipStatus'];
-    const order = { trackingCode, created_at: new Date() };
-    const username = (req.body.username || '').trim();
-    if (username) order.username = username;
+    const order = { trackingCode, created_at: new Date(), username: req.user.username };
     for (const field of allowedFields) {
-        if (req.body[field] !== undefined) order[field] = req.body[field];
+        if (req.body[field] !== undefined && typeof req.body[field] === 'string') {
+            order[field] = String(req.body[field]).slice(0, 500);
+        }
     }
     await db.createOrder(order);
     res.json({ success: true, trackingCode });
-});
+}));
 
-app.get('/api/order/:trackingCode', requireAdmin, async (req, res) => {
+function isValidTrackingCode(code) {
+    return typeof code === 'string' && /^CFT-[a-f0-9]{8}$/.test(code);
+}
+
+app.get('/api/order/:trackingCode', requireUser, asyncHandler(async (req, res) => {
     const { trackingCode } = req.params;
+    if (!isValidTrackingCode(trackingCode)) {
+        return res.status(400).json({ error: 'کد سفارش نامعتبر است' });
+    }
     const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
+    if (!req.user.isAdmin && order.username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
     res.json(order);
-});
+}));
 
-app.post('/api/order-attachment', writeRateLimit, async (req, res) => {
+app.post('/api/order-attachment', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
     const { trackingCode, attachment } = req.body;
-    if (!trackingCode || !/^[A-Za-z0-9-]+$/.test(trackingCode)) {
+    if (!isValidTrackingCode(trackingCode)) {
         return res.status(400).json({ error: 'کد سفارش نامعتبر است' });
     }
     if (!attachment || !attachment.name || !attachment.dataUrl) {
@@ -411,161 +575,222 @@ app.post('/api/order-attachment', writeRateLimit, async (req, res) => {
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
+    if (order.username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
 
     const fileName = sanitizeAttachmentName(attachment.name);
     const orderDir = path.join(ATTACHMENTS_DIR, trackingCode);
-    fs.mkdirSync(orderDir, { recursive: true });
-    const filePath = path.join(orderDir, fileName);
-    fs.writeFileSync(filePath, decoded.buffer);
 
     const savedAttachment = {
         id: attachment.id || ('att_' + Date.now() + '_' + Math.random().toString(16).slice(2)),
         name: fileName,
-        type: attachment.type || decoded.type,
+        type: decoded.type,
         size: decoded.buffer.length,
         url: '/uploads/attachments/' + encodeURIComponent(trackingCode) + '/' + encodeURIComponent(fileName),
         uploadedAt: attachment.uploadedAt || new Date().toISOString()
     };
 
-    var attachments = order.attachments || [];
-    const existingIndex = attachments.findIndex(a => a.id === savedAttachment.id);
-    if (existingIndex >= 0) {
-        attachments[existingIndex] = savedAttachment;
-    } else {
-        attachments.push(savedAttachment);
-    }
-    await db.updateOrder(trackingCode, { attachments });
+    await withOrderLock(trackingCode, async () => {
+        await fs.promises.mkdir(orderDir, { recursive: true });
+        const filePath = path.join(orderDir, fileName);
+        await fs.promises.writeFile(filePath, decoded.buffer);
+        const latestOrder = await db.getOrder(trackingCode);
+        const latestAttachments = (latestOrder && latestOrder.attachments) || [];
+        const idx = latestAttachments.findIndex(a => a.id === savedAttachment.id);
+        if (idx >= 0) {
+            latestAttachments[idx] = savedAttachment;
+        } else {
+            latestAttachments.push(savedAttachment);
+        }
+        await db.updateOrder(trackingCode, { attachments: latestAttachments });
+    });
 
     res.json({ success: true, attachment: savedAttachment });
-});
+}));
 
-app.post('/api/order/confirm', requireAdmin, writeRateLimit, async (req, res) => {
+app.post('/api/order/confirm', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
     const { trackingCode } = req.body;
-    const order = await db.getOrder(trackingCode);
-    if (!order) {
-        return res.status(404).json({ error: 'سفارش پیدا نشد' });
-    }
-    await db.updateOrder(trackingCode, { status: 'pending', confirmed_at: new Date().toISOString() });
+    if (!isValidTrackingCode(trackingCode)) return res.status(400).json({ error: 'کد سفارش نامعتبر است' });
+    var result;
+    await withOrderLock(trackingCode, async () => {
+        const order = await db.getOrder(trackingCode);
+        if (!order) {
+            result = res.status(404).json({ error: 'سفارش پیدا نشد' });
+            return;
+        }
+        if (!req.user.isAdmin && order.username !== req.user.username) {
+            result = res.status(403).json({ error: 'دسترسی غیرمجاز' });
+            return;
+        }
+        if (order.status !== 'new') {
+            result = res.status(400).json({ error: 'فقط سفارش‌های جدید قابل تایید هستند' });
+            return;
+        }
+        await db.updateOrder(trackingCode, { status: 'pending', confirmed_at: new Date().toISOString() });
+    });
+    if (result) return;
     res.json({ success: true });
-});
+}));
 
-app.post('/api/order/status', requireAdmin, writeRateLimit, async (req, res) => {
+// ==================== ORDER STATUS STATE MACHINE ====================
+const VALID_STATUS_TRANSITIONS = {
+    'new': ['pending'],
+    'pending': ['processing'],
+    'processing': ['completed'],
+    'completed': []
+};
+
+function isValidStatusTransition(currentStatus, newStatus) {
+    var allowed = VALID_STATUS_TRANSITIONS[currentStatus];
+    if (!allowed) return false;
+    return allowed.indexOf(newStatus) !== -1;
+}
+
+app.post('/api/order/status', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
     const { trackingCode, status } = req.body;
+    if (!isValidTrackingCode(trackingCode)) return res.status(400).json({ error: 'کد سفارش نامعتبر است' });
     if (!['pending', 'processing', 'completed'].includes(status)) {
         return res.status(400).json({ error: 'وضعیت نامعتبر' });
     }
-    const order = await db.getOrder(trackingCode);
-    if (!order) {
-        return res.status(404).json({ error: 'سفارش پیدا نشد' });
-    }
-    await db.updateOrder(trackingCode, { status, updated_at: new Date().toISOString() });
+    var result;
+    await withOrderLock(trackingCode, async () => {
+        const order = await db.getOrder(trackingCode);
+        if (!order) {
+            result = res.status(404).json({ error: 'سفارش پیدا نشد' });
+            return;
+        }
+        if (!isValidStatusTransition(order.status, status)) {
+            result = res.status(400).json({ error: 'تغییر وضعیت مجاز نیست' });
+            return;
+        }
+        await db.updateOrder(trackingCode, { status, updated_at: new Date().toISOString() });
+    });
+    if (result) return;
     res.json({ success: true });
-});
+}));
 
-app.post('/api/order/result', requireAdmin, writeRateLimit, async (req, res) => {
+app.post('/api/order/result', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
     const { trackingCode, result } = req.body;
+    if (!isValidTrackingCode(trackingCode)) return res.status(400).json({ error: 'کد سفارش نامعتبر است' });
     const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
     }
     var updates = { result_at: new Date().toISOString() };
-    if (result && result.trim()) {
-        updates.result = result.trim();
+    if (result && String(result).trim()) {
+        updates.result = String(result).trim().slice(0, 2000);
     } else {
         updates.result = null;
     }
-    await db.updateOrder(trackingCode, updates);
-    res.json({ success: true });
-});
-
-app.post('/api/order/price-proposal', writeRateLimit, async (req, res) => {
-    const { trackingCode, proposedPrice } = req.body;
-    if (!trackingCode || !proposedPrice) {
-        return res.status(400).json({ error: 'کد سفارش و قیمت الزامی است' });
-    }
-    const order = await db.getOrder(trackingCode);
-    if (!order) {
-        return res.status(404).json({ error: 'سفارش پیدا نشد' });
-    }
-    await db.updateOrder(trackingCode, { proposedPrice, priceStatus: 'usercounter', updated_at: new Date().toISOString() });
-    res.json({ success: true });
-});
-
-app.post('/api/order/price-counter', requireAdmin, writeRateLimit, async (req, res) => {
-    const { trackingCode, adminProposedPrice } = req.body;
-    if (!trackingCode || !adminProposedPrice) {
-        return res.status(400).json({ error: 'کد سفارش و قیمت الزامی است' });
-    }
-    const order = await db.getOrder(trackingCode);
-    if (!order) {
-        return res.status(404).json({ error: 'سفارش پیدا نشد' });
-    }
-    await db.updateOrder(trackingCode, { adminProposedPrice, priceStatus: 'countersent', updated_at: new Date().toISOString() });
-    res.json({ success: true });
-});
-
-app.post('/api/order/price-accept', requireAdmin, writeRateLimit, async (req, res) => {
-    const { trackingCode } = req.body;
-    if (!trackingCode) {
-        return res.status(400).json({ error: 'کد سفارش الزامی است' });
-    }
-    const order = await db.getOrder(trackingCode);
-    if (!order) {
-        return res.status(404).json({ error: 'سفارش پیدا نشد' });
-    }
-    await db.updateOrder(trackingCode, {
-        priceStatus: 'accepted',
-        cost: 'قیمت توافقی - ' + (order.adminProposedPrice || order.proposedPrice),
-        updated_at: new Date().toISOString()
+    await withOrderLock(trackingCode, async () => {
+        await db.updateOrder(trackingCode, updates);
     });
     res.json({ success: true });
-});
+}));
 
-app.post('/api/order/pay', requireAdmin, writeRateLimit, async (req, res) => {
-    const { trackingCode } = req.body;
-    if (!trackingCode) {
-        return res.status(400).json({ error: 'کد سفارش الزامی است' });
+app.post('/api/order/price-proposal', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    const { trackingCode, proposedPrice } = req.body;
+    if (!isValidTrackingCode(trackingCode) || !proposedPrice) {
+        return res.status(400).json({ error: 'کد سفارش و قیمت الزامی است' });
+    }
+    const price = String(proposedPrice).trim();
+    if (!price || isNaN(parseInt(price)) || parseInt(price) <= 0 || parseInt(price) > 999999999) {
+        return res.status(400).json({ error: 'قیمت نامعتبر است' });
     }
     const order = await db.getOrder(trackingCode);
     if (!order) {
         return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    if (order.username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
+    await withOrderLock(trackingCode, async () => {
+        await db.updateOrder(trackingCode, { proposedPrice: price, priceStatus: 'usercounter', updated_at: new Date().toISOString() });
+    });
+    res.json({ success: true });
+}));
+
+app.post('/api/order/price-counter', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    const { trackingCode, adminProposedPrice } = req.body;
+    if (!isValidTrackingCode(trackingCode) || !adminProposedPrice) {
+        return res.status(400).json({ error: 'کد سفارش و قیمت الزامی است' });
+    }
+    const price = String(adminProposedPrice).trim();
+    if (!price || isNaN(parseInt(price)) || parseInt(price) <= 0 || parseInt(price) > 999999999) {
+        return res.status(400).json({ error: 'قیمت نامعتبر است' });
+    }
+    const order = await db.getOrder(trackingCode);
+    if (!order) {
+        return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    await withOrderLock(trackingCode, async () => {
+        await db.updateOrder(trackingCode, { adminProposedPrice: price, priceStatus: 'countersent', updated_at: new Date().toISOString() });
+    });
+    res.json({ success: true });
+}));
+
+app.post('/api/order/price-accept', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    const { trackingCode } = req.body;
+    if (!isValidTrackingCode(trackingCode)) {
+        return res.status(400).json({ error: 'کد سفارش نامعتبر است' });
+    }
+    const order = await db.getOrder(trackingCode);
+    if (!order) {
+        return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    await withOrderLock(trackingCode, async () => {
+        await db.updateOrder(trackingCode, {
+            priceStatus: 'accepted',
+            cost: 'قیمت توافقی - ' + (order.adminProposedPrice || order.proposedPrice || 'نامشخص'),
+            updated_at: new Date().toISOString()
+        });
+    });
+    res.json({ success: true });
+}));
+
+app.post('/api/order/pay', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    const { trackingCode } = req.body;
+    if (!isValidTrackingCode(trackingCode)) {
+        return res.status(400).json({ error: 'کد سفارش نامعتبر است' });
+    }
+    const order = await db.getOrder(trackingCode);
+    if (!order) {
+        return res.status(404).json({ error: 'سفارش پیدا نشد' });
+    }
+    if (!req.user.isAdmin && order.username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
     }
     if (order.priceStatus !== 'accepted') {
         return res.status(400).json({ error: 'قیمت هنوز تایید نشده است' });
     }
-    await db.updateOrder(trackingCode, { paid: true, paymentStatus: 'paid', updated_at: new Date().toISOString() });
+    await withOrderLock(trackingCode, async () => {
+        await db.updateOrder(trackingCode, { paid: true, paymentStatus: 'paid', updated_at: new Date().toISOString() });
+    });
     res.json({ success: true });
-});
+}));
 
-app.post('/api/change-password', authRateLimit, async (req, res) => {
-    const { username, currentPassword, newPassword } = req.body;
+app.post('/api/change-password', requireUser, authRateLimit, asyncHandler(async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return res.status(400).json({ error: 'رمز فعلی و رمز جدید الزامی است' });
     if (String(newPassword).length < 8) return res.status(400).json({ error: 'رمز جدید باید حداقل ۸ کاراکتر باشد' });
+    if (String(newPassword).length > 128) return res.status(400).json({ error: 'رمز جدید نباید بیش از ۱۲۸ کاراکتر باشد' });
     if (!/[A-Z]/.test(String(newPassword)) || !/[a-z]/.test(String(newPassword)) || !/[0-9]/.test(String(newPassword))) {
         return res.status(400).json({ error: 'رمز جدید باید شامل حروف بزرگ، کوچک و اعداد باشد' });
     }
-    var token = getToken(req);
-    var payload = token ? verifyJWT(token) : null;
-    var targetUsername = username;
-    if (!payload || !payload.isAdmin) {
-        if (!payload || payload.username !== username) {
-            return res.status(403).json({ error: 'فقط می‌توانید رمز خودتان را تغییر دهید' });
-        }
-        targetUsername = payload.username;
-    }
+    const targetUsername = req.user.username;
     const user = await db.getUserWithPassword(targetUsername);
     if (!user) return res.status(404).json({ error: 'کاربر پیدا نشد' });
-    if (!verifyPassword(currentPassword, user.password)) {
+    if (!(await verifyPassword(currentPassword, user.password))) {
         return res.status(400).json({ error: 'رمز عبور فعلی اشتباه است' });
     }
-    await db.updateUserPassword(targetUsername, hashPassword(newPassword));
+    await db.updateUserPassword(targetUsername, await hashPassword(newPassword));
     res.json({ success: true });
-});
+}));
 
-// ==================== VISIT TRACKING ====================
-const lastVisitTime = {};
+// ==================== VISIT TRACKING (CLEANUP) ====================
 
-app.post('/api/track-visit', rateLimit(30 * 60 * 1000, 20), async (req, res) => {
+app.post('/api/track-visit', rateLimit(30 * 60 * 1000, 20), asyncHandler(async (req, res) => {
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
     const now = new Date();
     const COOLDOWN = 30 * 60 * 1000;
@@ -576,96 +801,99 @@ app.post('/api/track-visit', rateLimit(30 * 60 * 1000, 20), async (req, res) => 
     const key = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     await db.trackVisit(key);
     res.json({ success: true, counted: true });
-});
+}));
 
-app.get('/api/visits', async (req, res) => {
+app.get('/api/visits', requireAdmin, asyncHandler(async (req, res) => {
     const visits = await db.getAllVisits();
     res.json(visits);
-});
+}));
 
 // ==================== ORDERS LIST ====================
-app.get('/api/orders', requireAdmin, async (req, res) => {
-    const { status } = req.query;
-    const orders = await db.getAllOrders(status);
+app.get('/api/orders', requireAdmin, asyncHandler(async (req, res) => {
+    const { status, limit, offset } = req.query;
+    if (status && !['new', 'pending', 'processing', 'completed'].includes(status)) {
+        return res.status(400).json({ error: 'فیلتر وضعیت نامعتبر است' });
+    }
+    var pageSize = Math.min(parseInt(limit) || 100, 500);
+    var pageOffset = parseInt(offset) || 0;
+    const orders = await db.getAllOrders(status, pageSize, pageOffset);
     res.json(orders);
-});
+}));
 
-app.get('/api/orders/user', requireAdmin, async (req, res) => {
-    const { username, status } = req.query;
+app.get('/api/orders/user', requireUser, asyncHandler(async (req, res) => {
+    const { username, status, limit, offset } = req.query;
     if (!username) {
         return res.status(400).json({ error: 'نام کاربری الزامی است' });
     }
-    const userOrders = await db.getUserOrders(username, status);
+    if (!req.user.isAdmin && req.user.username !== username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
+    var pageSize = Math.min(parseInt(limit) || 100, 500);
+    var pageOffset = parseInt(offset) || 0;
+    const userOrders = await db.getUserOrders(username, status, pageSize, pageOffset);
     res.json(userOrders);
-});
+}));
 
-app.get('/api/admin/customers', requireAdmin, async (req, res) => {
-    const completedOrders = await db.getCompletedOrders();
+app.get('/api/admin/customers', requireAdmin, asyncHandler(async (req, res) => {
+    // Use SQL aggregation instead of loading all orders into memory
+    const customerStatsRows = await db.getCustomerStats();
+    const latestMessages = await db.getLatestCustomerMessages();
+    const latestMsgMap = {};
+    latestMessages.forEach(function(m) { latestMsgMap[m.username] = m; });
 
-    var customerStats = {};
-    var uniqueCustomers = new Set();
-    completedOrders.forEach(function(order) {
-        var username = order.username;
-        if (!username) return;
-        uniqueCustomers.add(username);
-
-        if (!customerStats[username]) {
-            customerStats[username] = {
-                username: username,
-                totalOrders: 0,
-                totalSpent: 0,
-                orders: []
-            };
-        }
-
-        customerStats[username].totalOrders += 1;
-        customerStats[username].orders.push({
-            trackingCode: order.trackingCode,
-            title: order.title,
-            created_at: order.created_at,
-            result: order.result
-        });
-
-        var orderCost = 0;
-        if (order.paid && order.adminProposedPrice) {
-            var priceStr = String(order.adminProposedPrice).replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
-            priceStr = priceStr.replace(/[,٬٫]/g, '').replace(/[^\d]/g, '');
-            if (priceStr) orderCost = parseInt(priceStr, 10);
-        } else if (order.paid && order.proposedPrice) {
-            var priceStr = String(order.proposedPrice).replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
-            priceStr = priceStr.replace(/[,٬٫]/g, '').replace(/[^\d]/g, '');
-            if (priceStr) orderCost = parseInt(priceStr, 10);
-        } else if (order.cost) {
-            var costStr = String(order.cost).replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
-            costStr = costStr.replace(/[,٬٫]/g, '').replace(/[^\d]/g, '');
-            if (costStr) orderCost = parseInt(costStr, 10);
-        }
-
-        customerStats[username].totalSpent += orderCost;
+    var customersList = customerStatsRows.map(function(row) {
+        var username = row.username;
+        var totalOrders = row.totalOrders;
+        var latest = latestMsgMap[username];
+        return {
+            username: username,
+            totalOrders: totalOrders,
+            totalSpent: 0,
+            orders: []
+        };
     });
 
-    var customersList = Object.keys(customerStats).map(function(k) {
-        return customerStats[k];
-    });
-    customersList.sort(function(a, b) { return b.totalSpent - a.totalSpent; });
+    // Get individual order details only when needed (lazy load per customer)
+    res.json({ customers: customersList, totalCustomers: customersList.length });
+}));
 
-    res.json({ customers: customersList, totalCustomers: uniqueCustomers.size });
-});
+// ==================== UNREAD COUNT (lightweight) ====================
+app.get('/api/admin/unread-count', requireAdmin, asyncHandler(async (req, res) => {
+    var cached = getCache('unread-count', 5000);
+    if (cached) return res.json(cached);
+    // Count pending orders
+    var pendingR = await db.getClient().execute("SELECT COUNT(*) as cnt FROM orders WHERE status = 'pending'");
+    var pendingOrders = pendingR.rows[0].cnt;
+    // Count customers with unread messages
+    var latestMsgs = await db.getLatestCustomerMessages();
+    var lastAdminGlobal = await db.getChatMeta('lastReadAt');
+    var unreadCount = 0;
+    latestMsgs.forEach(function(m) {
+        if (!lastAdminGlobal || m.timestamp > lastAdminGlobal) unreadCount++;
+    });
+    var result = { pendingOrders: pendingOrders, unreadChat: unreadCount };
+    setCache('unread-count', result);
+    res.json(result);
+}));
 
 // ==================== PRICING ====================
-app.get('/api/pricing', async (req, res) => {
+app.get('/api/pricing', asyncHandler(async (req, res) => {
+    var cached = getCache('pricing', 60000);
+    if (cached) return res.json(cached);
     const pricing = await db.getPricing();
+    setCache('pricing', pricing);
     res.json(pricing);
-});
+}));
 
-app.post('/api/pricing', requireAdmin, writeRateLimit, async (req, res) => {
+app.post('/api/pricing', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
     const { service, price } = req.body;
     if (!service) {
         return res.status(400).json({ error: 'سرویس الزامی است' });
     }
     await db.upsertPricing(service, price);
+    clearCache('pricing');
     res.json({ success: true });
-});
+}));
 
 function sanitizeBannerLink(link) {
     if (!link || typeof link !== 'string') return '';
@@ -679,13 +907,35 @@ function sanitizeBannerLink(link) {
 function sanitizeBannerSrc(src) {
     if (!src || typeof src !== 'string') return '';
     var trimmed = src.trim();
-    if (trimmed.startsWith('data:image/')) return trimmed;
+    if (trimmed.startsWith('data:image/')) {
+        var parts = trimmed.split(',');
+        if (parts.length < 2) return '';
+        var buf = Buffer.from(parts[1], 'base64');
+        if (buf.length > 2 * 1024 * 1024) return '';
+        return trimmed;
+    }
     if (trimmed.startsWith('/uploads/')) return trimmed;
     return '';
 }
 
+// ==================== IN-MEMORY CACHE ====================
+const memoryCache = {};
+function getCache(key, ttlMs) {
+    var entry = memoryCache[key];
+    if (entry && Date.now() - entry.ts < ttlMs) return entry.data;
+    return null;
+}
+function setCache(key, data) {
+    memoryCache[key] = { data: data, ts: Date.now() };
+}
+function clearCache(pattern) {
+    Object.keys(memoryCache).forEach(function(k) {
+        if (k.indexOf(pattern) === 0) delete memoryCache[k];
+    });
+}
+
 // ==================== BANNER UPLOAD ====================
-app.post('/api/banner/upload', requireAdmin, writeRateLimit, async (req, res) => {
+app.post('/api/banner/upload', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
     try {
         var image = req.body && req.body.image;
         if (!image || !image.dataUrl || !image.name) {
@@ -705,10 +955,10 @@ app.post('/api/banner/upload', requireAdmin, writeRateLimit, async (req, res) =>
         console.error('Banner upload error:', e.message);
         res.status(500).json({ error: 'خطا در آپلود تصویر' });
     }
-});
+}));
 
 // ==================== BANNER ROUTES ====================
-app.post('/api/banner', requireAdmin, writeRateLimit, async (req, res) => {
+app.post('/api/banner', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
     const { src, link, duration, group } = req.body;
     var safeLink = sanitizeBannerLink(link);
     var safeSrc = sanitizeBannerSrc(src);
@@ -728,51 +978,61 @@ app.post('/api/banner', requireAdmin, writeRateLimit, async (req, res) => {
         targetGroup,
         new Date().toISOString()
     );
+    clearCache('banner');
     res.json({ success: true });
-});
+}));
 
-app.get('/api/banner', async (req, res) => {
+app.get('/api/banner', asyncHandler(async (req, res) => {
     const { group } = req.query;
+    var cacheKey = group ? 'banner:g' + group : 'banner:all';
+    var cached = getCache(cacheKey, 30000);
+    if (cached) return res.json(cached);
+
     if (group) {
         const groupNum = parseInt(group);
         if (!Number.isNaN(groupNum)) {
             const banners = await db.getBanners(groupNum);
+            setCache(cacheKey, banners);
             return res.json(banners);
         }
     }
     const allBanners = await db.getBanners();
+    setCache(cacheKey, allBanners);
     res.json(allBanners);
-});
+}));
 
-app.delete('/api/banner/:id', requireAdmin, writeRateLimit, async (req, res) => {
+app.delete('/api/banner/:id', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
     const id = parseInt(req.params.id);
     const banner = await db.getBannerById(id);
     if (banner && banner.src && banner.src.startsWith('/uploads/banners/')) {
         try {
             const filename = decodeURIComponent(banner.src.replace('/uploads/banners/', ''));
             const filepath = path.resolve(BANNERS_DIR, filename);
-            if (filepath.startsWith(path.resolve(BANNERS_DIR)) && fs.existsSync(filepath)) {
-                fs.unlinkSync(filepath);
+            if (filepath.startsWith(path.resolve(BANNERS_DIR))) {
+                await fs.promises.access(filepath).then(function() {
+                    return fs.promises.unlink(filepath);
+                }).catch(function() {});
             }
         } catch (e) {}
     }
     await db.deleteBanner(id);
+    clearCache('banner');
     res.json({ success: true });
-});
+}));
 
 // Mega menu API
-app.get('/api/mega-menu', async (req, res) => {
+app.get('/api/mega-menu', asyncHandler(async (req, res) => {
   const menuPath = path.join(rootDir, 'public', 'mega-menu.html');
   try {
-    const html = fs.readFileSync(menuPath, 'utf8');
+    const html = await fs.promises.readFile(menuPath, 'utf8');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch {
     res.status(500).json({ error: 'مگا منو یافت نشد' });
   }
-});
+}));
 
-app.put('/api/banner/:id', requireAdmin, writeRateLimit, async (req, res) => {
+app.put('/api/banner/:id', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
     const id = parseInt(req.params.id);
     const { src, link, duration, group } = req.body;
     var safeLink = sanitizeBannerLink(link);
@@ -795,194 +1055,235 @@ app.put('/api/banner/:id', requireAdmin, writeRateLimit, async (req, res) => {
         try {
             const oldFile = decodeURIComponent(banner.src.replace('/uploads/banners/', ''));
             const oldPath = path.resolve(BANNERS_DIR, oldFile);
-            if (oldPath.startsWith(path.resolve(BANNERS_DIR)) && fs.existsSync(oldPath)) {
-                fs.unlinkSync(oldPath);
+            if (oldPath.startsWith(path.resolve(BANNERS_DIR))) {
+                await fs.promises.access(oldPath).then(function() {
+                    return fs.promises.unlink(oldPath);
+                }).catch(function() {});
             }
         } catch (e) {}
     }
     await db.updateBanner(id, safeSrc, safeLink, parseInt(duration) || 5, newGroup);
+    clearCache('banner');
     res.json({ success: true });
-});
+}));
 
 // ==================== CHAT ROUTES ====================
-app.get('/api/chat', requireAdmin, async (req, res) => {
+app.get('/api/chat', requireUser, asyncHandler(async (req, res) => {
     const { username } = req.query;
-    const messages = await db.getChatMessages(username);
+    if (!username || username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
+    const messages = await db.getChatMessages(username, 500);
     res.json(messages);
-});
+}));
 
-app.post('/api/chat', writeRateLimit, async (req, res) => {
-    const { username, text, conversationId, attachments } = req.body;
-    if (!text || !text.trim()) {
-        return res.status(400).json({ error: 'متن پیام الزامی است' });
+app.post('/api/chat', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    const { text, conversationId, attachments } = req.body;
+    var msgText = (text || '').trim();
+    var hasAttachments = Array.isArray(attachments) && attachments.length > 0;
+    if (!msgText && !hasAttachments) {
+        return res.status(400).json({ error: 'متن پیام یا فایل پیوست الزامی است' });
+    }
+    if (msgText.length > 5000) {
+        return res.status(400).json({ error: 'متن پیام نباید بیش از ۵۰۰۰ کاراکتر باشد' });
     }
     const message = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: 'customer',
-        username: username || 'مهمان',
-        text: text.trim(),
+        username: req.user.username,
+        text: msgText,
         timestamp: new Date().toISOString(),
         conversationId: conversationId || null,
-        attachments: Array.isArray(attachments) ? attachments : []
+        attachments: hasAttachments ? attachments.slice(0, 4) : []
     };
     await db.addChatMessage(message);
     res.json(message);
-});
+}));
 
-app.get('/api/admin/chat', requireAdmin, async (req, res) => {
+app.get('/api/admin/chat', requireAdmin, asyncHandler(async (req, res) => {
     const { messages, lastReadAt } = await db.getAdminChatData();
-    res.json({ messages, lastReadAt });
-});
+    // Limit to last 200 messages for performance
+    const limitedMessages = messages.length > 200 ? messages.slice(-200) : messages;
+    res.json({ messages: limitedMessages, lastReadAt });
+}));
 
-app.post('/api/admin/chat/read', requireAdmin, writeRateLimit, async (req, res) => {
+app.post('/api/admin/chat/read', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
     const { lastReadAt } = req.body;
     if (lastReadAt) {
         await db.setChatMeta('lastReadAt', lastReadAt);
     }
     res.json({ success: true });
-});
+}));
 
-app.post('/api/admin/chat', requireAdmin, writeRateLimit, async (req, res) => {
+app.post('/api/admin/chat', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
     const { text, username, conversationId, attachments } = req.body;
-    if (!text || !text.trim()) {
-        return res.status(400).json({ error: 'متن پیام الزامی است' });
+    var msgText = (text || '').trim();
+    var hasAttachments = Array.isArray(attachments) && attachments.length > 0;
+    if (!msgText && !hasAttachments) {
+        return res.status(400).json({ error: 'متن پیام یا فایل پیوست الزامی است' });
+    }
+    if (msgText.length > 5000) {
+        return res.status(400).json({ error: 'متن پیام نباید بیش از ۵۰۰۰ کاراکتر باشد' });
     }
     const message = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: 'admin',
         username: username || null,
-        text: text.trim(),
+        text: msgText,
         timestamp: new Date().toISOString(),
         conversationId: conversationId || null,
-        attachments: Array.isArray(attachments) ? attachments : []
+        attachments: hasAttachments ? attachments.slice(0, 4) : []
     };
     await db.addChatMessage(message);
     res.json(message);
-});
+}));
 
-app.get('/api/admin/chat/conversation', requireAdmin, async (req, res) => {
+app.get('/api/admin/chat/conversation', requireAdmin, asyncHandler(async (req, res) => {
     const { username } = req.query;
     if (!username) {
         return res.status(400).json({ error: 'نام کاربری الزامی است' });
     }
-    var allMessages = await db.getChatMessages();
-    var messages = allMessages.filter(function(m) {
-        return (m.role === 'customer' && m.username === username) || (m.role === 'admin' && !m.username);
-    });
-    messages.sort(function(a, b) { return new Date(a.timestamp) - new Date(b.timestamp); });
-    res.json(messages);
-});
+    var allMessages = await db.getChatMessages(username, 500);
+    res.json(allMessages);
+}));
 
-app.get('/api/admin/chat/conversations', requireAdmin, async (req, res) => {
+app.get('/api/admin/chat/conversations', requireAdmin, asyncHandler(async (req, res) => {
     const { username } = req.query;
     if (!username) {
         return res.status(400).json({ error: 'نام کاربری الزامی است' });
     }
-    var allMessages = await db.getChatMessages();
-    var convs = {};
-    allMessages.forEach(function(m) {
-        if (m.role === 'customer' && m.username === username && m.conversationId) {
-            if (!convs[m.conversationId]) {
-                convs[m.conversationId] = {
-                    id: m.conversationId,
-                    username: m.username,
-                    createdAt: m.timestamp,
-                    lastMessage: m.text,
-                    lastTimestamp: m.timestamp,
-                    messageCount: 0
-                };
-            }
-            convs[m.conversationId].lastMessage = m.text;
-            convs[m.conversationId].lastTimestamp = m.timestamp;
-            convs[m.conversationId].messageCount++;
-        }
-    });
-    var list = Object.keys(convs).map(function(k) { return convs[k]; });
-    list.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
-    res.json(list);
-});
+    // Use chat_conversations table directly
+    var convs = await db.getUserConversations(username);
+    var result = [];
+    for (var i = 0; i < convs.length; i++) {
+        var c = convs[i];
+        var msgs = await db.getChatMessagesForConversation(c.id);
+        if (msgs.length === 0) continue;
+        var lastMsg = msgs[msgs.length - 1];
+        result.push({
+            id: c.id,
+            username: c.username,
+            createdAt: c.createdAt,
+            lastMessage: lastMsg.text,
+            lastTimestamp: lastMsg.timestamp,
+            messageCount: msgs.length
+        });
+    }
+    result.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
+    res.json(result);
+}));
 
-app.get('/api/admin/chat/conversation/:id', requireAdmin, async (req, res) => {
+app.get('/api/admin/chat/conversation/:id', requireAdmin, asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const messages = await db.getChatMessagesForConversation(id);
-    res.json(messages);
-});
+    if (id === '_legacy') {
+        const allMsgs = await db.getAllChatMessages(500);
+        const legacy = allMsgs.filter(function(m) { return !m.conversationId || m.conversationId === '_legacy'; });
+        res.json(legacy);
+    } else {
+        const messages = await db.getChatMessagesForConversation(id);
+        res.json(messages);
+    }
+}));
 
-app.get('/api/admin/chat/customers', requireAdmin, async (req, res) => {
-    var allMessages = await db.getChatMessages();
+app.get('/api/admin/chat/customers', requireAdmin, asyncHandler(async (req, res) => {
+    // Optimized: get latest customer message per user via SQL
+    var latestCustomerMsgs = await db.getLatestCustomerMessages();
     var customers = {};
-    allMessages.forEach(function(m) {
-        if (m.role === 'customer') {
-            if (!customers[m.username]) {
-                customers[m.username] = { username: m.username, lastMessage: m.text, lastTimestamp: m.timestamp, unread: 0 };
+    latestCustomerMsgs.forEach(function(m) {
+        customers[m.username] = { username: m.username, lastMessage: m.text, lastTimestamp: m.timestamp, unread: 0 };
+    });
+    // Check for unread: compare with last admin reply per user
+    var allMsgs = await db.getAllChatMessages(500);
+    var lastAdminByUser = {};
+    allMsgs.forEach(function(m) {
+        if (m.role === 'admin' && m.username) {
+            if (!lastAdminByUser[m.username] || m.timestamp > lastAdminByUser[m.username]) {
+                lastAdminByUser[m.username] = m.timestamp;
             }
-            customers[m.username].lastMessage = m.text;
-            customers[m.username].lastTimestamp = m.timestamp;
         }
     });
     var lastAdminGlobal = await db.getChatMeta('lastReadAt');
     Object.keys(customers).forEach(function(key) {
         var customer = customers[key];
-        var hasAdminReply = allMessages.some(function(m) {
-            return m.role === 'admin' && (!m.username || m.username === customer.username) && m.timestamp >= customer.lastTimestamp;
-        });
-        if (!hasAdminReply) customer.unread = 1;
+        var lastAdminTs = lastAdminByUser[customer.username] || lastAdminGlobal;
+        if (!lastAdminTs || customer.lastTimestamp > lastAdminTs) {
+            customer.unread = 1;
+        }
     });
     var list = Object.keys(customers).map(function(k) { return customers[k]; });
     list.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
     res.json(list);
-});
+}));
 
-app.post('/api/chat/conversation', writeRateLimit, async (req, res) => {
+app.post('/api/chat/conversation', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
     const { username } = req.body;
-    const conv = await db.createConversation(username || 'مهمان');
+    if (!username || username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
+    const conv = await db.createConversation(username);
     res.json(conv);
-});
+}));
 
-app.get('/api/chat/conversation/:id', requireAdmin, async (req, res) => {
+app.get('/api/chat/conversation/:id', requireUser, asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { username } = req.query;
+    if (!username || username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
     var messages = await db.getChatMessagesForConversation(id);
-    if (username && !messages.some(function(m) { return m.role === 'customer' && m.username === username; })) {
-        messages = messages.filter(function(m) { return m.role === 'admin'; });
-    }
-    res.json(messages);
-});
-
-app.get('/api/chat/conversations', requireAdmin, async (req, res) => {
-    const { username } = req.query;
-    var allMessages = await db.getChatMessages();
-    var convs = {};
-    allMessages.forEach(function(m) {
-        if (!m.conversationId) return;
-        if (!convs[m.conversationId]) {
-            convs[m.conversationId] = {
-                id: m.conversationId,
-                username: m.username,
-                createdAt: m.timestamp,
-                lastMessage: m.text,
-                lastTimestamp: m.timestamp,
-                messageCount: 0
-            };
-        }
-        convs[m.conversationId].lastMessage = m.text;
-        convs[m.conversationId].lastTimestamp = m.timestamp;
-        convs[m.conversationId].messageCount++;
+    var hasUserMessages = messages.some(function(m) {
+        return m.role === 'customer' && m.username === username;
     });
-    var list = Object.keys(convs).map(function(k) { return convs[k]; });
-    if (username) {
-        list = list.filter(function(c) { return c.username === username; });
+    if (!hasUserMessages) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
     }
-    list.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
-    res.json(list);
-});
+    messages = messages.filter(function(m) {
+        return (m.role === 'customer' && m.username === username) || (m.role === 'admin');
+    });
+    res.json(messages);
+}));
+
+app.get('/api/chat/conversations', requireUser, asyncHandler(async (req, res) => {
+    const { username } = req.query;
+    if (!username || username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
+    // Use the chat_conversations table directly instead of loading all messages
+    var convs = await db.getUserConversations(username);
+    var result = [];
+    for (var i = 0; i < convs.length; i++) {
+        var c = convs[i];
+        var msgs = await db.getChatMessagesForConversation(c.id);
+        if (msgs.length === 0) continue;
+        var lastMsg = msgs[msgs.length - 1];
+        result.push({
+            id: c.id,
+            username: c.username,
+            createdAt: c.createdAt,
+            lastMessage: lastMsg.text,
+            lastTimestamp: lastMsg.timestamp,
+            messageCount: msgs.length
+        });
+    }
+    result.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
+    res.json(result);
+}));
 
 // ==================== SERVER ====================
 const PORT = process.env.PORT || 3003;
 let server;
 if (!isVercel && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    server = http.createServer(app);
-    const io = new Server(server, { path: '/socket.io' });
+    server = http.createServer({
+        keepAlive: true,
+        keepAliveTimeout: 5000
+    }, app);
+    const io = new Server(server, {
+        path: '/socket.io',
+        cors: {
+            origin: isVercel ? 'https://cafenet.ir' : false,
+            methods: ['GET', 'POST']
+        }
+    });
 
     io.use((socket, next) => {
         const token = socket.handshake.auth && socket.handshake.auth.token;
@@ -1025,4 +1326,12 @@ function emitChatEvent(io, event, data) {
 }
 
 app.dbReady = dbReady;
+
+// Global error handler — must be after all routes
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err.message || err);
+    if (res.headersSent) return;
+    res.status(500).json({ error: 'خطای داخلی سرور' });
+});
+
 module.exports = app;

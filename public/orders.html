@@ -141,12 +141,12 @@
             }
             html += '<div class="order-card">'
                 + '<div class="order-card-header">'
-                + '<div class="order-card-title">' + title + '</div>'
-                + '<span class="order-status ' + statusClass + '">' + statusText + '</span>'
+                + '<div class="order-card-title">' + escapeHtml(title) + '</div>'
+                + '<span class="order-status ' + statusClass + '">' + escapeHtml(statusText) + '</span>'
                 + '</div>'
-                + '<div class="order-card-meta">' + (isSpecialService(n) ? '' : '<span class="order-category">دسته‌بندی: ' + (n.category || '—') + '</span>') + priceHtml + '</div>'
+                + '<div class="order-card-meta">' + (isSpecialService(n) ? '' : '<span class="order-category">دسته‌بندی: ' + escapeHtml(n.category || '—') + '</span>') + priceHtml + '</div>'
                 + '<div class="order-card-body">'
-                + '<span>کد سفارش: ' + (n.trackingCode || '—') + '</span>'
+                + '<span>کد سفارش: ' + escapeHtml(n.trackingCode || '—') + '</span>'
                 + '</div>'
                 + '<div class="order-card-footer">'
                 + '<a href="order-detail.html?code=' + encodeURIComponent(n.trackingCode) + '" class="btn-view-detail">جزئیات سفارش</a>'
@@ -167,7 +167,7 @@
         }
 
         fetch('/api/orders/user?username=' + encodeURIComponent(username))
-            .then(function(r){ return r.json(); })
+            .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(function(orders){
                 if(orders && orders.length > 0){
                     orders.sort(function(a, b){

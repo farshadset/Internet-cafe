@@ -362,6 +362,8 @@
 
             var state = { expandedCategories: {}, expandedGroups: {} };
 
+            function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]})}
+
             function renderPricing(pricingMap) {
                 container.innerHTML = '';
                 Object.keys(PRICING_DATA).forEach(function(category) {
@@ -425,11 +427,11 @@
                                         var serviceDiv = document.createElement('div');
                                         serviceDiv.className = 'pricing-service-item';
                                         serviceDiv.innerHTML = '<div class="service-info">' +
-                                            '<span class="service-title">' + subName + '</span>' +
+                                            '<span class="service-title">' + escapeHtml(subName) + '</span>' +
                                             '<span class="service-price ' + (typeof subPrice === 'number' ? 'has-price' : '') + '">' +
                                             (typeof subPrice === 'number' ? formatPrice(subPrice) + ' تومان' : 'قیمت تعیین نشده') +
                                             '</span></div>' +
-                                            '<button class="set-price-btn" data-service="' + subKey + '" data-title="' + subName + '" data-price="' + (subPrice || '') + '">' +
+                                            '<button class="set-price-btn" data-service="' + escapeHtml(subKey) + '" data-title="' + escapeHtml(subName) + '" data-price="' + (subPrice || '') + '">' +
                                             '<i class="fas fa-edit"></i></button>';
                                         serviceDiv.querySelector('.set-price-btn').addEventListener('click', function(e) {
                                             e.stopPropagation();
@@ -445,11 +447,11 @@
                                     var singleDiv = document.createElement('div');
                                     singleDiv.className = 'pricing-service-item';
                                     singleDiv.innerHTML = '<div class="service-info">' +
-                                        '<span class="service-title">' + service.title + '</span>' +
+                                        '<span class="service-title">' + escapeHtml(service.title) + '</span>' +
                                         '<span class="service-price ' + (typeof price === 'number' ? 'has-price' : '') + '">' +
                                         (typeof price === 'number' ? formatPrice(price) + ' تومان' : 'قیمت تعیین نشده') +
                                         '</span></div>' +
-                                        '<button class="set-price-btn" data-service="' + service.key + '" data-title="' + service.title + '" data-price="' + (price || '') + '">' +
+                                        '<button class="set-price-btn" data-service="' + escapeHtml(service.key) + '" data-title="' + escapeHtml(service.title) + '" data-price="' + (price || '') + '">' +
                                         '<i class="fas fa-edit"></i></button>';
                                     singleDiv.querySelector('.set-price-btn').addEventListener('click', function(e) {
                                         e.stopPropagation();
@@ -472,7 +474,7 @@
             var pricingMap = {};
 
             fetch('/api/pricing')
-                .then(function(r) { return r.json(); })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(pricing) {
                     pricing.forEach(function(p) { pricingMap[p.service] = p.price; });
                     renderPricing(pricingMap);
@@ -484,21 +486,27 @@
             savePriceBtn.addEventListener('click', function() {
                 var price = parseInt(stripCommas(servicePriceInput.value)) || 0;
                 if (!currentServiceKey) return;
+                if (savePriceBtn.disabled) return;
+                savePriceBtn.disabled = true;
                 fetch('/api/pricing', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ service: currentServiceKey, price: price })
                 })
-                .then(function(r) { return r.json(); })
-                .then(function(res) {
-                    if (res.success) {
+                .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                .then(function(result) {
+                    if (result.ok && result.data.success) {
                         pricingMap[currentServiceKey] = price;
                         pricePopup.classList.remove('active');
                         renderPricing(pricingMap);
+                    } else {
+                        alert(result.data.error || 'خطا در ذخیره قیمت');
+                        savePriceBtn.disabled = false;
                     }
                 })
                 .catch(function() {
-                    alert('خطا در ذخیره قیمت.');
+                    alert('خطا در ارتباط با سرور.');
+                    savePriceBtn.disabled = false;
                 });
             });
 

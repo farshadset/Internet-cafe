@@ -67,7 +67,7 @@
 
             function updateCounts() {
                 fetch('/api/orders/user?username=' + encodeURIComponent(username))
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                     .then(function(orders) {
                         var counts = { pending: 0, processing: 0, completed: 0 };
                         orders.forEach(function(o) {

@@ -692,6 +692,45 @@ main {
     background: #2980b9;
 }
 
+.attachment-thumbnail .upload-status {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 16px;
+    height: 16px;
+    background: #27ae60;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    opacity: 0;
+    animation: uploadStatusFadeIn 0.3s ease forwards;
+}
+
+.file-thumb .upload-status {
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #27ae60;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    opacity: 0;
+    animation: uploadStatusFadeIn 0.3s ease forwards;
+}
+
+@keyframes uploadStatusFadeIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+}
+
 .form-group small {
     font-size: 0.85rem;
     color: #666;
@@ -921,6 +960,27 @@ header.site {
     align-items: center;
     justify-content: center;
 }
+.form-card .f-field .file-preview .file-thumb.uploading { position: relative; }
+.form-card .f-field .file-preview .file-thumb .upload-progress-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.88); border-radius: 6px; z-index: 5;
+}
+.form-card .f-field .file-preview .file-thumb .upload-progress-ring circle:first-child { stroke: #e5e7eb; }
+.form-card .f-field .file-preview .file-thumb .upload-progress-ring .upload-progress-circle {
+    transition: stroke-dashoffset 0.15s ease-out; stroke: var(--firouzeh);
+}
+.form-card .f-field .file-preview .file-thumb .upload-progress-text {
+    font-size: 0.55rem; font-weight: 700; color: var(--firouzeh-dark); margin-top: 2px;
+}
+.form-card .f-field .file-preview .file-thumb .upload-cancel-btn {
+    position: absolute; top: -4px; right: -4px; width: 18px; height: 18px;
+    background: #e74c3c; color: #fff; border: none; border-radius: 50%;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    transition: transform 0.15s;
+}
+.form-card .f-field .file-preview .file-thumb .upload-cancel-btn:hover { transform: scale(1.15); }
 
 .form-card .f-field input:focus,
 .form-card .f-field textarea:focus,
