@@ -98,12 +98,13 @@
     </div>
     <script>
         (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
+        function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c];});}
         document.addEventListener('DOMContentLoaded', function() {
             var listEl = document.getElementById('customersList');
 
             function loadCustomers() {
-                fetch('/api/admin/chat/customers')
-                    .then(function(r) { return r.json(); })
+            fetch('/api/admin/chat/customers')
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                     .then(function(customers) {
                         listEl.innerHTML = '';
                         if (!customers || customers.length === 0) {
@@ -121,7 +122,7 @@
                                     '<div class="customer-name">' + escapeHtml(c.username || 'مهمان') + '</div>' +
                                     '<div class="customer-last-msg">' + escapeHtml(c.lastMessage || '') + '</div>' +
                                 '</div>' +
-                                (c.unread > 0 ? '<span class="badge">' + c.unread + '</span>' : '');
+                                (c.unread > 0 ? '<span class="badge">' + parseInt(c.unread, 10) + '</span>' : '');
                             listEl.appendChild(a);
                         });
                     })

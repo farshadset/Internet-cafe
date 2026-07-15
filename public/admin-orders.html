@@ -157,23 +157,26 @@
                         '</div>' +
                         (order.result ? '<div style="margin-bottom:0.25rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + escapeHtml(order.result) + '</span></div>' : '') +
                         '<div style="margin-bottom:0.25rem;text-align:center;">' +
-                        '<a href="order-detail.html?code=' + order.trackingCode + '" title="جزئیات سفارش" style="color:#667eea;font-size:1rem;text-decoration:none;margin-left:0.5rem;"><i class="fas fa-eye"></i></a>' +
-                        '<button class="edit-result-btn" data-code="' + order.trackingCode + '" title="ثبت نتیجه" style="color:#667eea;font-size:1rem;background:none;border:none;cursor:pointer;"><i class="fas fa-edit"></i></button>' +
+                        '<a href="order-detail.html?code=' + encodeURIComponent(order.trackingCode) + '" title="جزئیات سفارش" style="color:#667eea;font-size:1rem;text-decoration:none;margin-left:0.5rem;"><i class="fas fa-eye"></i></a>' +
+                        '<button class="edit-result-btn" data-code="' + escapeHtml(order.trackingCode) + '" title="ثبت نتیجه" style="color:#667eea;font-size:1rem;background:none;border:none;cursor:pointer;"><i class="fas fa-edit"></i></button>' +
                         '</div>' +
                         '<div class="status-btns" title="تغییر وضعیت سفارش">' +
-                        '<button class="status-btn status-btn-pending' + (order.status === 'pending' ? ' active' : '') + '" data-code="' + order.trackingCode + '" data-status="pending" title="در صف انتظار"><i class="fas fa-clock"></i></button>' +
-                        '<button class="status-btn status-btn-processing' + (order.status === 'processing' ? ' active' : '') + '" data-code="' + order.trackingCode + '" data-status="processing" title="در حال انجام"><i class="fas fa-spinner"></i></button>' +
-                        '<button class="status-btn status-btn-completed' + (order.status === 'completed' ? ' active' : '') + '" data-code="' + order.trackingCode + '" data-status="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>' +
+                        '<button class="status-btn status-btn-pending' + (order.status === 'pending' ? ' active' : '') + '" data-code="' + escapeHtml(order.trackingCode) + '" data-status="pending" title="در صف انتظار"><i class="fas fa-clock"></i></button>' +
+                        '<button class="status-btn status-btn-processing' + (order.status === 'processing' ? ' active' : '') + '" data-code="' + escapeHtml(order.trackingCode) + '" data-status="processing" title="در حال انجام"><i class="fas fa-spinner"></i></button>' +
+                        '<button class="status-btn status-btn-completed' + (order.status === 'completed' ? ' active' : '') + '" data-code="' + escapeHtml(order.trackingCode) + '" data-status="completed" title="انجام شده"><i class="fas fa-check-circle"></i></button>' +
                         '</div>' +
                         (isSpecialService(order) && !order.paid && order.priceStatus !== 'accepted' ? '<div style="margin-top:0.5rem;text-align:center;">' +
-                        '<button class="price-counter-btn" data-code="' + order.trackingCode + '" style="background:#ff9800;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;">ثبت قیمت جدید</button> ' +
-                        '<button class="price-accept-btn" data-code="' + order.trackingCode + '" style="background:#4caf50;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;">تایید قیمت کاربر</button>' +
+                        '<button class="price-counter-btn" data-code="' + escapeHtml(order.trackingCode) + '" style="background:#ff9800;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;">ثبت قیمت جدید</button> ' +
+                        '<button class="price-accept-btn" data-code="' + escapeHtml(order.trackingCode) + '" style="background:#4caf50;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;">تایید قیمت کاربر</button>' +
                         '</div>' : '');
                     container.appendChild(div);
                 });
 
                 document.querySelectorAll('.status-btn[data-code]').forEach(function(btn) {
                     btn.addEventListener('click', function() {
+                        if (this.disabled) return;
+                        this.disabled = true;
+                        var self = this;
                         var code = this.getAttribute('data-code');
                         var status = this.getAttribute('data-status');
                         var card = this.closest('.order-card');
@@ -182,20 +185,24 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ trackingCode: code, status: status })
                         })
-                        .then(function(r) { return r.json(); })
-                         .then(function(res) {
-                             if (res.success) {
+                        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                         .then(function(result) {
+                             if (result.ok && result.data.success) {
                                  card.querySelectorAll('.status-btn').forEach(function(b) { b.classList.remove('active'); });
-                                 this.classList.add('active');
+                                 self.classList.add('active');
                                  allOrders.forEach(function(o) {
                                      if (o.trackingCode === code) o.status = status;
                                  });
                                  updateOrdersBadge();
+                             } else {
+                                 alert(result.data.error || 'خطا در تغییر وضعیت');
                              }
-                         }.bind(this))
+                             self.disabled = false;
+                         })
                         .catch(function() {
-                             alert('خطا در تغییر وضعیت.');
-                        });
+                             alert('خطا در ارتباط با سرور.');
+                             self.disabled = false;
+                         });
                     });
                 });
 
@@ -219,33 +226,41 @@
 
                 document.querySelectorAll('.price-accept-btn').forEach(function(btn) {
                     btn.addEventListener('click', function() {
+                        if (this.disabled) return;
+                        this.disabled = true;
+                        var self = this;
                         var code = this.getAttribute('data-code');
                         fetch('/api/order/price-accept', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ trackingCode: code })
                         })
-                        .then(function(r) { return r.json(); })
-                        .then(function(res) {
-                            if (res.success) {
+                        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                        .then(function(result) {
+                            if (result.ok && result.data.success) {
                                 location.reload();
+                            } else {
+                                alert(result.data.error || 'خطا در تایید قیمت');
+                                self.disabled = false;
                             }
                         })
-                        .catch(function() {});
+                        .catch(function() { alert('خطا در اتصال به سرور'); self.disabled = false; });
                     });
                 });
             }
 
             saveResultBtn.addEventListener('click', function() {
+                if (saveResultBtn.disabled) return;
                 var result = resultText.value.trim();
+                saveResultBtn.disabled = true;
                 fetch('/api/order/result', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ trackingCode: currentTrackingCode, result: result })
                 })
-                .then(function(r) { return r.json(); })
-                .then(function(res) {
-                    if (res.success) {
+                .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                .then(function(result2) {
+                    if (result2.ok && result2.data.success) {
                         resultPopup.classList.remove('active');
                         allOrders.forEach(function(o) {
                             if (o.trackingCode === currentTrackingCode) o.result = result || '';
@@ -260,24 +275,30 @@
                             toast.classList.remove('show');
                             setTimeout(function() { toast.remove(); }, 300);
                         }, 3000);
+                    } else {
+                        alert(result2.data.error || 'خطا در ذخیره نتیجه');
+                        saveResultBtn.disabled = false;
                     }
                 })
                 .catch(function() {
-                    alert('خطا در ذخیره نتیجه.');
+                    alert('خطا در ارتباط با سرور.');
+                    saveResultBtn.disabled = false;
                 });
             });
 
             savePriceBtn.addEventListener('click', function() {
                 var price = adminPriceInput.value.trim();
                 if (!price) return;
+                if (savePriceBtn.disabled) return;
+                savePriceBtn.disabled = true;
                 fetch('/api/order/price-counter', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ trackingCode: currentTrackingCode, adminProposedPrice: price })
                 })
-                .then(function(r) { return r.json(); })
-                .then(function(res) {
-                    if (res.success) {
+                .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                .then(function(result) {
+                    if (result.ok && result.data.success) {
                         priceCounterPopup.classList.remove('active');
                         allOrders.forEach(function(o) {
                             if (o.trackingCode === currentTrackingCode) {
@@ -295,9 +316,12 @@
                             toast.classList.remove('show');
                             setTimeout(function() { toast.remove(); }, 300);
                         }, 3000);
+                    } else {
+                        alert(result.data.error || 'خطا در ارسال قیمت');
+                        savePriceBtn.disabled = false;
                     }
                 })
-                .catch(function() {});
+                .catch(function() { alert('خطا در اتصال به سرور'); savePriceBtn.disabled = false; });
             });
 
             closeResultPopup.addEventListener('click', function() {
@@ -317,7 +341,7 @@
             });
 
             fetch('/api/orders')
-                .then(function(r) { return r.json(); })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(orders) {
                     allOrders = orders;
                     renderOrders(allOrders);

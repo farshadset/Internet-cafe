@@ -1,12 +1,27 @@
 var _origFetch = window.fetch;
+var _cachedAdminToken = null;
+var _cachedUserToken = null;
+
+function _refreshTokenCache() {
+    try { var d = JSON.parse(localStorage.getItem('adminData') || 'null'); _cachedAdminToken = (d && d.token) ? d.token : null; } catch(e) { _cachedAdminToken = null; }
+    try { var d = JSON.parse(localStorage.getItem('userData') || 'null'); _cachedUserToken = (d && d.token) ? d.token : null; } catch(e) { _cachedUserToken = null; }
+}
+_refreshTokenCache();
+window.addEventListener('storage', function(e) {
+    if (e.key === 'adminData' || e.key === 'userData') _refreshTokenCache();
+});
+
 window.fetch = function(url, opts) {
     opts = opts || {};
     opts.headers = opts.headers || {};
-    var adminData = JSON.parse(localStorage.getItem('adminData') || 'null');
-    if (adminData && adminData.token && !opts.headers['Authorization']) {
-        var apiUrl = typeof url === 'string' ? url : (url.url || '');
-        if (apiUrl.indexOf('/api/') === 0) {
-            opts.headers['Authorization'] = 'Bearer ' + adminData.token;
+    var apiUrl = typeof url === 'string' ? url : (url.url || '');
+    if (apiUrl.indexOf('/api/') === 0) {
+        if (!opts.headers['Authorization']) {
+            if (_cachedAdminToken) {
+                opts.headers['Authorization'] = 'Bearer ' + _cachedAdminToken;
+            } else if (_cachedUserToken) {
+                opts.headers['Authorization'] = 'Bearer ' + _cachedUserToken;
+            }
         }
     }
     return _origFetch.call(this, url, opts);
@@ -16,6 +31,12 @@ function escapeHtml(v) {
     return String(v || '').replace(/[&<>"']/g, function(c) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
     });
+}
+
+function safeUrl(url) {
+    if (!url) return '';
+    if (/^(https?:\/\/|data:)/i.test(url)) return url;
+    return '';
 }
 
 function formatPrice(price) {
@@ -146,6 +167,7 @@ window.uploadAttachmentsForTrackingCode = async function(trackingCode, attachmen
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ trackingCode: trackingCode, attachment: attachmentForUpload(attachment) })
             });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
             const result = await response.json();
             if (result && result.success && result.attachment) uploaded.push(result.attachment);
         } catch (error) {}
@@ -184,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // بارگذاری بنر از دیتابیس
     fetch('/api/banner')
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(banners => {
             if (banners.length > 0 && document.getElementById('bannerImg')) {
                 document.getElementById('bannerImg').src = banners[0].src;
@@ -195,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // بارگذاری قیمت‌ها از دیتابیس
     let adminPricing = {};
     const pricingPromise = fetch('/api/pricing')
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(pricing => {
             pricing.forEach(p => { adminPricing[p.service] = p.price; });
         })
@@ -1211,6 +1233,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 showAttachmentLimitToast('لطفا صبر کنید فایل در حال بارگذاری است.');
                 return;
             }
+            const submitBtn = formElement.querySelector('[type="submit"]');
+            if (submitBtn && submitBtn.disabled) return;
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'در حال ارسال...'; }
 
             const raw = Object.fromEntries(new FormData(formElement));
             const transformed = config.transform(raw);
@@ -1220,7 +1245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: transformed.title || config.title,
                 cost: effectiveCost,
                 status: 'pending',
-                serviceKey: key,
+                serviceKey: serviceKey,
                 priceStatus: 'pending',
                 username: currentUserData ? currentUserData.username : null
             };
@@ -1234,20 +1259,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(body)
             })
-            .then(r => r.json())
+            .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
             .then(async result => {
-                localStorage.setItem('lastTrackingCode', result.trackingCode);
-                await window.uploadAttachmentsForTrackingCode(result.trackingCode, currentAttachments);
-                await saveAttachmentsAfterSubmit(result.trackingCode);
+                if (!result.ok || !result.data.trackingCode) {
+                    alert(result.data.error || 'خطا در ثبت سفارش');
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت سفارش'; }
+                    return;
+                }
+                localStorage.setItem('lastTrackingCode', result.data.trackingCode);
+                await window.uploadAttachmentsForTrackingCode(result.data.trackingCode, currentAttachments);
+                await saveAttachmentsAfterSubmit(result.data.trackingCode);
                 window.location.href = 'review.html';
             })
             .catch(async () => {
-                const fallbackCode = 'CFT-' + Date.now().toString().slice(-8);
-                const fallbackOrder = { ...body, trackingCode: fallbackCode };
-                localStorage.setItem('lastTrackingCode', fallbackCode);
-                await window.uploadAttachmentsForTrackingCode(fallbackCode, currentAttachments);
-                await saveAttachmentsAfterSubmit(fallbackCode);
-                window.location.href = 'review.html';
+                alert('خطا در اتصال به سرور. لطفاً دوباره تلاش کنید.');
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت سفارش'; }
             });
         });
     }
@@ -1276,55 +1302,89 @@ document.addEventListener('DOMContentLoaded', () => {
     if (authForm) {
         authForm.addEventListener('submit', e => {
             e.preventDefault();
+            const submitBtn = authForm.querySelector('[type="submit"]');
+            if (submitBtn && submitBtn.disabled) return;
+
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const phone = document.getElementById('phone').value;
-            localStorage.setItem('userData', JSON.stringify({ username, phone }));
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (password !== confirmPassword) {
+                alert('رمز عبور و تکرار آن مطابقت ندارند!');
+                return;
+            }
+
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'در حال ثبت نام...'; }
             fetch('/api/register', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username, password, phone })
-            }).catch(() => {});
-            window.location.href = 'index.html';
+                body: JSON.stringify({ username, password })
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(result) {
+                if (!result.ok || !result.data.success) {
+                    alert(result.data.error || 'خطا در ثبت نام');
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت نام'; }
+                    return;
+                }
+                localStorage.setItem('userData', JSON.stringify({ username: username, token: result.data.token }));
+                window.location.href = 'index.html';
+            })
+            .catch(function() {
+                alert('خطا در اتصال به سرور');
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت نام'; }
+            });
         });
     }
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', e => {
             e.preventDefault();
+            const submitBtn = loginForm.querySelector('[type="submit"]');
+            if (submitBtn && submitBtn.disabled) return;
+
             const username = document.getElementById('loginUsername').value;
             const password = document.getElementById('loginPassword').value;
             
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'در حال ورود...'; }
             fetch('/api/admin/login', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ username, password })
             })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.success && data.token) {
-                    localStorage.setItem('adminData', JSON.stringify({ username: username, token: data.token }));
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(result) {
+                if (result.ok && result.data.success && result.data.token) {
+                    localStorage.setItem('adminData', JSON.stringify({ username: username, token: result.data.token }));
                     window.location.href = 'admin.html';
+                } else if (result.data.error && result.data.error.indexOf('قفل') !== -1) {
+                    alert(result.data.error);
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ورود'; }
                 } else {
                     fetch('/api/login', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ username: username, password: password })
                     })
-                    .then(function(r2) { return r2.json(); })
-                    .then(function(data2) {
-                        if (data2.success) {
-                            localStorage.setItem('userData', JSON.stringify({ username: username }));
+                    .then(function(r2) { return r2.json().then(function(d2) { return { ok: r2.ok, data: d2 }; }); })
+                    .then(function(result2) {
+                        if (result2.ok && result2.data.success) {
+                            localStorage.setItem('userData', JSON.stringify({ username: username, token: result2.data.token }));
                             window.location.href = 'index.html';
                         } else {
-                            alert('نام کاربری یا رمز عبور اشتباه است!');
+                            alert(result2.data.error || 'نام کاربری یا رمز عبور اشتباه است!');
+                            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ورود'; }
                         }
                     })
-                    .catch(function() { alert('نام کاربری یا رمز عبور اشتباه است!'); });
+                    .catch(function() {
+                        alert('خطا در اتصال به سرور.');
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ورود'; }
+                    });
                 }
             })
             .catch(function() {
                 alert('خطا در اتصال به سرور. لطفاً دوباره تلاش کنید.');
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ورود'; }
             });
         });
     }
@@ -1359,23 +1419,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatBadge = document.getElementById('chatBadge');
 
     function updateAdminBadges() {
-        fetch('/api/orders')
-            .then(r => r.json())
-            .then(orders => {
-                const pendingCount = (orders || []).filter(o => o.status === 'pending').length;
+        fetch('/api/admin/unread-count')
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(data => {
                 if (ordersBadge) {
-                    ordersBadge.textContent = pendingCount;
-                    ordersBadge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+                    ordersBadge.textContent = data.pendingOrders || 0;
+                    ordersBadge.style.display = (data.pendingOrders || 0) > 0 ? 'inline-block' : 'none';
                 }
-            })
-            .catch(() => {});
-        fetch('/api/admin/chat/customers')
-            .then(r => r.json())
-            .then(function(customers) {
-                const newCount = (customers || []).reduce(function(sum, c) { return sum + (c.unread || 0); }, 0);
                 if (chatBadge) {
-                    chatBadge.textContent = newCount;
-                    chatBadge.style.display = newCount > 0 ? 'inline-block' : 'none';
+                    chatBadge.textContent = data.unreadChat || 0;
+                    chatBadge.style.display = (data.unreadChat || 0) > 0 ? 'inline-block' : 'none';
                 }
             })
             .catch(() => {});
@@ -1390,8 +1443,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (adminLogoutBtn) {
         adminLogoutBtn.addEventListener('click', e => {
             e.preventDefault();
+            fetch('/api/logout', { method: 'POST' }).catch(function(){});
             localStorage.removeItem('adminData');
-            document.cookie = 'token=; Path=/; Max-Age=0';
             window.location.href = 'login.html';
         });
     }
@@ -1400,6 +1453,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', e => {
             e.preventDefault();
+            fetch('/api/logout', { method: 'POST' }).catch(function(){});
             localStorage.removeItem('userData');
             window.location.href = 'index.html';
         });
@@ -1421,13 +1475,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ trackingCode })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
+            .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+            .then(function(result) {
+                if (result.ok && result.data.success) {
                     window.location.href = 'success.html';
+                } else {
+                    alert(result.data.error || 'خطا در تایید پرداخت');
+                    confirmPaymentBtn.disabled = false;
+                    confirmPaymentBtn.textContent = 'تایید و پرداخت';
                 }
             })
-            .catch(() => {
+            .catch(function() {
                 alert('خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.');
                 confirmPaymentBtn.disabled = false;
                 confirmPaymentBtn.textContent = 'تایید و پرداخت';
@@ -1447,6 +1505,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let inlinePolling = null;
     let conversationsData = [];
     let inlineAttachments = [];
+    var pendingReads = 0;
+    var activeReaders = {};
     let inlineAttachmentPreview = null;
     let inlinePinAttachment = null;
     let inlineAttachmentFile = null;
@@ -1474,8 +1534,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function createNewConversation() {
-        currentConversationId = 'conv_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-        return Promise.resolve({ id: currentConversationId });
+        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+        var username = userData ? userData.username : 'مهمان';
+        return fetch('/api/chat/conversation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username })
+        })
+        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+        .then(function(result) {
+            if (!result.ok || !result.data.id) {
+                throw new Error('خطا در ایجاد گفتگو');
+            }
+            currentConversationId = result.data.id;
+            return result.data;
+        })
+        .catch(function(err) {
+            console.error('خطا در ایجاد گفتگو:', err);
+            currentConversationId = 'conv_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            return { id: currentConversationId };
+        });
     }
 
     function loadConversations() {
@@ -1484,7 +1562,7 @@ document.addEventListener('DOMContentLoaded', () => {
         var username = userData ? userData.username : 'مهمان';
         return fetch('/api/chat/conversations?username=' + encodeURIComponent(username))
             .then(function(r) {
-                if (r.status === 404) return [];
+                if (r.status === 404 || !r.ok) return [];
                 return r.json().catch(function(){ return []; });
             })
             .then(function(convs) {
@@ -1501,7 +1579,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     div.setAttribute('data-conv-id', c.id);
                     var dateStr = c.lastTimestamp ? new Date(c.lastTimestamp).toLocaleDateString('fa-IR') : '';
                     var preview = c.lastMessage && c.lastMessage.length > 30 ? c.lastMessage.substring(0, 30) + '...' : (c.lastMessage || 'گفتگوی جدید');
-                    div.innerHTML = '<div class="conv-title" title="' + (c.lastMessage || '').replace(/"/g, '&quot;') + '">' + preview + '</div><div class="conv-date">' + dateStr + '</div>';
+                    div.innerHTML = '<div class="conv-title" title="' + escapeHtml(c.lastMessage || '') + '">' + escapeHtml(preview) + '</div><div class="conv-date">' + dateStr + '</div>';
                     div.addEventListener('click', function() {
                         currentConversationId = c.id;
                         loadInlineMessages();
@@ -1511,7 +1589,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             })
             .catch(function() {
-                conversationsList.innerHTML = '<div style="color:#999;font-size:0.85rem;text-align:center;padding:1rem;">خطا در بارگذاری</div>';
+                conversationsList.innerHTML = '<div style="color:#e74c3c;font-size:0.85rem;text-align:center;padding:1rem;">خطا در بارگذاری گفتگوها</div>';
             });
     }
 
@@ -1526,6 +1604,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function updateInlineSendButton() {
+        if (inlineSendBtn) {
+            var hasText = inlineMessageInput && inlineMessageInput.value.trim();
+            var hasAttachments = inlineAttachments.length > 0;
+            inlineSendBtn.disabled = (!hasText && !hasAttachments) || pendingReads > 0;
+        }
+    }
+
     function setupInlineAttachments() {
         if (!inlineChatMessages) return;
         var chatInput = inlineChatMessages.parentElement.querySelector('.admin-chat-input-area');
@@ -1537,6 +1623,13 @@ document.addEventListener('DOMContentLoaded', () => {
             inlineAttachmentPreview.className = 'attachment-preview hidden';
             inlineAttachmentPreview.id = 'inlineAttachmentPreview';
             chatInput.insertBefore(inlineAttachmentPreview, chatInput.firstChild);
+        }
+
+        if (!document.getElementById('uploadProgressStyles')) {
+            var style = document.createElement('style');
+            style.id = 'uploadProgressStyles';
+            style.textContent = '.attachment-thumbnail.uploading{position:relative}.upload-progress-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.85);border-radius:6px;z-index:5}.upload-progress-ring{filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1))}.upload-progress-ring circle:first-child{stroke:#e5e7eb}.upload-progress-ring .upload-progress-circle{transition:stroke-dashoffset 0.15s ease-out;stroke:#667eea}.upload-progress-text{font-size:0.6rem;font-weight:700;color:#667eea;margin-top:2px}.upload-cancel-btn{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#e74c3c;color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.25);transition:transform 0.15s}.upload-cancel-btn:hover{transform:scale(1.15)}';
+            document.head.appendChild(style);
         }
 
         inlinePinAttachment = document.getElementById('inlinePinAttachment') || inlinePinAttachment;
@@ -1565,7 +1658,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         inlineAttachmentFile.addEventListener('change', function(e) {
             var files = Array.from(e.target.files || []);
-            var remaining = 4 - inlineAttachments.length;
+            var remaining = 4 - inlineAttachments.length - pendingReads;
             if (remaining <= 0) {
                 alert('فقط می توان چهار فایل آپلود کرد');
                 inlineAttachmentFile.value = '';
@@ -1576,36 +1669,105 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('فقط می توان چهار فایل آپلود کرد. ' + (files.length - remaining) + ' فایل حذف شد.');
             }
             toAdd.forEach(function(file) {
+                var attId = 'att_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+                var isImage = file.type && file.type.startsWith('image/');
+
+                var html = '<div class="attachment-thumbnail uploading" data-attachment-id="' + escapeHtml(attId) + '">';
+                if (isImage) {
+                    html += '<img src="" alt="' + escapeHtml(file.name) + '" style="opacity:0.3">';
+                } else {
+                    html += '<div class="pdf-icon" style="opacity:0.3">PDF</div>';
+                }
+                html += '<div class="upload-progress-overlay"><svg class="upload-progress-ring" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle class="upload-progress-circle" data-progress-ring="' + attId + '" cx="18" cy="18" r="14" fill="none" stroke="#667eea" stroke-width="3" stroke-dasharray="87.96" stroke-dashoffset="87.96" transform="rotate(-90 18 18)" stroke-linecap="round"/></svg><span class="upload-progress-text" data-progress-text="' + attId + '">0%</span></div>';
+                html += '<button type="button" class="remove-attachment upload-cancel-btn" data-cancel-reader="' + attId + '"><i class="fas fa-times"></i></button>';
+                html += '</div>';
+                inlineAttachmentPreview.insertAdjacentHTML('beforeend', html);
+                inlineAttachmentPreview.classList.remove('hidden');
+
+                if (isImage) {
+                    var previewReader = new FileReader();
+                    previewReader.onload = function(ev) {
+                        var img = inlineAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"] img');
+                        if (img) { img.src = ev.target.result; img.style.opacity = '1'; }
+                    };
+                    previewReader.readAsDataURL(file);
+                }
+
+                pendingReads++;
+                updateInlineSendButton();
+
                 var reader = new FileReader();
-                reader.onload = function(event) {
-                    var attachment = {
-                        id: 'att_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+                activeReaders[attId] = reader;
+
+                reader.onprogress = function(ev) {
+                    if (ev.lengthComputable) {
+                        var pct = Math.round((ev.loaded / ev.total) * 100);
+                        var circle = document.querySelector('[data-progress-ring="' + attId + '"]');
+                        var text = document.querySelector('[data-progress-text="' + attId + '"]');
+                        if (circle) circle.style.strokeDashoffset = (87.96 * (1 - pct / 100));
+                        if (text) text.textContent = pct + '%';
+                    }
+                };
+
+                reader.onload = function(ev) {
+                    var att = {
+                        id: attId,
                         name: file.name,
                         type: file.type,
                         size: file.size,
-                        dataUrl: event.target.result,
+                        dataUrl: ev.target.result,
                         uploadedAt: new Date().toISOString()
                     };
-                    inlineAttachments.push(attachment);
-                    renderInlineAttachmentPreview(attachment, event.target.result);
+                    inlineAttachments.push(att);
+                    var thumb = inlineAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
+                    if (thumb) thumb.remove();
+                    renderInlineAttachmentPreview(att, ev.target.result);
+                    delete activeReaders[attId];
+                    pendingReads--;
+                    updateInlineSendButton();
                 };
+
+                reader.onerror = function() {
+                    var thumb = inlineAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
+                    if (thumb) thumb.remove();
+                    delete activeReaders[attId];
+                    pendingReads--;
+                    updateInlineSendButton();
+                    showToast('خطا در خواندن فایل');
+                };
+
                 reader.readAsDataURL(file);
             });
             inlineAttachmentFile.value = '';
+        });
+
+        inlineAttachmentPreview.addEventListener('click', function(e) {
+            var cancelBtn = e.target.closest('[data-cancel-reader]');
+            if (cancelBtn) {
+                var attId = cancelBtn.getAttribute('data-cancel-reader');
+                if (activeReaders[attId]) {
+                    activeReaders[attId].abort();
+                    delete activeReaders[attId];
+                }
+                var thumb = inlineAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
+                if (thumb) thumb.remove();
+                pendingReads--;
+                updateInlineSendButton();
+            }
         });
     }
 
     function renderInlineAttachmentPreview(attachment, dataUrl) {
         if (!inlineAttachmentPreview) return;
         var isImage = attachment.type && attachment.type.startsWith('image/');
-        var html = '<div class="attachment-thumbnail" data-attachment-id="' + attachment.id + '">';
+        var html = '<div class="attachment-thumbnail" data-attachment-id="' + escapeHtml(attachment.id) + '">';
         if (isImage) {
-            html += '<img src="' + dataUrl + '" alt="' + attachment.name + '">';
+            html += '<img src="' + escapeHtml(dataUrl) + '" alt="' + escapeHtml(attachment.name) + '">';
         } else {
             html += '<div class="pdf-icon">PDF</div>';
         }
+        html += '<span class="upload-status"><i class="fas fa-check"></i></span>';
         html += '<button type="button" class="remove-attachment" onclick="window.removeInlineAttachment(this)"><i class="fas fa-times"></i></button>';
-        html += '<button type="button" class="download-attachment" onclick="window.downloadInlineAttachment(\'' + attachment.id + '\')"><i class="fas fa-download"></i></button>';
         html += '</div>';
         inlineAttachmentPreview.insertAdjacentHTML('beforeend', html);
         inlineAttachmentPreview.classList.remove('hidden');
@@ -1615,10 +1777,16 @@ document.addEventListener('DOMContentLoaded', () => {
         var thumbnail = button.closest('.attachment-thumbnail');
         if (thumbnail) {
             var attachmentId = thumbnail.getAttribute('data-attachment-id');
+            if (activeReaders[attachmentId]) {
+                activeReaders[attachmentId].abort();
+                delete activeReaders[attachmentId];
+                pendingReads--;
+            }
             inlineAttachments = inlineAttachments.filter(function(a) {
                 return a.id !== attachmentId;
             });
             thumbnail.remove();
+            updateInlineSendButton();
         }
         if (inlineAttachmentPreview && inlineAttachmentPreview.querySelectorAll('.attachment-thumbnail').length === 0) {
             inlineAttachmentPreview.classList.add('hidden');
@@ -1629,7 +1797,7 @@ document.addEventListener('DOMContentLoaded', () => {
         var attachment = inlineAttachments.find(function(a) { return a.id === attachmentId; });
         if (!attachment) return;
         var a = document.createElement('a');
-        a.href = attachment.dataUrl;
+        a.href = safeUrl(attachment.dataUrl);
         a.download = attachment.name;
         document.body.appendChild(a);
         a.click();
@@ -1671,12 +1839,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         thumb.addEventListener('click', function() {
                             if (att.dataUrl) {
-                                var a = document.createElement('a');
-                                a.href = att.dataUrl;
-                                a.download = att.name;
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
+                                var safeHref = safeUrl(att.dataUrl);
+                                if (safeHref) {
+                                    var a = document.createElement('a');
+                                    a.href = safeHref;
+                                    a.download = att.name;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                }
                             }
                         });
                         attContainer.appendChild(thumb);
@@ -1697,7 +1868,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentConversationId) {
             fetch('/api/chat/conversation/' + currentConversationId + '?username=' + encodeURIComponent(username))
                 .then(function(r) {
-                    if (r.status === 404) return [];
+                    if (r.status === 404 || !r.ok) return [];
                     return r.json().catch(function(){ return []; });
                 })
                 .then(function(messages) {
@@ -1705,15 +1876,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .catch(function(err) {
                     console.error('خطا در بارگذاری پیام‌ها:', err);
+                    if (inlineChatMessages && inlineChatMessages.children.length === 0) {
+                        var errDiv = document.createElement('div');
+                        errDiv.style.cssText = 'text-align:center;color:#e74c3c;padding:1rem;';
+                        errDiv.textContent = 'خطا در بارگذاری پیام‌ها';
+                        inlineChatMessages.appendChild(errDiv);
+                    }
                 });
         } else {
             fetch('/api/chat?username=' + encodeURIComponent(username))
-                .then(function(r) { return r.json(); })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(messages) {
                     renderMessages(messages);
                 })
                 .catch(function(err) {
                     console.error('خطا در بارگذاری پیام‌ها:', err);
+                    if (inlineChatMessages && inlineChatMessages.children.length === 0) {
+                        var errDiv = document.createElement('div');
+                        errDiv.style.cssText = 'text-align:center;color:#e74c3c;padding:1rem;';
+                        errDiv.textContent = 'خطا در بارگذاری پیام‌ها';
+                        inlineChatMessages.appendChild(errDiv);
+                    }
                 });
         }
     }
@@ -1722,10 +1905,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!inlineMessageInput) return;
         var text = inlineMessageInput.value.trim();
         if (!text && inlineAttachments.length === 0) return;
+        if (pendingReads > 0) return;
+        if (inlineSendBtn && inlineSendBtn.disabled) return;
 
         function doSend(conversationId) {
             var userData = JSON.parse(localStorage.getItem('userData') || 'null');
             var username = userData ? userData.username : 'مهمان';
+            if (inlineSendBtn) { inlineSendBtn.disabled = true; }
             fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1735,20 +1921,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     conversationId: conversationId,
                     attachments: inlineAttachments
                 })
-            }).then(function(r) { return r.json(); })
-              .then(function() {
+            }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+              .then(function(result) {
+                  if (!result.ok) {
+                      alert(result.data.error || 'خطا در ارسال پیام');
+                      if (inlineSendBtn) { inlineSendBtn.disabled = false; }
+                      return;
+                  }
                   inlineMessageInput.value = '';
                   inlineAttachments = [];
                   if (inlineAttachmentPreview) {
                       inlineAttachmentPreview.innerHTML = '';
                       inlineAttachmentPreview.classList.add('hidden');
                   }
+                  if (inlineSendBtn) { inlineSendBtn.disabled = false; }
                   loadInlineMessages();
                   loadConversations();
               })
               .catch(function(err) {
                   console.error('خطا در ارسال پیام:', err);
-                  inlineMessageInput.value = '';
+                  alert('خطا در ارسال پیام');
+                  if (inlineSendBtn) { inlineSendBtn.disabled = false; }
               });
         }
 
@@ -1852,7 +2045,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentConversationId = null;
             } else {
                 if (chatPanel && chatPanel.style.display !== 'none' && !inlinePolling) {
-                    inlinePolling = setInterval(loadInlineMessages, 3000);
+                    inlinePolling = setInterval(loadInlineMessages, 8000);
                 }
             }
         });
@@ -1860,14 +2053,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (chatPanel && !inlinePolling) {
             chatPanel.addEventListener('transitionend', function() {
                 if (chatPanel.style.display !== 'none' && !inlinePolling) {
-                    inlinePolling = setInterval(loadInlineMessages, 3000);
+                    inlinePolling = setInterval(loadInlineMessages, 8000);
                 }
             });
         }
     }
 
     function isAuthenticated() {
-        return !!(localStorage.getItem('adminData') || localStorage.getItem('userData'));
+        var adminData = JSON.parse(localStorage.getItem('adminData') || 'null');
+        if (adminData && adminData.token) return true;
+        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+        return !!(userData && userData.token);
     }
 
     function isAdmin() {
@@ -1953,31 +2149,36 @@ const bannerUpload = document.getElementById('bannerUpload');
 
      if (saveBannerBtn && previewImg) {
          saveBannerBtn.addEventListener('click', function() {
+             if (saveBannerBtn.disabled) return;
+             saveBannerBtn.disabled = true;
              const bannerSrc = previewImg.src;
-             fetch('/api/banner', {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({ src: bannerSrc })
-             })
-             .then(() => {
-                 const toast = document.createElement('div');
-                 toast.className = 'toast';
-                 toast.textContent = 'بنر با موفقیت ذخیره شد!';
-                 document.body.appendChild(toast);
-                 toast.classList.add('show');
-                 setTimeout(() => {
-                     toast.classList.remove('show');
-                     setTimeout(() => toast.remove(), 300);
-                 }, 3000);
-                 window.location.href = 'index.html';
-             })
-             .catch(() => {
-                 let banners = JSON.parse(localStorage.getItem('banners') || '[]');
-                 banners.push({ id: Date.now(), src: bannerSrc, date: new Date().toISOString() });
-                 localStorage.setItem('banners', JSON.stringify(banners));
-                 alert('بنر ذخیره شد (در حافظه مرورگر)!');
-                 window.location.href = 'index.html';
-             });
+              fetch('/api/banner', {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({ src: bannerSrc })
+              })
+              .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+              .then(result => {
+                  if (!result.ok) {
+                      alert(result.data.error || 'خطا در ذخیره بنر');
+                      saveBannerBtn.disabled = false;
+                      return;
+                  }
+                  const toast = document.createElement('div');
+                  toast.className = 'toast';
+                  toast.textContent = 'بنر با موفقیت ذخیره شد!';
+                  document.body.appendChild(toast);
+                  toast.classList.add('show');
+                  setTimeout(() => {
+                      toast.classList.remove('show');
+                      setTimeout(() => toast.remove(), 300);
+                  }, 3000);
+                  window.location.href = 'index.html';
+              })
+              .catch(() => {
+                  alert('خطا در اتصال به سرور');
+                  saveBannerBtn.disabled = false;
+              });
          });
      }
 
@@ -2053,9 +2254,9 @@ if (pinAttachment && attachmentFile) {
               if (!attachmentPreview) return;
 
               if (attachment.type.startsWith('image/')) {
-                  attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail" data-attachment-id="' + escapeAttachmentHtml(attachment.id) + '"><img src="' + dataUrl + '" alt="' + escapeAttachmentHtml(attachment.name) + '"><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
+                  attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail" data-attachment-id="' + escapeAttachmentHtml(attachment.id) + '"><img src="' + escapeAttachmentHtml(dataUrl) + '" alt="' + escapeAttachmentHtml(attachment.name) + '"><span class="upload-status"><i class="fas fa-check"></i></span><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
               } else {
-                  attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail" data-attachment-id="' + escapeAttachmentHtml(attachment.id) + '"><div class="pdf-icon">PDF</div><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
+                  attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail" data-attachment-id="' + escapeAttachmentHtml(attachment.id) + '"><div class="pdf-icon">PDF</div><span class="upload-status"><i class="fas fa-check"></i></span><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
               }
 
               attachmentPreview.classList.remove('hidden');
@@ -2187,9 +2388,11 @@ const grid = document.getElementById('attachmentPopupGrid');
                 const isImage = attachment.type && attachment.type.startsWith('image/');
                 const safeName = escapeAttachmentHtml(attachment.name || 'فایل پیوست');
                 const safeUrl = escapeAttachmentHtml(attachment.url || attachment.dataUrl);
+                const jsUrl = (attachment.url || attachment.dataUrl || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const jsName = (attachment.name || 'فایل پیوست').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const preview = isImage
-                    ? '<div class="popup-image-wrapper"><img src="' + safeUrl + '" alt="' + safeName + '"><button type="button" class="popup-download-icon" onclick="downloadPopupImage(\'' + safeUrl + '\', \'' + safeName + '\')"><i class="fas fa-download"></i></button></div>'
-                    : '<div class="popup-media-wrapper"><div class="popup-pdf-icon">PDF</div><button type="button" class="popup-download-icon" onclick="downloadPopupImage(\'' + safeUrl + '\', \'' + safeName + '\')"><i class="fas fa-download"></i></button></div>';
+                    ? '<div class="popup-image-wrapper"><img src="' + safeUrl + '" alt="' + safeName + '"><button type="button" class="popup-download-icon" data-url=\'' + jsUrl + '\' data-name=\'' + jsName + '\'><i class="fas fa-download"></i></button></div>'
+                    : '<div class="popup-media-wrapper"><div class="popup-pdf-icon">PDF</div><button type="button" class="popup-download-icon" data-url=\'' + jsUrl + '\' data-name=\'' + jsName + '\'><i class="fas fa-download"></i></button></div>';
 
                 return '<div class="attachment-popup-item">' +
                     '<div class="attachment-popup-media">' + preview + '</div>' +
@@ -2198,12 +2401,22 @@ const grid = document.getElementById('attachmentPopupGrid');
             }).join('');
 
            popup.classList.add('active');
+
+           grid.querySelectorAll('.popup-download-icon').forEach(function(btn) {
+               btn.addEventListener('click', function() {
+                   var url = this.getAttribute('data-url');
+                   var name = this.getAttribute('data-name');
+                   if (url) window.downloadPopupImage(url, name || 'attachment');
+               });
+           });
        };
 
-       window.downloadPopupImage = function(dataUrl, filename) {
-           const a = document.createElement('a');
-           a.href = dataUrl;
-           a.download = filename;
+        window.downloadPopupImage = function(dataUrl, filename) {
+            var safeHref = safeUrl(dataUrl);
+            if (!safeHref) return;
+            const a = document.createElement('a');
+            a.href = safeHref;
+            a.download = filename;
            document.body.appendChild(a);
            a.click();
            document.body.removeChild(a);
@@ -2217,7 +2430,7 @@ const grid = document.getElementById('attachmentPopupGrid');
           if (!code) return;
 
           fetch('/api/order/' + encodeURIComponent(code))
-              .then(function(response) { return response.json(); })
+              .then(function(response) { if (!response.ok) throw new Error('HTTP ' + response.status); return response.json(); })
               .then(function(order) {
                   window.openAttachmentPopup(order && order.attachments ? order.attachments : [], {
                       adminMode: button.classList.contains('admin-attachment-view-btn'),

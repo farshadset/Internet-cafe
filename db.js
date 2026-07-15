@@ -10,6 +10,7 @@ const JSON_PATH = isVercel ? '/tmp/database.json' : path.join(__dirname, 'databa
 
 let client = null;
 let ready = false;
+let initPromise = null;
 
 function getTursoUrl() {
     let url = TURSO_URL;
@@ -21,30 +22,33 @@ function getTursoUrl() {
 
 async function initDB() {
     if (ready) return client;
+    if (initPromise) return initPromise;
 
-    const url = getTursoUrl();
-    if (url) {
-        // Production: Turso with embedded replica
-        client = createClient({
-            url: url,
-            authToken: TURSO_TOKEN,
-            syncUrl: url.replace(/\/$/, ''),
-            syncInterval: 60,
-        });
-        try {
-            await client.sync();
-            console.log('Turso embedded replica synced');
-        } catch (e) {
-            console.warn('Turso sync warning:', e.message);
+    initPromise = (async () => {
+        const url = getTursoUrl();
+        if (url) {
+            client = createClient({
+                url: url,
+                authToken: TURSO_TOKEN,
+                syncUrl: url.replace(/\/$/, ''),
+                syncInterval: 60,
+            });
+            try {
+                await client.sync();
+            } catch (e) {
+                // sync warning - non-critical
+            }
+        } else {
+            client = createClient({ url: 'file:' + DB_PATH });
         }
-    } else {
-        // Development: local SQLite
-        client = createClient({ url: 'file:' + DB_PATH });
-    }
 
-    await createTables(client);
-    ready = true;
-    return client;
+        await createTables(client);
+        ready = true;
+        return client;
+    })();
+
+    initPromise.catch(() => { initPromise = null; });
+    return initPromise;
 }
 
 async function createTables(c) {
@@ -117,6 +121,21 @@ async function createTables(c) {
             status TEXT DEFAULT 'open'
         );
     `);
+
+    // Performance indexes
+    await c.executeMultiple(`
+        CREATE INDEX IF NOT EXISTS idx_orders_username ON orders(username);
+        CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+        CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
+        CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at);
+        CREATE INDEX IF NOT EXISTS idx_orders_username_status ON orders(username, status);
+        CREATE INDEX IF NOT EXISTS idx_chat_username ON chat(username);
+        CREATE INDEX IF NOT EXISTS idx_chat_conversationId ON chat(conversationId);
+        CREATE INDEX IF NOT EXISTS idx_chat_timestamp ON chat(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_chat_role ON chat(role);
+        CREATE INDEX IF NOT EXISTS idx_chat_username_conv ON chat(username, conversationId);
+        CREATE INDEX IF NOT EXISTS idx_conv_username ON chat_conversations(username);
+    `);
 }
 
 // ==================== MIGRATION FROM JSON ====================
@@ -126,19 +145,16 @@ async function migrateFromJSON() {
     // Check if already migrated
     const existing = await client.execute('SELECT COUNT(*) as cnt FROM users');
     if (existing.rows[0].cnt > 0) {
-        console.log('DB already has data, skipping JSON migration');
         return;
     }
 
     let jsonData;
     try {
-        jsonData = JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));
+        jsonData = JSON.parse(await fs.promises.readFile(JSON_PATH, 'utf8'));
     } catch (e) {
-        console.log('No JSON file to migrate from');
         return;
     }
 
-    console.log('Migrating from JSON to SQL...');
     const tx = await client.transaction('write');
     try {
         // Migrate users
@@ -232,7 +248,6 @@ async function migrateFromJSON() {
         }
 
         await tx.commit();
-        console.log('JSON migration completed successfully');
     } catch (e) {
         await tx.rollback();
         console.error('Migration failed:', e.message);
@@ -340,10 +355,12 @@ async function createOrder(data) {
 }
 
 async function updateOrder(trackingCode, updates) {
-    const order = await getOrder(trackingCode);
-    if (!order) return false;
+    // Read current order first (needed for extras merge)
+    const existing = await client.execute({ sql: 'SELECT * FROM orders WHERE trackingCode = ?', args: [trackingCode] });
+    if (existing.rows.length === 0) return false;
+    const current = rowToOrder(existing.rows[0]);
 
-    const merged = { ...order, ...updates };
+    const merged = { ...current, ...updates };
 
     const sqlUpdates = {};
     const extras = { ...merged };
@@ -374,7 +391,7 @@ async function updateOrder(trackingCode, updates) {
     return true;
 }
 
-async function getAllOrders(status) {
+async function getAllOrders(status, limit, offset) {
     let sql = 'SELECT * FROM orders';
     const args = [];
     if (status) {
@@ -382,11 +399,19 @@ async function getAllOrders(status) {
         args.push(status);
     }
     sql += ' ORDER BY created_at DESC';
+    if (limit) {
+        sql += ' LIMIT ?';
+        args.push(limit);
+        if (offset) {
+            sql += ' OFFSET ?';
+            args.push(offset);
+        }
+    }
     const r = await client.execute({ sql, args });
     return r.rows.map(rowToOrder);
 }
 
-async function getUserOrders(username, status) {
+async function getUserOrders(username, status, limit, offset) {
     let sql = 'SELECT * FROM orders WHERE username = ?';
     const args = [username];
     if (status) {
@@ -394,6 +419,14 @@ async function getUserOrders(username, status) {
         args.push(status);
     }
     sql += ' ORDER BY created_at DESC';
+    if (limit) {
+        sql += ' LIMIT ?';
+        args.push(limit);
+        if (offset) {
+            sql += ' OFFSET ?';
+            args.push(offset);
+        }
+    }
     const r = await client.execute({ sql, args });
     return r.rows.map(rowToOrder);
 }
@@ -401,6 +434,44 @@ async function getUserOrders(username, status) {
 async function getCompletedOrders() {
     const r = await client.execute("SELECT * FROM orders WHERE status = 'completed'");
     return r.rows.map(rowToOrder);
+}
+
+async function getCustomerStats() {
+    const r = await client.execute(`
+        SELECT username,
+               COUNT(*) as totalOrders,
+               SUM(CASE WHEN paid = 1 THEN 1 ELSE 0 END) as paidOrders
+        FROM orders
+        WHERE status = 'completed' AND username IS NOT NULL
+        GROUP BY username
+    `);
+    return r.rows;
+}
+
+async function getLatestCustomerMessages() {
+    const r = await client.execute(`
+        SELECT c.username, c.text, c.timestamp
+        FROM chat c
+        INNER JOIN (
+            SELECT username, MAX(timestamp) as maxTs
+            FROM chat
+            WHERE role = 'customer'
+            GROUP BY username
+        ) latest ON c.username = latest.username AND c.timestamp = latest.maxTs
+        WHERE c.role = 'customer'
+    `);
+    return r.rows;
+}
+
+async function getCustomerOrderDetails(username) {
+    const r = await client.execute({
+        sql: `SELECT trackingCode, title, created_at, result, paid, adminProposedPrice, proposedPrice, cost
+              FROM orders
+              WHERE status = 'completed' AND username = ?
+              ORDER BY created_at DESC`,
+        args: [username]
+    });
+    return r.rows;
 }
 
 // ==================== BANNERS ====================
@@ -471,16 +542,25 @@ function rowToMessage(row) {
     };
 }
 
-async function getChatMessages(username) {
+async function getChatMessages(username, limit) {
     if (username) {
-        const r = await client.execute({
-            sql: `SELECT * FROM chat WHERE (role = 'customer' AND username = ?) OR role = 'admin' ORDER BY timestamp ASC`,
-            args: [username]
-        });
+        let sql = `SELECT * FROM chat WHERE (role = 'customer' AND username = ?) OR (role = 'admin' AND (conversationId IN (SELECT conversationId FROM chat WHERE username = ? AND conversationId IS NOT NULL) OR (username = ? AND conversationId IS NULL))) ORDER BY timestamp ASC`;
+        const args = [username, username, username];
+        if (limit) {
+            sql += ' LIMIT ?';
+            args.push(limit);
+        }
+        const r = await client.execute({ sql, args });
         return r.rows.map(rowToMessage);
     }
-    const r = await client.execute({ sql: "SELECT * FROM chat WHERE role = 'customer' ORDER BY timestamp ASC" });
-    return r.rows.map(rowToMessage);
+    let sql = "SELECT * FROM chat WHERE role = 'customer' ORDER BY timestamp DESC";
+    const args = [];
+    if (limit) {
+        sql += ' LIMIT ?';
+        args.push(limit);
+    }
+    const r = await client.execute({ sql, args });
+    return r.rows.map(rowToMessage).reverse();
 }
 
 async function getChatMessagesForConversation(conversationId) {
@@ -505,8 +585,8 @@ async function addChatMessage(data) {
 }
 
 async function getAdminChatData() {
-    const r = await client.execute({ sql: 'SELECT * FROM chat ORDER BY timestamp ASC' });
-    const messages = r.rows.map(rowToMessage);
+    const r = await client.execute({ sql: 'SELECT * FROM chat ORDER BY timestamp DESC LIMIT 500' });
+    const messages = r.rows.map(rowToMessage).reverse();
     const metaR = await client.execute({ sql: "SELECT value FROM chat_meta WHERE key = 'lastReadAt'" });
     const lastReadAt = metaR.rows.length > 0 ? metaR.rows[0].value : null;
     return { messages, lastReadAt };
@@ -524,9 +604,15 @@ async function getChatMeta(key) {
     return r.rows.length > 0 ? r.rows[0].value : null;
 }
 
-async function getAllChatMessages() {
-    const r = await client.execute('SELECT * FROM chat ORDER BY timestamp ASC');
-    return r.rows.map(rowToMessage);
+async function getAllChatMessages(limit) {
+    let sql = 'SELECT * FROM chat ORDER BY timestamp DESC';
+    const args = [];
+    if (limit) {
+        sql += ' LIMIT ?';
+        args.push(limit);
+    }
+    const r = await client.execute({ sql, args });
+    return r.rows.map(rowToMessage).reverse();
 }
 
 // ==================== CHAT CONVERSATIONS ====================
@@ -620,6 +706,9 @@ module.exports = {
     getAllOrders,
     getUserOrders,
     getCompletedOrders,
+    getCustomerStats,
+    getLatestCustomerMessages,
+    getCustomerOrderDetails,
     getBanners,
     getBannerCount,
     getBannerById,

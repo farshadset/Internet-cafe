@@ -77,6 +77,14 @@ main{padding:40px 0 70px;background:#1C5E52}
 .f-field .file-preview .file-thumb img{width:100%;height:100%;object-fit:cover}
 .f-field .file-preview .file-thumb .file-name{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:2px 4px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .f-field .file-preview .file-thumb .file-remove{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:rgba(220,50,50,.85);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
+.f-field .file-preview .file-thumb.uploading{position:relative}
+.f-field .file-preview .file-thumb .upload-progress-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.88);border-radius:6px;z-index:5}
+.f-field .file-preview .file-thumb .upload-progress-ring circle:first-child{stroke:#e5e7eb}
+.f-field .file-preview .file-thumb .upload-progress-ring .upload-progress-circle{transition:stroke-dashoffset 0.15s ease-out;stroke:var(--firouzeh)}
+.f-field .file-preview .file-thumb .upload-progress-text{font-size:0.55rem;font-weight:700;color:var(--firouzeh-dark);margin-top:2px}
+.f-field .file-preview .file-thumb .upload-cancel-btn{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#e74c3c;color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.25);transition:transform 0.15s}
+.f-field .file-preview .file-thumb .upload-cancel-btn:hover{transform:scale(1.15)}
+.f-field .file-preview .file-thumb .upload-status{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--firouzeh);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:6}
 .f-field input:focus,.f-field textarea:focus{outline:none;border-color:var(--firouzeh);background:#fff}
 .phone-default{color:#999;font-weight:400}
 .f-field.has-err input,.f-field.has-err textarea{border-color:var(--err)}
@@ -258,7 +266,6 @@ function escapeHtml(v) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
     });
 }
-window.EXTRA_SERVICE_CONFIGS = EXTRA_SERVICE_OPTIONS;
 // --- field templates -------------------------------------------------
 var F = {
   birth:    {key:'birth',    label:'تاریخ تولد'},
@@ -329,21 +336,24 @@ function autoResize(el){
 }
 
 function fieldHTML(f){
+  var ek = escapeHtml(f.key), el = escapeHtml(f.label);
   if(f.type === 'textarea'){
     return '<div class="f-field full">'
-         +   '<label for="f_'+f.key+'">'+f.label+(f.opt?' <span class="opt">(اختیاری)</span>':'')+'</label>'
+         +   '<label for="f_'+ek+'">'+el+(f.opt?' <span class="opt">(اختیاری)</span>':'')+'</label>'
          +   '<div class="textarea-wrap">'
-         +     '<textarea id="f_'+f.key+'" name="'+f.key+'"'+(f.opt?'':' required')+' oninput="autoResize(this)"></textarea>'
+         +     '<textarea id="f_'+ek+'" name="'+ek+'"'+(f.opt?'':' required')+' oninput="autoResize(this)"></textarea>'
          +     '<button type="button" class="attach-btn" onclick="document.getElementById(\'f_attachInput\').click()" title="افزودن فایل"><i class="fas fa-paperclip"></i></button>'
          +   '</div>'
          +   '<div class="file-preview" id="f_filePreview"></div>'
          +   '<input type="file" id="f_attachInput" accept="image/*,.pdf,.doc,.docx" style="display:none" multiple>'
          +   '<span class="err"></span></div>';
   }
-  var extra_attrs = (f.ph?' placeholder="'+f.ph+'"':'')+(f.val?' value="'+f.val+'" class="phone-default"':'')+(f.opt?'':' required')+(f.digits?' inputmode="numeric" data-digits="'+f.digits+'"':'')+(f.key==='phone'?' style="direction:ltr;text-align:left;color:#999;font-weight:400" dir="ltr"':' dir="auto"');
-  var input = '<input id="f_'+f.key+'" name="'+f.key+'" type="text"'+extra_attrs+'>';
+  var ph=f.ph?' placeholder="'+escapeHtml(f.ph)+'"':'';
+  var vl=f.val?' value="'+escapeHtml(f.val)+'" class="phone-default"':'';
+  var extra_attrs = ph+vl+(f.opt?'':' required')+(f.digits?' inputmode="numeric" data-digits="'+f.digits+'"':'')+(f.key==='phone'?' style="direction:ltr;text-align:left;color:#999;font-weight:400" dir="ltr"':' dir="auto"');
+  var input = '<input id="f_'+ek+'" name="'+ek+'" type="text"'+extra_attrs+'>';
   return '<div class="f-field'+(f.full?' full':'')+'">'
-       +   '<label for="f_'+f.key+'">'+f.label+(f.opt?' <span class="opt">(اختیاری)</span>':'')+'</label>'
+       +   '<label for="f_'+ek+'">'+el+(f.opt?' <span class="opt">(اختیاری)</span>':'')+'</label>'
        +   input + '<span class="err"></span></div>';
 }
 
@@ -418,8 +428,8 @@ function fieldHTML(f){
   }
 
   if (pricingKey) {
-    fetch('/api/pricing')
-      .then(function(r) { return r.json(); })
+            fetch('/api/pricing')
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(pricing) {
         var pricingMap = {};
         pricing.forEach(function(p) { pricingMap[p.service] = p.price; });
@@ -465,22 +475,97 @@ window._attachedFiles = [];
     files.forEach(function(file){
       var id = 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
       window._attachedFiles.push({id:id, file:file});
+      var isImage = file.type.startsWith('image/');
       var thumb = document.createElement('div');
-      thumb.className = 'file-thumb';
+      thumb.className = 'file-thumb uploading';
       thumb.dataset.id = id;
-      if(file.type.startsWith('image/')){
-        var reader = new FileReader();
-        reader.onload = function(ev){
-          thumb.innerHTML = '<img src="'+ev.target.result+'">'
-            + '<div class="file-name">'+file.name+'</div>'
-            + '<button type="button" class="file-remove" onclick="window._removeAttach(\''+id+'\')">&times;</button>';
-        };
-        reader.readAsDataURL(file);
+      var progressOverlay = '<div class="upload-progress-overlay">'
+        + '<svg class="upload-progress-ring" width="36" height="36" viewBox="0 0 36 36">'
+        + '<circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" stroke-width="3"/>'
+        + '<circle class="upload-progress-circle" data-progress-ring="'+id+'" cx="18" cy="18" r="14" fill="none" stroke="var(--firouzeh)" stroke-width="3" stroke-dasharray="87.96" stroke-dashoffset="87.96" transform="rotate(-90 18 18)" stroke-linecap="round"/>'
+        + '</svg>'
+        + '<span class="upload-progress-text" data-progress-text="'+id+'">0%</span>'
+        + '</div>'
+        + '<button type="button" class="upload-cancel-btn" data-cancel-reader="'+id+'"><i class="fas fa-times"></i></button>';
+      if(isImage){
+        thumb.innerHTML = '<img src="" style="opacity:0.3">' + progressOverlay;
       } else {
-        thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f0f0f0;font-size:10px;color:#666;text-align:center;padding:4px">'+file.name+'</div>'
-          + '<button type="button" class="file-remove" onclick="window._removeAttach(\''+id+'\')">&times;</button>';
+        thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f0f0f0;font-size:10px;color:#666;text-align:center;padding:4px;opacity:0.3">'+escapeHtml(file.name)+'</div>' + progressOverlay;
       }
       preview.appendChild(thumb);
+      var cancelBtn = thumb.querySelector('[data-cancel-reader="'+id+'"]');
+      if(cancelBtn){
+        cancelBtn.addEventListener('click', function(){
+          if(window._formActiveReaders && window._formActiveReaders[id]){
+            window._formActiveReaders[id].abort();
+            delete window._formActiveReaders[id];
+          }
+          window._attachedFiles = window._attachedFiles.filter(function(f){return f.id !== id});
+          thumb.remove();
+        });
+      }
+      if(!window._formActiveReaders) window._formActiveReaders = {};
+      if(isImage){
+        var previewReader = new FileReader();
+        previewReader.onload = function(ev){
+          var img = thumb.querySelector('img');
+          if(img){ img.src = ev.target.result; img.style.opacity = '1'; }
+        };
+        previewReader.readAsDataURL(file);
+      }
+      var reader = new FileReader();
+      window._formActiveReaders[id] = reader;
+      reader.onprogress = function(ev){
+        if(ev.lengthComputable){
+          var pct = Math.round((ev.loaded / ev.total) * 100);
+          var circle = document.querySelector('[data-progress-ring="'+id+'"]');
+          var text = document.querySelector('[data-progress-text="'+id+'"]');
+          if(circle) circle.style.strokeDashoffset = (87.96 * (1 - pct / 100));
+          if(text) text.textContent = pct + '%';
+        }
+      };
+      reader.onload = function(ev){
+        thumb.classList.remove('uploading');
+        var overlay = thumb.querySelector('.upload-progress-overlay');
+        if(overlay) overlay.remove();
+        var cancelEl = thumb.querySelector('.upload-cancel-btn');
+        if(cancelEl) cancelEl.remove();
+        if(isImage){
+          var imgEl = thumb.querySelector('img');
+          if(imgEl){ imgEl.src = ev.target.result; imgEl.style.opacity = '1'; }
+        }
+        var nameDiv = document.createElement('div');
+        nameDiv.className = 'file-name';
+        nameDiv.textContent = file.name;
+        thumb.appendChild(nameDiv);
+        var statusSpan = document.createElement('span');
+        statusSpan.className = 'upload-status';
+        statusSpan.innerHTML = '<i class="fas fa-check"></i>';
+        thumb.appendChild(statusSpan);
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'file-remove';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.addEventListener('click', function(){ window._removeAttach(id); });
+        thumb.appendChild(removeBtn);
+        delete window._formActiveReaders[id];
+      };
+      reader.onerror = function(){
+        thumb.classList.remove('uploading');
+        var overlay = thumb.querySelector('.upload-progress-overlay');
+        if(overlay) overlay.remove();
+        var cancelEl = thumb.querySelector('.upload-cancel-btn');
+        if(cancelEl) cancelEl.remove();
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'file-remove';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.addEventListener('click', function(){ window._removeAttach(id); });
+        thumb.appendChild(removeBtn);
+        delete window._formActiveReaders[id];
+        showToast('خطا در خواندن فایل');
+      };
+      reader.readAsDataURL(file);
     });
     fileInput.value = '';
   });
@@ -542,10 +627,10 @@ omForm.addEventListener('submit', function(e){
     var label = FIELD_LABELS[key] || key;
     var displayVal = val;
     if (key === 'phone' || key === 'nationalId') displayVal = faDigits(val);
-    fieldsHtml += '<div class="summary-row"><span class="label">' + label + '</span><span class="value">' + displayVal + '</span></div>';
+    fieldsHtml += '<div class="summary-row"><span class="label">' + escapeHtml(label) + '</span><span class="value">' + escapeHtml(displayVal) + '</span></div>';
   });
   if (data.note) {
-    fieldsHtml += '<div class="summary-row"><span class="label">توضیحات</span><span class="value">' + data.note + '</span></div>';
+    fieldsHtml += '<div class="summary-row"><span class="label">توضیحات</span><span class="value">' + escapeHtml(data.note) + '</span></div>';
   }
   if (window._attachedFiles && window._attachedFiles.length > 0) {
     var filesHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">';
@@ -557,9 +642,9 @@ omForm.addEventListener('submit', function(e){
           if(img) img.src = ev.target.result;
         };
         reader.readAsDataURL(f.file);
-        filesHtml += '<div data-thumb-id="'+f.id+'" style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)"><img src="" style="width:100%;height:100%;object-fit:cover"><div style="font-size:9px;text-align:center;padding:2px;background:rgba(0,0,0,.05)">'+f.file.name+'</div></div>';
+        filesHtml += '<div data-thumb-id="'+f.id+'" style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)"><img src="" style="width:100%;height:100%;object-fit:cover"><div style="font-size:9px;text-align:center;padding:2px;background:rgba(0,0,0,.05)">'+escapeHtml(f.file.name)+'</div></div>';
       } else {
-        filesHtml += '<div style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;background:#f8f8f8;font-size:10px;color:#666;text-align:center;padding:4px">'+f.file.name+'</div>';
+        filesHtml += '<div style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;background:#f8f8f8;font-size:10px;color:#666;text-align:center;padding:4px">'+escapeHtml(f.file.name)+'</div>';
       }
     });
     filesHtml += '</div>';
@@ -583,6 +668,10 @@ document.getElementById('btnBackToForm').addEventListener('click', function(){
 
 // Pay button → show order done (skip bank payment)
 document.getElementById('btnPay').addEventListener('click', function(){
+  var btn = this;
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = 'در حال پردازش...';
   var data = window._orderData || {};
   var service = document.getElementById('serviceTitle').textContent;
   var cat = document.getElementById('omCat').textContent;
@@ -614,18 +703,23 @@ document.getElementById('btnPay').addEventListener('click', function(){
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(body)
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
   .then(function(result){
+    if (!result.ok || !result.data.trackingCode) {
+      alert(result.data.error || 'خطا در ثبت سفارش');
+      btn.disabled = false;
+      btn.textContent = 'پرداخت';
+      return;
+    }
     document.getElementById('omCode').textContent = code;
     document.getElementById('orderSummary').hidden = true;
     document.getElementById('orderDone').hidden = false;
     window.scrollTo({top:0, behavior:'smooth'});
   })
   .catch(function(){
-    document.getElementById('omCode').textContent = code;
-    document.getElementById('orderSummary').hidden = true;
-    document.getElementById('orderDone').hidden = false;
-    window.scrollTo({top:0, behavior:'smooth'});
+    alert('خطا در اتصال به سرور');
+    btn.disabled = false;
+    btn.textContent = 'پرداخت';
   });
 });
 
@@ -698,18 +792,19 @@ document.getElementById('btnConfirmPay').addEventListener('click', function(){
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(body)
     })
-    .then(function(r){ return r.json(); })
+    .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
     .then(function(result){
-      var code = result.trackingCode || 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
+      if (!result.ok || !result.data.trackingCode) {
+        alert(result.data.error || 'خطا در ثبت سفارش');
+        return;
+      }
+      var code = result.data.trackingCode;
       localStorage.setItem('lastTrackingCode', code);
       saveAttachmentsToDB(code);
       showPendingPage(code, service, cat, data);
     })
     .catch(function(){
-      var code = 'PK24-' + String(Math.floor(100000 + Math.random() * 900000));
-      localStorage.setItem('lastTrackingCode', code);
-      saveAttachmentsToDB(code);
-      showPendingPage(code, service, cat, data);
+      alert('خطا در اتصال به سرور');
     });
   }
 });
@@ -733,17 +828,17 @@ function saveAttachmentsToDB(code) {
 function showPendingPage(code, service, cat, data){
   document.getElementById('pendingCode').textContent = code;
   var pendingHtml =
-      '<div><span>خدمت</span><b>' + service + '</b></div>'
-    + '<div><span>دسته‌بندی</span><b>' + cat + '</b></div>';
+      '<div><span>خدمت</span><b>' + escapeHtml(service) + '</b></div>'
+    + '<div><span>دسته‌بندی</span><b>' + escapeHtml(cat) + '</b></div>';
   Object.keys(data).forEach(function(key){
     var val = data[key];
     if (!val) return;
     var label = FIELD_LABELS[key] || key;
     var displayVal = val;
     if (key === 'phone' || key === 'nationalId') displayVal = faDigits(val);
-    pendingHtml += '<div><span>' + label + '</span><b>' + displayVal + '</b></div>';
+    pendingHtml += '<div><span>' + escapeHtml(label) + '</span><b>' + escapeHtml(displayVal) + '</b></div>';
   });
-  pendingHtml += '<div><span>مبلغ پرداختی</span><b>' + (window._formattedPrice || '—') + '</b></div>';
+  pendingHtml += '<div><span>مبلغ پرداختی</span><b>' + escapeHtml(window._formattedPrice || '—') + '</b></div>';
   if(window._attachedFiles && window._attachedFiles.length > 0){
     var pFiles = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">';
     window._attachedFiles.forEach(function(f){
@@ -754,9 +849,9 @@ function showPendingPage(code, service, cat, data){
           if(img) img.src = ev.target.result;
         };
         reader.readAsDataURL(f.file);
-        pFiles += '<div data-thumb-id="'+f.id+'" style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)"><img src="" style="width:100%;height:100%;object-fit:cover"><div style="font-size:9px;text-align:center;padding:2px;background:rgba(0,0,0,.05)">'+f.file.name+'</div></div>';
+        pFiles += '<div data-thumb-id="'+f.id+'" style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)"><img src="" style="width:100%;height:100%;object-fit:cover"><div style="font-size:9px;text-align:center;padding:2px;background:rgba(0,0,0,.05)">'+escapeHtml(f.file.name)+'</div></div>';
       } else {
-        pFiles += '<div style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;background:#f8f8f8;font-size:10px;color:#666;text-align:center;padding:4px">'+f.file.name+'</div>';
+        pFiles += '<div style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;background:#f8f8f8;font-size:10px;color:#666;text-align:center;padding:4px">'+escapeHtml(f.file.name)+'</div>';
       }
     });
     pFiles += '</div>';
@@ -853,7 +948,7 @@ function generateInvoice(){
     // Note
     + (data.note ? '<div class="inv-note"><b>توضیحات:</b> ' + escapeHtml(data.note) + '</div>' : '')
     // Total
-    + '<div class="inv-total"><div class="inv-total-box"><div class="inv-total-label">مبلغ قابل پرداخت</div><div class="inv-total-value">' + (window._formattedPrice || '—') + '</div></div></div>'
+    + '<div class="inv-total"><div class="inv-total-box"><div class="inv-total-label">مبلغ قابل پرداخت</div><div class="inv-total-value">' + escapeHtml(window._formattedPrice || '—') + '</div></div></div>'
     + '</div>'
     // Footer
     + '<div class="inv-footer"><div class="inv-thanks">با تشکر از اعتماد شما</div><div>مرکز خدمات کافینت | www.cafenet.ir</div></div>'

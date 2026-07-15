@@ -117,12 +117,12 @@ function renderOrders(orders) {
                             priceSection += '<strong style="color:#ff9800;">قیمت پیشنهادی جدید شما: </strong><span>' + formatPrice(proposedPrice) + ' تومان</span>';
                         } else if (priceStatus === 'countersent') {
                             priceSection += '<strong style="color:#2196f3;">قیمت پیشنهادی مدیر: </strong><span>' + formatPrice(adminPrice) + ' تومان</span><br>';
-                            priceSection += '<button class="accept-admin-price-btn" data-code="' + order.trackingCode + '" style="background:#4caf50;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem;">تایید قیمت مدیر</button> ';
-                            priceSection += '<button class="counter-price-btn" data-code="' + order.trackingCode + '" style="background:#ff9800;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem;">پیشنهاد قیمت جدید</button>';
+                            priceSection += '<button class="accept-admin-price-btn" data-code="' + escapeHtml(order.trackingCode) + '" style="background:#4caf50;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem;">تایید قیمت مدیر</button> ';
+                            priceSection += '<button class="counter-price-btn" data-code="' + escapeHtml(order.trackingCode) + '" style="background:#ff9800;color:white;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem;">پیشنهاد قیمت جدید</button>';
                          } else if (priceStatus === 'accepted') {
                              priceSection += '<strong style="color:#4caf50;">قیمت تایید شده: </strong><span>' + formatPrice(adminPrice || proposedPrice) + ' تومان</span><br>';
                             if (!order.paid) {
-                                priceSection += '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-confirm" style="background:#27ae60;color:white;border:none;padding:0.3rem 1rem;border-radius:4px;text-decoration:none;font-size:0.85rem;margin-top:0.5rem;display:inline-block;">پرداخت</a>';
+                                priceSection += '<a href="order-detail.html?code=' + encodeURIComponent(order.trackingCode) + '" class="btn-confirm" style="background:#27ae60;color:white;border:none;padding:0.3rem 1rem;border-radius:4px;text-decoration:none;font-size:0.85rem;margin-top:0.5rem;display:inline-block;">پرداخت</a>';
                             }
                         }
                         
@@ -139,25 +139,30 @@ function renderOrders(orders) {
                         priceSection +
                         (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + escapeHtml(order.result) + '</span></div>' : '') +
                         '<div class="order-actions" style="text-align:center;">' +
-                        '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
+                        '<a href="order-detail.html?code=' + encodeURIComponent(order.trackingCode) + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
                     container.appendChild(div);
                 });
 
                 document.querySelectorAll('.accept-admin-price-btn').forEach(function(btn) {
                     btn.addEventListener('click', function() {
+                        if (this.disabled) return;
+                        this.disabled = true;
                         var code = this.getAttribute('data-code');
                         fetch('/api/order/price-accept', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ trackingCode: code })
                         })
-                        .then(function(r) { return r.json(); })
-                        .then(function(res) {
-                            if (res.success) {
+                        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                        .then(function(result) {
+                            if (result.ok && result.data.success) {
                                 location.reload();
+                            } else {
+                                alert(result.data.error || 'خطا در تایید قیمت');
+                                btn.disabled = false;
                             }
                         })
-                        .catch(function() {});
+                        .catch(function() { alert('خطا در اتصال به سرور'); btn.disabled = false; });
                     });
                 });
 
@@ -171,20 +176,25 @@ function renderOrders(orders) {
                 sendPriceProposalBtn.addEventListener('click', function() {
                     var price = userPriceInput.value.trim();
                     if (!price) return;
+                    if (sendPriceProposalBtn.disabled) return;
+                    sendPriceProposalBtn.disabled = true;
                     fetch('/api/order/price-proposal', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ trackingCode: currentTrackingCode, proposedPrice: price })
                     })
-                    .then(function(r) { return r.json(); })
-                    .then(function(res) {
-                        if (res.success) {
+                    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                    .then(function(result) {
+                        if (result.ok && result.data.success) {
                             pricePopup.classList.remove('active');
                             userPriceInput.value = '';
                             location.reload();
+                        } else {
+                            alert(result.data.error || 'خطا در ارسال پیشنهاد قیمت');
+                            sendPriceProposalBtn.disabled = false;
                         }
                     })
-                    .catch(function() {});
+                    .catch(function() { alert('خطا در اتصال به سرور'); sendPriceProposalBtn.disabled = false; });
                 });
 
                 closePricePopup.addEventListener('click', function() {
@@ -198,7 +208,7 @@ function renderOrders(orders) {
 
             // Try API first, fallback to localStorage
             fetch('/api/orders/user?username=' + encodeURIComponent(username))
-                .then(function(r) { return r.json(); })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(orders) {
                     if (orders && orders.length > 0) {
                         renderOrders(orders);

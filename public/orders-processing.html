@@ -30,7 +30,7 @@
             var userData = JSON.parse(localStorage.getItem('userData') || 'null');
             var username = userData ? userData.username : null;
             fetch('/api/orders/user?username=' + encodeURIComponent(username) + '&status=processing')
-                .then(function(r) { return r.json(); })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(orders) {
                     container.innerHTML = '';
                     if (orders.length === 0) {
@@ -67,15 +67,15 @@
                         div.className = 'order-card';
                         var dateStr = order.created_at ? new Date(order.created_at).toLocaleDateString('fa-IR') : '-';
                         div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
-                            '<div class="order-title">' + serviceTitle + '</div>' +
+                            '<div class="order-title">' + escapeHtml(serviceTitle) + '</div>' +
                             '<small style="color:#666;">' + dateStr + '</small>' +
                             '</div>' +
                             '<div style="margin-bottom:0.25rem;text-align:center;">' +
-                            '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
+                            '<strong>کد سفارش: ' + escapeHtml(order.trackingCode) + '</strong>' +
                             '</div>' +
-                            (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + order.result + '</span></div>' : '') +
+                            (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + escapeHtml(order.result) + '</span></div>' : '') +
                             '<div class="order-actions">' +
-                            '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
+                            '<a href="order-detail.html?code=' + encodeURIComponent(order.trackingCode) + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
                         container.appendChild(div);
                     });
 

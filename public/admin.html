@@ -18,7 +18,7 @@
 </head>
 <body>
     <nav class="desktop-sidebar" id="desktopSidebar">
-        <div class="sidebar-brand"><img src="logooo.png" alt="لیمو نت" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
+        <div class="sidebar-brand"><img src="logooo.webp" alt="لیمو نت" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
         <hr class="sidebar-divider">
         <a href="index.html" title="خانه"><i class="fas fa-home"></i><span>خانه</span></a>
         <a href="admin-orders.html" title="لیست سفارش‌ها"><i class="fas fa-list"></i><span>لیست سفارش‌ها</span></a>
@@ -126,14 +126,14 @@
             }
 
             fetch('/api/orders')
-                .then(function(r) { return r.json(); })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(orders) {
                     updateStatusCounts(orders);
                 })
                 .catch(function() {});
 
             fetch('/api/admin/customers')
-                .then(function(r) { return r.json(); })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(data) {
                     var badge = document.getElementById('customersBadge');
                     if (badge && data.totalCustomers > 0) {
@@ -203,11 +203,12 @@
         if(menuSheetClose) menuSheetClose.addEventListener('click', closeMenuSheet);
         if(menuOverlay) menuOverlay.addEventListener('click', closeMenuSheet);
 
+        var _mobileNavRetries = 0;
         function buildAdminMobileNav(){
             var mobile = document.getElementById('mobileNav');
             if(!mobile) return;
             var MEGA = window.MEGA_MENU_DATA;
-            if(!MEGA) { setTimeout(buildAdminMobileNav, 300); return; }
+            if(!MEGA) { _mobileNavRetries++; if(_mobileNavRetries < 30) setTimeout(buildAdminMobileNav, 300); return; }
             mobile.innerHTML = '';
             var categoryNames = {'identity-judicial':'خدمات هویتی و قضایی','finance':'بانکی، مالی و بورسی','automotive':'خودرو و حمل و نقل','education':'آموزش و آزمون‌ها','business-tax':'مالیات، مجوز و کسب‌وکار','government-services':'سامانه‌های دولتی'};
             Object.keys(MEGA).forEach(function(key){

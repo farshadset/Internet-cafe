@@ -157,10 +157,10 @@
                     dotsHtml += '</div>';
 
                     var html = '<div class="banner">';
-                    html += '<img src="' + banner.src + '" alt="بنر کافینت" loading="lazy">' + dotsHtml + '</div>';
+                    html += '<img src="' + escapeHtml(banner.src) + '" alt="بنر کافینت" loading="lazy">' + dotsHtml + '</div>';
 
                     if (banner.link) {
-                        html = '<a href="' + banner.link + '" class="banner-link">' + html + '</a>';
+                        html = '<a href="' + escapeHtml(banner.link) + '" class="banner-link" rel="noopener noreferrer">' + html + '</a>';
                     }
                     bannerContainer.innerHTML = html;
 
@@ -185,8 +185,8 @@
 
             function fetchBanners(retryCount) {
                 Promise.all([
-                    fetch('/api/banner?group=1').then(function(r){return r.json();}),
-                    fetch('/api/banner?group=2').then(function(r){return r.json();})
+                    fetch('/api/banner?group=1').then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}),
+                    fetch('/api/banner?group=2').then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
                 ]).then(function(results) {
                     showBanners(results[0], 'bannersContainer1');
                     showBanners(results[1], 'bannersContainer2');
@@ -260,7 +260,7 @@
     <!-- Desktop Sidebar -->
     <div class="desktop-sidebar-overlay" id="sidebarOverlay"></div>
     <nav class="desktop-sidebar" id="desktopSidebar">
-        <div class="sidebar-brand"><img src="logooo.png" alt="لیمو نت" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
+        <div class="sidebar-brand"><img src="logooo.webp" alt="لیمو نت" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
         <hr class="sidebar-divider">
         <a href="index.html" title="خانه"><i class="fas fa-home"></i><span>خانه</span></a>
         <a href="orders.html" class="user-only" title="سفارش‌ها"><i class="fas fa-list-alt"></i><span>سفارش‌ها</span></a>
@@ -300,15 +300,15 @@
               <h2 style="color: white; margin-bottom: 1rem;">خدمات ویژه</h2>
              <div class="service-buttons">
                   <a href="resume-employment.html" class="service-btn">
-                      <img src="images/rezome.png" alt="رزومه و استخدام" loading="lazy">
+                      <img src="images/rezome.webp" alt="رزومه و استخدام" loading="lazy">
                       <div class="service-label">رزومه و استخدام</div>
                   </a>
                   <a href="custom-services.html" class="service-btn">
-                      <img src="images/khadamatsefareshi.jpeg" alt="خدمات سفارشی" loading="lazy">
+                      <img src="images/khadamatsefareshi.webp" alt="خدمات سفارشی" loading="lazy">
                       <div class="service-label">خدمات سفارشی</div>
                   </a>
                   <a href="articles-research.html" class="service-btn">
-                      <img src="images/maghale.jpeg" alt="مقاله و تحقیق" loading="lazy">
+                      <img src="images/maghale.webp" alt="مقاله و تحقیق" loading="lazy">
                       <div class="service-label">مقاله و تحقیق</div>
                   </a>
              </div>
@@ -384,8 +384,15 @@
     <script src="suggestive-search.js?v=20260707" defer></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            fetch('/api/mega-menu').then(function(r){return r.text()}).then(function(html){
-                document.getElementById('megaMenuContainer').innerHTML = html;
+            fetch('/api/mega-menu').then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text()}).then(function(html){
+                var container = document.getElementById('megaMenuContainer');
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+                var fragment = document.createDocumentFragment();
+                while (doc.body.firstChild) {
+                    fragment.appendChild(document.adoptNode(doc.body.firstChild));
+                }
+                container.appendChild(fragment);
                 initMegaMenu();
             }).catch(function(){}).then(function(){
                 _skelReady.mega=true;
@@ -481,8 +488,10 @@
 
             function highlightText(text, query) {
                 if (!query) return text;
-                var regex = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-                return text.replace(regex, '<mark style="background:#3f3f46;color:#fff;border-radius:2px;padding:0 1px;">$1</mark>');
+                var escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+                var escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                var regex = new RegExp('(' + escapedQuery + ')', 'gi');
+                return escaped.replace(regex, '<mark style="background:#3f3f46;color:#fff;border-radius:2px;padding:0 1px;">$1</mark>');
             }
 
             function showResults(matches, query) {
