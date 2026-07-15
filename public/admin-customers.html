@@ -51,6 +51,8 @@
             var sortField = '';
             var sortDir = 'asc';
 
+            function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]})}
+
             function getServiceTitle(order) {
                 var title = order.title || '';
                 if (!title || title === '-') {
@@ -92,14 +94,14 @@
                     div.className = 'order-card';
                     div.style.marginBottom = '0.5rem';
                     div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
-                        '<div class="order-title">' + getServiceTitle(order) + '</div>' +
+                        '<div class="order-title">' + escapeHtml(getServiceTitle(order)) + '</div>' +
                         '<small style="color:#666;">' + dateStr + '</small>' +
                         '</div>' +
                         '<div style="margin-bottom:0.25rem;text-align:center;">' +
-                        '<strong>کد سفارش: ' + order.trackingCode + '</strong>' +
+                        '<strong>کد سفارش: ' + escapeHtml(order.trackingCode) + '</strong>' +
                         '</div>' +
                         '<div class="order-actions">' +
-                        '<a href="order-detail.html?code=' + order.trackingCode + '" class="btn-view-detail">جزئیات سفارش</a>' +
+                        '<a href="order-detail.html?code=' + encodeURIComponent(order.trackingCode) + '" class="btn-view-detail">جزئیات سفارش</a>' +
                         '</div>';
                     customerOrdersList.appendChild(div);
                 });
@@ -177,7 +179,7 @@
             }
 
             fetch('/api/admin/customers')
-                .then(function(r) { return r.json(); })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(data) {
                     customersData = data.customers || [];
                     renderTable();

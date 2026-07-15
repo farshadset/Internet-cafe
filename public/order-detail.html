@@ -226,7 +226,7 @@ header h1{color:#fff;font-family:"Markazi Text","Vazirmatn",serif;font-size:24px
                 return;
             }
             fetch('/api/order/' + encodeURIComponent(code))
-                .then(function(r) { return r.json(); })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(order) {
                     if (!order || order.error) {
                         container.innerHTML = '<p style="text-align:center;color:red;">سفارش پیدا نشد.</p>';
@@ -289,10 +289,11 @@ var formFieldsHtml = renderFormFields(order);
                                 var fileName = att.name || att.fileName || 'فایل';
                                 var isImage = att.type && att.type.startsWith('image/') || (att.dataUrl && att.dataUrl.startsWith('data:image'));
                                 var src = att.dataUrl || att.url || '';
+                                var safeSrc = escapeOrderHtml(src);
                                 if (isImage && src) {
-                                    filesHtml += '<div style="position:relative;width:100px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)"><img src="' + src + '" style="width:100%;height:80px;object-fit:cover;display:block"><div style="font-size:9px;text-align:center;padding:2px;background:rgba(0,0,0,.05)">' + escapeOrderHtml(fileName) + '</div><a href="' + src + '" download="' + escapeOrderHtml(fileName) + '" style="position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:var(--firouzeh);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;text-decoration:none" title="دانلود"><i class="fas fa-download"></i></a></div>';
+                                    filesHtml += '<div style="position:relative;width:100px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line)"><img src="' + safeSrc + '" style="width:100%;height:80px;object-fit:cover;display:block"><div style="font-size:9px;text-align:center;padding:2px;background:rgba(0,0,0,.05)">' + escapeOrderHtml(fileName) + '</div><a href="' + safeSrc + '" download="' + escapeOrderHtml(fileName) + '" style="position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:var(--firouzeh);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;text-decoration:none" title="دانلود"><i class="fas fa-download"></i></a></div>';
                                 } else {
-                                    filesHtml += '<div style="width:100px;height:100px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8f8f8;position:relative"><i class="fas fa-file" style="font-size:24px;color:var(--muted);margin-bottom:4px"></i><div style="font-size:9px;text-align:center;padding:2px 4px;word-break:break-all">' + escapeOrderHtml(fileName) + '</div>' + (src ? '<a href="' + src + '" download="' + escapeOrderHtml(fileName) + '" style="position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:var(--firouzeh);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;text-decoration:none" title="دانلود"><i class="fas fa-download"></i></a>' : '') + '</div>';
+                                    filesHtml += '<div style="width:100px;height:100px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8f8f8;position:relative"><i class="fas fa-file" style="font-size:24px;color:var(--muted);margin-bottom:4px"></i><div style="font-size:9px;text-align:center;padding:2px 4px;word-break:break-all">' + escapeOrderHtml(fileName) + '</div>' + (src ? '<a href="' + safeSrc + '" download="' + escapeOrderHtml(fileName) + '" style="position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:var(--firouzeh);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;text-decoration:none" title="دانلود"><i class="fas fa-download"></i></a>' : '') + '</div>';
                                 }
                             });
                             filesHtml += '</div></span></div>';
@@ -302,7 +303,7 @@ var formFieldsHtml = renderFormFields(order);
                         
                         // Build summary in form order
                         var summaryHtml = '<div class="summary-card">' +
-                            '<div class="summary-row"><span class="label">نوع خدمت</span><span class="value">' + serviceTitle + '</span></div>';
+                            '<div class="summary-row"><span class="label">نوع خدمت</span><span class="value">' + escapeOrderHtml(serviceTitle) + '</span></div>';
                         
                         if (order.category) {
                             summaryHtml += '<div class="summary-row"><span class="label">دسته‌بندی</span><span class="value">' + escapeOrderHtml(order.category) + '</span></div>';
@@ -339,7 +340,7 @@ var formFieldsHtml = renderFormFields(order);
                             }
                             
                             fetch('/api/order/' + encodeURIComponent(code))
-                                .then(function(r) { return r.json(); })
+                                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                                 .then(function(latestOrder) {
                                     if (!latestOrder || latestOrder.error) return;
                                     
@@ -366,18 +367,29 @@ var formFieldsHtml = renderFormFields(order);
                         var confirmPaymentBtn = document.getElementById('confirmPaymentStatusBtn');
                         if (confirmPaymentBtn) {
                             confirmPaymentBtn.addEventListener('click', function() {
+                                if (confirmPaymentBtn.disabled) return;
+                                confirmPaymentBtn.disabled = true;
+                                confirmPaymentBtn.textContent = 'در حال پردازش...';
                                 fetch('/api/order/pay', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ trackingCode: code })
                                 })
-                                .then(function(r) { return r.json(); })
-                                .then(function(res) {
-                                    if (res.success) {
+                                .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                                .then(function(result) {
+                                    if (result.ok && result.data.success) {
                                         location.reload();
+                                    } else {
+                                        alert(result.data.error || 'خطا در پرداخت');
+                                        confirmPaymentBtn.disabled = false;
+                                        confirmPaymentBtn.textContent = 'تایید پرداخت';
                                     }
                                 })
-                                .catch(function() {});
+                                .catch(function() {
+                                    alert('خطا در اتصال به سرور');
+                                    confirmPaymentBtn.disabled = false;
+                                    confirmPaymentBtn.textContent = 'تایید پرداخت';
+                                });
                             });
                         }
                     })()

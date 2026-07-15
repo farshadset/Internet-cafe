@@ -6,5 +6,8 @@ database.db
 .env.*.local
 .vercel
 test-results/
+playwright-report/
 *.tgz
 public/uploads/
+Untitled-1.log
+*.log

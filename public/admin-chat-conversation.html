@@ -526,6 +526,16 @@
             var currentConversationId = null;
             var lastMessageId = null;
             var conversationsData = [];
+            var adminPendingReads = 0;
+            var adminActiveReaders = {};
+
+            function updateAdminSendButton() {
+                if (adminSendBtn) {
+                    var hasText = adminMessageInput && adminMessageInput.value.trim();
+                    var hasAttachments = adminCurrentAttachments.length > 0;
+                    adminSendBtn.disabled = (!hasText && !hasAttachments) || adminPendingReads > 0;
+                }
+            }
 
             function showToast(message) {
                 var toast = document.getElementById('toastNotification');
@@ -560,16 +570,23 @@
                 });
             }
 
+            function safeUrl(url) {
+                if (!url) return '';
+                if (/^(https?:\/\/|data:)/i.test(url)) return url;
+                return '';
+            }
+
             function renderAdminAttachmentPreview(attachment, dataUrl) {
                 if (!adminAttachmentPreview) return;
                 var isImage = attachment.type && attachment.type.startsWith('image/');
                 var html = '<div class="attachment-thumbnail" data-attachment-id="' + escapeHtml(attachment.id) + '">';
                 if (isImage) {
-                    html += '<img src="' + dataUrl + '" alt="' + escapeHtml(attachment.name) + '">';
+                    html += '<img src="' + escapeHtml(dataUrl) + '" alt="' + escapeHtml(attachment.name) + '">';
                 } else {
                     html += '<div class="pdf-icon">PDF</div>';
                 }
-                html += '<button type="button" class="remove-attachment" onclick="window.removeAdminAttachment(this)"><i class="fas fa-download"></i></button>';
+                html += '<span class="upload-status"><i class="fas fa-check"></i></span>';
+                html += '<button type="button" class="remove-attachment" onclick="window.removeAdminAttachment(this)"><i class="fas fa-times"></i></button>';
                 html += '</div>';
                 adminAttachmentPreview.insertAdjacentHTML('beforeend', html);
                 adminAttachmentPreview.classList.remove('hidden');
@@ -581,19 +598,73 @@
                     showToast('فقط می توان چهار فایل آپلود کرد');
                     return;
                 }
+                var attId = 'att_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+                var isImage = file.type && file.type.startsWith('image/');
+
+                var html = '<div class="attachment-thumbnail uploading" data-attachment-id="' + escapeHtml(attId) + '">';
+                if (isImage) {
+                    html += '<img src="" alt="' + escapeHtml(file.name) + '" style="opacity:0.3">';
+                } else {
+                    html += '<div class="pdf-icon" style="opacity:0.3">PDF</div>';
+                }
+                html += '<div class="upload-progress-overlay"><svg class="upload-progress-ring" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle class="upload-progress-circle" data-progress-ring="' + attId + '" cx="18" cy="18" r="14" fill="none" stroke="#667eea" stroke-width="3" stroke-dasharray="87.96" stroke-dashoffset="87.96" transform="rotate(-90 18 18)" stroke-linecap="round"/></svg><span class="upload-progress-text" data-progress-text="' + attId + '">0%</span></div>';
+                html += '<button type="button" class="remove-attachment upload-cancel-btn" data-cancel-reader="' + attId + '"><i class="fas fa-times"></i></button>';
+                html += '</div>';
+                adminAttachmentPreview.insertAdjacentHTML('beforeend', html);
+                adminAttachmentPreview.classList.remove('hidden');
+
+                if (isImage) {
+                    var previewReader = new FileReader();
+                    previewReader.onload = function(ev) {
+                        var img = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"] img');
+                        if (img) { img.src = ev.target.result; img.style.opacity = '1'; }
+                    };
+                    previewReader.readAsDataURL(file);
+                }
+
+                adminPendingReads++;
+                updateAdminSendButton();
+
                 var reader = new FileReader();
-                reader.onload = function(event) {
+                adminActiveReaders[attId] = reader;
+
+                reader.onprogress = function(ev) {
+                    if (ev.lengthComputable) {
+                        var pct = Math.round((ev.loaded / ev.total) * 100);
+                        var circle = document.querySelector('[data-progress-ring="' + attId + '"]');
+                        var text = document.querySelector('[data-progress-text="' + attId + '"]');
+                        if (circle) circle.style.strokeDashoffset = (87.96 * (1 - pct / 100));
+                        if (text) text.textContent = pct + '%';
+                    }
+                };
+
+                reader.onload = function(ev) {
                     var attachment = {
-                        id: 'att_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+                        id: attId,
                         name: file.name,
                         type: file.type,
                         size: file.size,
-                        dataUrl: event.target.result,
+                        dataUrl: ev.target.result,
                         uploadedAt: new Date().toISOString()
                     };
                     adminCurrentAttachments.push(attachment);
-                    renderAdminAttachmentPreview(attachment, event.target.result);
+                    var thumb = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
+                    if (thumb) thumb.remove();
+                    renderAdminAttachmentPreview(attachment, ev.target.result);
+                    delete adminActiveReaders[attId];
+                    adminPendingReads--;
+                    updateAdminSendButton();
                 };
+
+                reader.onerror = function() {
+                    var thumb = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
+                    if (thumb) thumb.remove();
+                    delete adminActiveReaders[attId];
+                    adminPendingReads--;
+                    updateAdminSendButton();
+                    showToast('خطا در خواندن فایل');
+                };
+
                 reader.readAsDataURL(file);
             }
 
@@ -601,10 +672,16 @@
                 var thumbnail = button.closest('.attachment-thumbnail');
                 if (thumbnail) {
                     var attachmentId = thumbnail.getAttribute('data-attachment-id');
+                    if (adminActiveReaders[attachmentId]) {
+                        adminActiveReaders[attachmentId].abort();
+                        delete adminActiveReaders[attachmentId];
+                        adminPendingReads--;
+                    }
                     adminCurrentAttachments = adminCurrentAttachments.filter(function(a) {
                         return a.id !== attachmentId;
                     });
                     thumbnail.remove();
+                    updateAdminSendButton();
                 }
                 if (adminAttachmentPreview && adminAttachmentPreview.querySelectorAll('.attachment-thumbnail').length === 0) {
                     adminAttachmentPreview.classList.add('hidden');
@@ -635,9 +712,10 @@
                     dlBtn.style.cssText = 'position: absolute; bottom: -6px; right: -6px; width: 20px; height: 20px; background: #667eea; border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);';
                     dlBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
-                        if (att.dataUrl) {
+                        var safeHref = safeUrl(att.dataUrl);
+                        if (safeHref) {
                             var a = document.createElement('a');
-                            a.href = att.dataUrl;
+                            a.href = safeHref;
                             a.download = att.name;
                             document.body.appendChild(a);
                             a.click();
@@ -646,9 +724,10 @@
                     });
                     thumb.appendChild(dlBtn);
                     thumb.addEventListener('click', function() {
-                        if (att.dataUrl) {
+                        var safeHref = safeUrl(att.dataUrl);
+                        if (safeHref) {
                             var a = document.createElement('a');
-                            a.href = att.dataUrl;
+                            a.href = safeHref;
                             a.download = att.name;
                             document.body.appendChild(a);
                             a.click();
@@ -673,7 +752,7 @@
 
             function loadConversations() {
                 fetch('/api/admin/chat/conversations?username=' + encodeURIComponent(currentUsername))
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                     .then(function(convs) {
                         conversationsData = convs || [];
                         conversationsList.innerHTML = '';
@@ -688,7 +767,7 @@
                             div.setAttribute('data-conv-id', c.id);
                             var dateStr = c.lastTimestamp ? new Date(c.lastTimestamp).toLocaleDateString('fa-IR') : '';
                             var preview = c.lastMessage && c.lastMessage.length > 30 ? c.lastMessage.substring(0, 30) + '...' : (c.lastMessage || 'گفتگوی جدید');
-                            div.innerHTML = '<div class="admin-conv-title" title="' + (c.lastMessage || '').replace(/"/g, '&quot;') + '">' + preview + '</div><div class="admin-conv-date">' + dateStr + '</div>';
+                            div.innerHTML = '<div class="admin-conv-title" title="' + escapeHtml(c.lastMessage || '') + '">' + escapeHtml(preview) + '</div><div class="admin-conv-date">' + dateStr + '</div>';
                             div.addEventListener('click', function() {
                                 currentConversationId = c.id;
                                 lastMessageId = null;
@@ -715,7 +794,7 @@
                     return;
                 }
                 fetch('/api/admin/chat/conversation/' + currentConversationId)
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                     .then(function(messages) {
                         lastMessageId = null;
                         chatMessages.innerHTML = '';
@@ -753,7 +832,7 @@
             function pollMessages() {
                 if (!currentConversationId) return;
                 fetch('/api/admin/chat/conversation/' + currentConversationId)
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                     .then(function(messages) {
                         if (!lastMessageId && messages.length > 0) {
                             lastMessageId = messages[messages.length - 1].id;
@@ -785,6 +864,9 @@
                     return;
                 }
                 if (!text && adminCurrentAttachments.length === 0) return;
+                if (adminPendingReads > 0) return;
+                if (adminSendBtn && adminSendBtn.disabled) return;
+                if (adminSendBtn) { adminSendBtn.disabled = true; }
                 fetch('/api/admin/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -795,8 +877,14 @@
                         attachments: adminCurrentAttachments 
                     })
                 })
-                .then(function(r) { return r.json(); })
-                .then(function(msg) {
+                .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                .then(function(result) {
+                    if (!result.ok || !result.data.text) {
+                        alert(result.data.error || 'خطا در ارسال پیام');
+                        if (adminSendBtn) { adminSendBtn.disabled = false; }
+                        return;
+                    }
+                    var msg = result.data;
                     var wrapper = document.createElement('div');
                     wrapper.className = 'message user';
                     var bubble = document.createElement('div');
@@ -818,10 +906,19 @@
                     if (chatMessages.scrollHeight > chatMessages.parentElement.clientHeight) {
                         chatMessages.scrollTop = chatMessages.scrollHeight;
                     }
+                    if (adminSendBtn) { adminSendBtn.disabled = false; }
                 })
                 .catch(function () {
-                    alert('خطا در ارسال پیام');
+                    alert('خطا در ارتباط با سرور');
+                    if (adminSendBtn) { adminSendBtn.disabled = false; }
                 });
+            }
+
+            if (!document.getElementById('uploadProgressStyles')) {
+                var style = document.createElement('style');
+                style.id = 'uploadProgressStyles';
+                style.textContent = '.attachment-thumbnail.uploading{position:relative}.upload-progress-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.85);border-radius:6px;z-index:5}.upload-progress-ring{filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1))}.upload-progress-ring circle:first-child{stroke:#e5e7eb}.upload-progress-ring .upload-progress-circle{transition:stroke-dashoffset 0.15s ease-out;stroke:#667eea}.upload-progress-text{font-size:0.6rem;font-weight:700;color:#667eea;margin-top:2px}.upload-cancel-btn{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#e74c3c;color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.25);transition:transform 0.15s}.upload-cancel-btn:hover{transform:scale(1.15)}';
+                document.head.appendChild(style);
             }
 
             loadConversations();
@@ -842,10 +939,34 @@
                     adminAttachmentFile.click();
                 });
                 adminAttachmentFile.addEventListener('change', function(e) {
-                    Array.from(e.target.files).forEach(function(file) {
+                    var files = Array.from(e.target.files || []);
+                    var remaining = 4 - adminCurrentAttachments.length - adminPendingReads;
+                    if (remaining <= 0) {
+                        showToast('فقط می توان چهار فایل آپلود کرد');
+                        adminAttachmentFile.value = '';
+                        return;
+                    }
+                    files.slice(0, remaining).forEach(function(file) {
                         addAdminAttachmentFromFile(file);
                     });
                     adminAttachmentFile.value = '';
+                });
+            }
+
+            if (adminAttachmentPreview) {
+                adminAttachmentPreview.addEventListener('click', function(e) {
+                    var cancelBtn = e.target.closest('[data-cancel-reader]');
+                    if (cancelBtn) {
+                        var attId = cancelBtn.getAttribute('data-cancel-reader');
+                        if (adminActiveReaders[attId]) {
+                            adminActiveReaders[attId].abort();
+                            delete adminActiveReaders[attId];
+                            adminPendingReads--;
+                        }
+                        var thumb = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
+                        if (thumb) thumb.remove();
+                        updateAdminSendButton();
+                    }
                 });
             }
 

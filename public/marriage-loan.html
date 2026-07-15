@@ -86,7 +86,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             fetch('/api/pricing')
-                .then(function(r) { return r.json(); })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(pricing) {
                     var pricingMap = {};
                     pricing.forEach(function(p) { pricingMap[p.service] = p.price; });
@@ -107,6 +107,9 @@
             if (form) {
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
+                    var submitBtn = form.querySelector('button[type="submit"]');
+                    if (submitBtn && submitBtn.disabled) return;
+                    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'در حال ارسال...'; }
                     const data = Object.fromEntries(new FormData(form));
                     data.serviceKey = 'marriage';
                     data.serviceTitle = 'وام ازدواج';

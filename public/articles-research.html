@@ -111,21 +111,67 @@
                     if(file.type.startsWith('image/') && window.currentAttachments.filter(function(a){return a.type&&a.type.startsWith('image/');}).length>=4){alert('فقط می توان چهار فایل آپلود کرد');attachmentFile.value='';return;}
                     if(file.type==='application/pdf' && window.currentAttachments.filter(function(a){return a.type==='application/pdf';}).length>=4){alert('فقط می توان چهار فایل آپلود کرد');attachmentFile.value='';return;}
                     var id='att_'+Date.now()+'_'+Math.random().toString(16).slice(2);
+                    var isImage=file.type.startsWith('image/');
                     var thumb=document.createElement('div');
-                    thumb.className='file-thumb';
+                    thumb.className='file-thumb uploading';
                     thumb.dataset.id=id;
+                    var progressOverlay='<div class="upload-progress-overlay">'
+                        +'<svg class="upload-progress-ring" width="36" height="36" viewBox="0 0 36 36">'
+                        +'<circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" stroke-width="3"/>'
+                        +'<circle class="upload-progress-circle" data-progress-ring="'+id+'" cx="18" cy="18" r="14" fill="none" stroke="var(--firouzeh)" stroke-width="3" stroke-dasharray="87.96" stroke-dashoffset="87.96" transform="rotate(-90 18 18)" stroke-linecap="round"/>'
+                        +'</svg>'
+                        +'<span class="upload-progress-text" data-progress-text="'+id+'">0%</span>'
+                        +'</div>'
+                        +'<button type="button" class="upload-cancel-btn" data-cancel-reader="'+id+'"><i class="fas fa-times"></i></button>';
+                    if(isImage){
+                        thumb.innerHTML='<img src="" style="opacity:0.3">'+progressOverlay;
+                    } else {
+                        thumb.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f0f0f0;font-size:10px;color:#666;text-align:center;padding:4px;opacity:0.3">'+escapeHtml(file.name)+'</div>'+progressOverlay;
+                    }
+                    attachmentPreview.appendChild(thumb);
+                    thumb.querySelector('[data-cancel-reader="'+id+'"]').addEventListener('click',function(){
+                        if(window._formActiveReaders&&window._formActiveReaders[id]){window._formActiveReaders[id].abort();delete window._formActiveReaders[id];}
+                        window.currentAttachments=window.currentAttachments.filter(function(a){return a.id!==id});
+                        thumb.remove();
+                    });
+                    if(!window._formActiveReaders) window._formActiveReaders={};
+                    if(isImage){
+                        var pv=new FileReader();
+                        pv.onload=function(ev2){var img=thumb.querySelector('img');if(img){img.src=ev2.target.result;img.style.opacity='1';}};
+                        pv.readAsDataURL(file);
+                    }
                     var reader=new FileReader();
-                    reader.onload=function(ev){
-                        if(file.type.startsWith('image/')){
-                            thumb.innerHTML='<img src="'+ev.target.result+'"><div class="file-name">'+escapeHtml(file.name)+'</div><button type="button" class="file-remove" onclick="window._removeSpecialAttach(\''+id+'\')">&times;</button>';
-                        } else {
-                            thumb.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f0f0f0;font-size:10px;color:#666;text-align:center;padding:4px">'+escapeHtml(file.name)+'</div><button type="button" class="file-remove" onclick="window._removeSpecialAttach(\''+id+'\')">&times;</button>';
+                    window._formActiveReaders[id]=reader;
+                    reader.onprogress=function(ev){
+                        if(ev.lengthComputable){
+                            var pct=Math.round((ev.loaded/ev.total)*100);
+                            var circle=document.querySelector('[data-progress-ring="'+id+'"]');
+                            var text=document.querySelector('[data-progress-text="'+id+'"]');
+                            if(circle)circle.style.strokeDashoffset=(87.96*(1-pct/100));
+                            if(text)text.textContent=pct+'%';
                         }
+                    };
+                    reader.onload=function(ev){
+                        thumb.classList.remove('uploading');
+                        var ov=thumb.querySelector('.upload-progress-overlay');if(ov)ov.remove();
+                        var cb=thumb.querySelector('.upload-cancel-btn');if(cb)cb.remove();
+                        if(isImage){var imgEl=thumb.querySelector('img');if(imgEl){imgEl.src=ev.target.result;imgEl.style.opacity='1';}}
+                        var nd=document.createElement('div');nd.className='file-name';nd.textContent=file.name;thumb.appendChild(nd);
+                        var st=document.createElement('span');st.className='upload-status';st.innerHTML='<i class="fas fa-check"></i>';thumb.appendChild(st);
+                        var rb=document.createElement('button');rb.type='button';rb.className='file-remove';rb.innerHTML='&times;';
+                        rb.addEventListener('click',function(){window._removeSpecialAttach(id);});thumb.appendChild(rb);
                         window.currentAttachments.push({id:id,name:file.name,type:file.type,size:file.size,dataUrl:ev.target.result,uploadedAt:new Date().toISOString()});
-                        window.currentAttachments = window.currentAttachments;
+                        delete window._formActiveReaders[id];
+                    };
+                    reader.onerror=function(){
+                        thumb.classList.remove('uploading');
+                        var ov=thumb.querySelector('.upload-progress-overlay');if(ov)ov.remove();
+                        var cb=thumb.querySelector('.upload-cancel-btn');if(cb)cb.remove();
+                        var rb=document.createElement('button');rb.type='button';rb.className='file-remove';rb.innerHTML='&times;';
+                        rb.addEventListener('click',function(){window._removeSpecialAttach(id);});thumb.appendChild(rb);
+                        delete window._formActiveReaders[id];
                     };
                     reader.readAsDataURL(file);
-                    attachmentPreview.appendChild(thumb);
                     attachmentFile.value='';
                 });
             }
@@ -156,6 +202,8 @@
             if (form) {
                 form.addEventListener('submit', async function(e) {
                     e.preventDefault();
+                    const submitBtn = form.querySelector('[type="submit"]');
+                    if (submitBtn && submitBtn.disabled) return;
                     const data = Object.fromEntries(new FormData(form));
                     
                     // Combine deadline fields
@@ -174,6 +222,7 @@
                     data.username = userData ? userData.username : null;
                     const uploadAttachments = Array.isArray(window.currentAttachments) ? window.currentAttachments : [];
                     data.attachments = uploadAttachments.map(attachmentForApiStorage);
+                    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'در حال ارسال...'; }
                     try {
                         const response = await fetch('/api/order', {
                             method: 'POST',
@@ -181,6 +230,11 @@
                             body: JSON.stringify(data)
                         });
                         const result = await response.json();
+                        if (!response.ok || !result.trackingCode) {
+                            alert(result.error || 'خطا در ثبت سفارش');
+                            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت سفارش'; }
+                            return;
+                        }
                         await window.uploadAttachmentsForTrackingCode(result.trackingCode, uploadAttachments);
                         if (window.saveAttachmentsForTrackingCode && data.attachments.length > 0) {
                             await window.saveAttachmentsForTrackingCode(result.trackingCode, uploadAttachments);
@@ -188,13 +242,8 @@
                         saveRegistrationData(data, result.trackingCode);
                         window.location.href = 'success.html';
                     } catch (error) {
-                        const fallbackCode = 'CFT-' + Date.now().toString().slice(-8);
-                        await window.uploadAttachmentsForTrackingCode(fallbackCode, uploadAttachments);
-                        if (window.saveAttachmentsForTrackingCode && data.attachments.length > 0) {
-                            await window.saveAttachmentsForTrackingCode(fallbackCode, uploadAttachments);
-                        }
-                        saveRegistrationData(data, fallbackCode);
-                        window.location.href = 'success.html';
+                        alert('خطا در اتصال به سرور');
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت سفارش'; }
                     }
                 });
             }
