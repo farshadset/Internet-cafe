@@ -16,9 +16,18 @@ if (!process.env.JWT_SECRET) {
 }
 
 // ==================== PASSWORD HASHING (async — non-blocking) ====================
+function scryptAsync(password, salt) {
+    return new Promise(function(resolve, reject) {
+        crypto.scrypt(String(password), salt, 64, function(err, derivedKey) {
+            if (err) reject(err);
+            else resolve(derivedKey);
+        });
+    });
+}
+
 async function hashPassword(password) {
     const salt = crypto.randomBytes(32).toString('hex');
-    const hash = (await crypto.scrypt(String(password), salt, 64)).toString('hex');
+    const hash = (await scryptAsync(password, salt)).toString('hex');
     return salt + ':' + hash;
 }
 
@@ -29,7 +38,7 @@ async function verifyPassword(password, stored) {
     var salt = parts[0];
     var hash = parts[1];
     if (!salt || !hash || hash.length !== 128) return false;
-    var verify = (await crypto.scrypt(String(password), salt, 64)).toString('hex');
+    var verify = (await scryptAsync(password, salt)).toString('hex');
     return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(verify, 'hex'));
 }
 
