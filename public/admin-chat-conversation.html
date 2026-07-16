@@ -52,6 +52,47 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            transition: width 0.25s, min-width 0.25s, padding 0.25s;
+        }
+
+        .admin-sidebar.collapsed {
+            width: 0;
+            min-width: 0;
+            padding: 0;
+            border-left: none;
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            top: 12px;
+            right: 312px;
+            z-index: 100;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+            background: #fff;
+            color: #667eea;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.2s;
+        }
+
+        .sidebar-toggle:hover {
+            background: #f0f2ff;
+            border-color: #667eea;
+        }
+
+        .admin-sidebar.collapsed ~ .admin-chat-main .admin-chat-header {
+            padding-right: 56px;
+        }
+
+        .admin-sidebar.collapsed ~ .sidebar-toggle {
+            right: 12px;
         }
 
         .admin-sidebar-header {
@@ -125,6 +166,7 @@
             min-width: 0;
             height: 100vh;
             overflow: hidden;
+            width: 100%;
         }
 
         .admin-chat-header {
@@ -402,15 +444,66 @@
             .admin-chat-layout {
                 height: 100vh;
                 height: 100dvh;
-                flex-direction: column;
+                position: relative;
             }
 
             .admin-sidebar {
-                width: 100%;
-                min-width: 100%;
-                max-height: 180px;
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 280px;
+                min-width: 280px;
+                max-width: 80vw;
+                height: 100%;
                 border-left: none;
-                border-bottom: 1px solid #e9ecef;
+                border-bottom: none;
+                z-index: 200;
+                box-shadow: -2px 0 12px rgba(0,0,0,0.15);
+                transform: translateX(0);
+                transition: transform 0.25s, width 0.25s;
+            }
+
+            .admin-sidebar.collapsed {
+                width: 0;
+                min-width: 0;
+                transform: translateX(100%);
+                box-shadow: none;
+                border-bottom: none;
+            }
+
+            .sidebar-toggle {
+                top: 12px;
+                right: 12px;
+                z-index: 300;
+            }
+
+            .admin-sidebar:not(.collapsed) ~ .sidebar-toggle {
+                top: 12px;
+                right: auto;
+                left: calc(100vw - 268px);
+            }
+
+            .admin-sidebar.collapsed ~ .sidebar-toggle {
+                top: 12px;
+                right: 12px;
+                left: auto;
+            }
+
+            .admin-sidebar.collapsed ~ .admin-chat-main .admin-chat-header {
+                padding-right: 12px;
+            }
+
+            .admin-sidebar-overlay {
+                display: none;
+                position: absolute;
+                inset: 0;
+                background: rgba(0,0,0,0.3);
+                z-index: 150;
+            }
+
+            .admin-sidebar:not(.collapsed) ~ .admin-sidebar-overlay {
+                display: block;
+            }
             }
 
             .message {
@@ -471,14 +564,18 @@
     <div class="admin-chat-layout">
         <!-- ── سایدبار ── -->
         <div class="admin-sidebar">
-            <div class="admin-sidebar-header">
-                <i class="fas fa-comments" style="color: #667eea;"></i>
-                <h3>گفتگوهای کاربر</h3>
-            </div>
             <div class="admin-conversations-list" id="adminConversationsList">
                 <div class="admin-empty-state">در حال بارگذاری...</div>
             </div>
         </div>
+
+        <!-- ── overlay موبایل ── -->
+        <div class="admin-sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- ── دکمه باز/بسته سایدبار ── -->
+        <button class="sidebar-toggle" id="sidebarToggle" title="لیست گفتگوها">
+            <i class="fas fa-comments"></i>
+        </button>
 
         <!-- ── بخش اصلی چت ── -->
         <div class="admin-chat-main">
@@ -798,6 +895,10 @@
                                 lastMessageId = null;
                                 loadMessages();
                                 highlightActiveConversation();
+                                if (window.innerWidth <= 768 && sidebar && sidebarToggle) {
+                                    sidebar.classList.add('collapsed');
+                                    sidebarToggle.querySelector('i').className = 'fas fa-comments';
+                                }
                             });
                             conversationsList.appendChild(div);
                         });
@@ -949,6 +1050,31 @@
             loadConversations();
 
             conversationPolling = setInterval(pollMessages, 2000);
+
+            var sidebar = document.querySelector('.admin-sidebar');
+            var sidebarToggle = document.getElementById('sidebarToggle');
+            if (sidebarToggle && sidebar) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('collapsed');
+                    var isCollapsed = sidebar.classList.contains('collapsed');
+                    sidebarToggle.querySelector('i').className = isCollapsed ? 'fas fa-comments' : 'fas fa-chevron-right';
+                    sidebarToggle.title = isCollapsed ? 'باز کردن لیست گفتگوها' : 'بستن لیست گفتگوها';
+                });
+            }
+
+            var sidebarOverlay = document.getElementById('sidebarOverlay');
+            if (sidebarOverlay && sidebar) {
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.add('collapsed');
+                    sidebarToggle.querySelector('i').className = 'fas fa-comments';
+                    sidebarToggle.title = 'باز کردن لیست گفتگوها';
+                });
+            }
+
+            if (window.innerWidth <= 768 && sidebar) {
+                sidebar.classList.add('collapsed');
+                sidebarToggle.querySelector('i').className = 'fas fa-comments';
+            }
 
             adminSendBtn.addEventListener('click', sendMessage);
             adminMessageInput.addEventListener('input', autoResize);
