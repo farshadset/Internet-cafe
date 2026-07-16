@@ -37,6 +37,13 @@
                 <label style="display: block; margin-top: 0.5rem;">
                     <input type="checkbox" id="rememberMe"> ذخیره اطلاعات ورود
                 </label>
+                <div id="biometricLoginSection" style="display:none;margin-top:1rem;text-align:center;border-top:1px solid #eee;padding-top:1rem;">
+                    <button type="button" id="biometricLoginBtn" style="width:100%;padding:10px;border:2px solid #667eea;background:#fff;color:#667eea;border-radius:10px;cursor:pointer;font-size:0.9rem;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+                        <i class="fas fa-fingerprint" style="font-size:1.2rem;"></i>
+                        ورود با اثرانگشت
+                    </button>
+                    <div id="biometricLoginStatus" style="margin-top:0.5rem;font-size:0.8rem;color:#888;"></div>
+                </div>
             </form>
             <p style="margin-top: 1rem;">
                 <a href="auth.html">ثبت نام</a>
@@ -44,8 +51,6 @@
             </p>
         </main>
     </div>
-    <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn"><i class="fas fa-headset"></i></a>
-    
     <div class="modal" id="supportModal">
     <div class="modal-content">
         <span class="close-btn" id="closeModal">&times;</span>
@@ -95,5 +100,44 @@
     </div>
 </div>
     <script src="app.js"></script>
+    <script>
+        (function() {
+            var biometricSection = document.getElementById('biometricLoginSection');
+            var biometricBtn = document.getElementById('biometricLoginBtn');
+            var biometricStatus = document.getElementById('biometricLoginStatus');
+            var loginUsername = document.getElementById('loginUsername');
+
+            if (WebAuthnClient.isSupported()) {
+                WebAuthnClient.isPlatformAuthenticatorAvailable().then(function(available) {
+                    if (available) biometricSection.style.display = '';
+                });
+            }
+
+            biometricBtn.addEventListener('click', function() {
+                var username = loginUsername.value.trim();
+                if (!username) {
+                    biometricStatus.textContent = 'لطفاً ابتدا نام کاربری را وارد کنید';
+                    biometricStatus.style.color = '#e74c3c';
+                    return;
+                }
+                biometricBtn.disabled = true;
+                biometricStatus.textContent = 'در حال احراز هویت...';
+                biometricStatus.style.color = '#667eea';
+                WebAuthnClient.authenticate(username).then(function(result) {
+                    if (result.isAdmin) {
+                        localStorage.setItem('adminData', JSON.stringify({ username: username, token: result.token }));
+                        window.location.href = 'admin.html';
+                    } else {
+                        localStorage.setItem('userData', JSON.stringify({ username: username, token: result.token }));
+                        window.location.href = 'index.html';
+                    }
+                }).catch(function(e) {
+                    biometricBtn.disabled = false;
+                    biometricStatus.textContent = e.message || 'خطا در احراز هویت';
+                    biometricStatus.style.color = '#e74c3c';
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

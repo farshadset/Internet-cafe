@@ -120,6 +120,17 @@ async function createTables(c) {
             createdAt TEXT,
             status TEXT DEFAULT 'open'
         );
+
+        CREATE TABLE IF NOT EXISTS webauthn_credentials (
+            id TEXT PRIMARY KEY,
+            username TEXT NOT NULL,
+            credential_id TEXT UNIQUE NOT NULL,
+            public_key TEXT NOT NULL,
+            counter INTEGER DEFAULT 0,
+            device_name TEXT,
+            transports TEXT,
+            created_at TEXT
+        );
     `);
 
     // Performance indexes
@@ -689,6 +700,76 @@ async function upsertPricing(service, price) {
     });
 }
 
+// ==================== WEBAUTHN ====================
+async function createWebAuthnCredential(data) {
+    await client.execute({
+        sql: `INSERT INTO webauthn_credentials (id, username, credential_id, public_key, counter, device_name, transports, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+            data.id, data.username, data.credentialId, data.publicKey,
+            data.counter || 0, data.deviceName || null,
+            data.transports ? JSON.stringify(data.transports) : null,
+            data.createdAt || new Date().toISOString()
+        ]
+    });
+}
+
+async function getWebAuthnCredentialByCredentialId(credentialId) {
+    const r = await client.execute({
+        sql: 'SELECT * FROM webauthn_credentials WHERE credential_id = ?',
+        args: [credentialId]
+    });
+    if (r.rows.length === 0) return null;
+    return _rowToWebAuthnCredential(r.rows[0]);
+}
+
+async function getWebAuthnCredentialsByUsername(username) {
+    const r = await client.execute({
+        sql: 'SELECT * FROM webauthn_credentials WHERE username = ? ORDER BY created_at DESC',
+        args: [username]
+    });
+    return r.rows.map(_rowToWebAuthnCredential);
+}
+
+async function updateWebAuthnCredentialCounter(credentialId, newCounter) {
+    await client.execute({
+        sql: 'UPDATE webauthn_credentials SET counter = ? WHERE credential_id = ?',
+        args: [newCounter, credentialId]
+    });
+}
+
+async function deleteWebAuthnCredential(id, username) {
+    await client.execute({
+        sql: 'DELETE FROM webauthn_credentials WHERE id = ? AND username = ?',
+        args: [id, username]
+    });
+}
+
+async function getWebAuthnCredentialsByUsernames(usernames) {
+    if (!usernames || usernames.length === 0) return [];
+    const placeholders = usernames.map(() => '?').join(',');
+    const r = await client.execute({
+        sql: `SELECT * FROM webauthn_credentials WHERE username IN (${placeholders})`,
+        args: usernames
+    });
+    return r.rows.map(_rowToWebAuthnCredential);
+}
+
+function _rowToWebAuthnCredential(row) {
+    let transports = [];
+    try { transports = JSON.parse(row.transports || '[]'); } catch(_) {}
+    return {
+        id: row.id,
+        username: row.username,
+        credentialId: row.credential_id,
+        publicKey: row.public_key,
+        counter: row.counter || 0,
+        deviceName: row.device_name,
+        transports,
+        createdAt: row.created_at
+    };
+}
+
 // ==================== EXPORTS ====================
 module.exports = {
     initDB,
@@ -730,5 +811,11 @@ module.exports = {
     getAllVisits,
     getPricing,
     upsertPricing,
+    createWebAuthnCredential,
+    getWebAuthnCredentialByCredentialId,
+    getWebAuthnCredentialsByUsername,
+    updateWebAuthnCredentialCounter,
+    deleteWebAuthnCredential,
+    getWebAuthnCredentialsByUsernames,
     getClient: () => client,
 };
