@@ -96,6 +96,18 @@
                     <i class="fas fa-share-alt"></i>
                     <span>اطلاعات تماس</span>
                 </a>
+                <a href="#" class="profile-option" id="adminBiometricToggle" style="display:none;">
+                    <i class="fas fa-fingerprint"></i>
+                    <span>اثرانگشت مدیر</span>
+                    <span id="adminBiometricStatus" style="font-size:0.75rem;margin-right:auto;margin-left:0.5rem;color:#888;"></span>
+                </a>
+                <div id="adminBiometricSection" style="display:none;margin:0.75rem 0;padding:1rem;background:#f8f9fa;border-radius:12px;border:1px solid #e9ecef;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                        <strong style="font-size:0.9rem;">اثرانگشت‌های ثبت‌شده</strong>
+                        <button id="addAdminBiometricBtn" style="padding:6px 14px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer;font-size:0.8rem;">افزودن</button>
+                    </div>
+                    <div id="adminBiometricList" style="font-size:0.85rem;color:#555;">در حال بارگذاری...</div>
+                </div>
                 <a href="#" class="profile-option" id="adminLogoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     خروج
@@ -168,6 +180,88 @@
                         else if (title === 'روبیکا' && socialData.robika) link.href = socialData.robika;
                     });
                 } catch(e) {}
+            }
+
+            // Biometric settings for admin
+            var adminBiometricToggle = document.getElementById('adminBiometricToggle');
+            var adminBiometricSection = document.getElementById('adminBiometricSection');
+            var adminBiometricStatus = document.getElementById('adminBiometricStatus');
+            var adminBiometricList = document.getElementById('adminBiometricList');
+            var addAdminBiometricBtn = document.getElementById('addAdminBiometricBtn');
+
+            if (WebAuthnClient && WebAuthnClient.isSupported()) {
+                WebAuthnClient.isPlatformAuthenticatorAvailable().then(function(available) {
+                    if (available) {
+                        adminBiometricToggle.style.display = '';
+                        loadAdminBiometricStatus();
+                    }
+                });
+            }
+
+            if (adminBiometricToggle) {
+                adminBiometricToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var isOpen = adminBiometricSection.style.display !== 'none';
+                    adminBiometricSection.style.display = isOpen ? 'none' : '';
+                    if (!isOpen) loadAdminBiometricCredentials();
+                });
+            }
+
+            function loadAdminBiometricStatus() {
+                WebAuthnClient.getCredentials().then(function(creds) {
+                    adminBiometricStatus.textContent = creds.length > 0 ? creds.length + ' ثبت‌شده' : 'فعال نشده';
+                }).catch(function() { adminBiometricStatus.textContent = ''; });
+            }
+
+            function loadAdminBiometricCredentials() {
+                adminBiometricList.innerHTML = 'در حال بارگذاری...';
+                WebAuthnClient.getCredentials().then(function(creds) {
+                    if (creds.length === 0) {
+                        adminBiometricList.innerHTML = '<div style="color:#999;text-align:center;padding:0.5rem;">هیچ اثرانگشتی ثبت نشده</div>';
+                        return;
+                    }
+                    adminBiometricList.innerHTML = '';
+                    creds.forEach(function(c) {
+                        var div = document.createElement('div');
+                        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid #eee;';
+                        div.innerHTML = '<div><i class="fas fa-fingerprint" style="color:#667eea;margin-left:0.5rem;"></i>' + escapeHtml(c.deviceName || 'دستگاه ناشناس') + '<div style="font-size:0.7rem;color:#999;">' + new Date(c.createdAt).toLocaleDateString('fa-IR') + '</div></div>';
+                        var delBtn = document.createElement('button');
+                        delBtn.textContent = 'حذف';
+                        delBtn.style.cssText = 'padding:4px 12px;border:none;background:#e74c3c;color:#fff;border-radius:6px;cursor:pointer;font-size:0.75rem;';
+                        delBtn.addEventListener('click', function() {
+                            if (!confirm('آیا از حذف این اثرانگشت مطمئن هستید؟')) return;
+                            WebAuthnClient.removeCredential(c.id).then(function() {
+                                loadAdminBiometricCredentials();
+                                loadAdminBiometricStatus();
+                            }).catch(function(e) { alert(e.message); });
+                        });
+                        div.appendChild(delBtn);
+                        adminBiometricList.appendChild(div);
+                    });
+                }).catch(function(e) {
+                    adminBiometricList.innerHTML = '<div style="color:red;text-align:center;">' + escapeHtml(e.message) + '</div>';
+                });
+            }
+
+            if (addAdminBiometricBtn) {
+                addAdminBiometricBtn.addEventListener('click', function() {
+                    var name = prompt('نام دستگاه (مثلاً: کامپیوت من):');
+                    if (name === null) return;
+                    name = name.trim() || 'دستگاه ناشناس';
+                    addAdminBiometricBtn.disabled = true;
+                    addAdminBiometricBtn.textContent = 'در حال ثبت...';
+                    WebAuthnClient.register(name).then(function() {
+                        loadAdminBiometricCredentials();
+                        loadAdminBiometricStatus();
+                        addAdminBiometricBtn.disabled = false;
+                        addAdminBiometricBtn.textContent = 'افزودن';
+                        alert('اثرانگشت با موفقیت ثبت شد!');
+                    }).catch(function(e) {
+                        addAdminBiometricBtn.disabled = false;
+                        addAdminBiometricBtn.textContent = 'افزودن';
+                        alert('خطا: ' + e.message);
+                    });
+                });
             }
         });
     </script>

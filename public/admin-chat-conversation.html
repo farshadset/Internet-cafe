@@ -5,7 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>چت با مشتری</title>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+        (function(){
+            try{
+                var d=JSON.parse(localStorage.getItem('adminData')||'null');
+                if(!d||!d.token){location.replace('login.html');return;}
+                var parts=d.token.split('.');
+                if(parts.length===3){
+                    var payload=JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+                    if(payload.exp && Date.now()>payload.exp){localStorage.removeItem('adminData');location.replace('login.html');return;}
+                }
+            }catch(e){location.replace('login.html');return;}
+        })();
     </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -504,8 +514,19 @@
         </div>
     </div>
 
+    <script src="app.js"></script>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
+        (function(){
+            try{
+                var d=JSON.parse(localStorage.getItem('adminData')||'null');
+                if(!d||!d.token){window.location.href='login.html';return;}
+                var parts=d.token.split('.');
+                if(parts.length===3){
+                    var payload=JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+                    if(payload.exp && Date.now()>payload.exp){localStorage.removeItem('adminData');window.location.href='login.html';return;}
+                }
+            }catch(e){window.location.href='login.html';return;}
+        })();
         document.addEventListener('DOMContentLoaded', function () {
             var params = new URLSearchParams(window.location.search);
             var username = params.get('username');
@@ -750,9 +771,13 @@
                 });
             }
 
-            function loadConversations() {
+            function _handle401(r) {
+                if (r.status === 401) { localStorage.removeItem('adminData'); window.location.href = 'login.html'; return null; }
+                return r;
+            }
+            window.loadConversations = function() {
                 fetch('/api/admin/chat/conversations?username=' + encodeURIComponent(currentUsername))
-                    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                    .then(function(r) { r = _handle401(r); if (!r) return; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                     .then(function(convs) {
                         conversationsData = convs || [];
                         conversationsList.innerHTML = '';
@@ -784,17 +809,17 @@
                         }
                     })
                     .catch(function() {
-                        conversationsList.innerHTML = '<div class="admin-empty-state" style="color:red;">خطا در بارگذاری</div>';
+                        conversationsList.innerHTML = '<div class="admin-empty-state" style="color:red;">خطا در بارگذاری</div><div class="admin-empty-state"><button onclick="loadConversations()" style="padding:8px 20px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer;font-size:0.85rem;">تلاش مجدد</button></div>';
                     });
             }
 
-            function loadMessages() {
+            window.loadMessages = function() {
                 if (!currentConversationId) {
                     chatMessages.innerHTML = '<div class="admin-empty-state">یک گفتگو را انتخاب کنید</div>';
                     return;
                 }
                 fetch('/api/admin/chat/conversation/' + currentConversationId)
-                    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                    .then(function(r) { r = _handle401(r); if (!r) return; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                     .then(function(messages) {
                         lastMessageId = null;
                         chatMessages.innerHTML = '';
@@ -808,7 +833,7 @@
                         lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
                     })
                     .catch(function() {
-                        chatMessages.innerHTML = '<div class="admin-empty-state" style="color:red;">خطا در بارگذاری پیام‌ها</div>';
+                        chatMessages.innerHTML = '<div class="admin-empty-state" style="color:red;">خطا در بارگذاری پیام‌ها</div><div class="admin-empty-state"><button onclick="loadMessages()" style="padding:8px 20px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer;font-size:0.85rem;">تلاش مجدد</button></div>';
                     });
             }
 
@@ -832,7 +857,7 @@
             function pollMessages() {
                 if (!currentConversationId) return;
                 fetch('/api/admin/chat/conversation/' + currentConversationId)
-                    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                    .then(function(r) { r = _handle401(r); if (!r) return; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                     .then(function(messages) {
                         if (!lastMessageId && messages.length > 0) {
                             lastMessageId = messages[messages.length - 1].id;
