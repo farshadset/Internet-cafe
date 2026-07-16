@@ -10,10 +10,9 @@ const db = require('./db');
 
 const isVercel = !!process.env.VERCEL;
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    console.error('FATAL: JWT_SECRET environment variable is required. Set it in Vercel dashboard.');
-    process.exit(1);
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-dev-secret-do-not-use-in-production';
+if (!process.env.JWT_SECRET) {
+    console.warn('WARNING: JWT_SECRET not set. Using fallback secret. Set JWT_SECRET in Vercel dashboard for production.');
 }
 
 // ==================== PASSWORD HASHING (async — non-blocking) ====================
