@@ -2148,7 +2148,9 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeChat();
             setTimeout(setupInlineAttachments, 100);
         });
+    }
 
+    if (supportModal) {
         var sidebarSupportBtn = document.getElementById('sidebarSupportBtn');
         var bottomSupportBtn = document.getElementById('bottomSupportBtn');
         [sidebarSupportBtn, bottomSupportBtn].forEach(function(btn) {
