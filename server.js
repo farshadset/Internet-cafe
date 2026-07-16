@@ -1269,6 +1269,344 @@ app.get('/api/chat/conversations', requireUser, asyncHandler(async (req, res) =>
     res.json(result);
 }));
 
+// ==================== WEBAUTHN ====================
+const RP_NAME = 'کافینت';
+const RP_ID = isVercel ? 'retrocafebakery.ir' : 'localhost';
+const ORIGIN = isVercel ? 'https://www.retrocafebakery.ir' : 'http://localhost:' + (process.env.PORT || 3003);
+
+const WEBAUTHN_CHALLENGES = new Map();
+const CHALLENGE_TTL = 5 * 60 * 1000;
+
+function generateChallenge() {
+    return crypto.randomBytes(32).toString('base64url');
+}
+
+function storeChallenge(username, challenge, type) {
+    WEBAUTHN_CHALLENGES.set(username, { challenge, type, ts: Date.now() });
+    setTimeout(function() { WEBAUTHN_CHALLENGES.delete(username); }, CHALLENGE_TTL);
+}
+
+function getAndRemoveChallenge(username) {
+    var entry = WEBAUTHN_CHALLENGES.get(username);
+    WEBAUTHN_CHALLENGES.delete(username);
+    if (!entry || Date.now() - entry.ts > CHALLENGE_TTL) return null;
+    return entry;
+}
+
+function bufferToBase64url(buffer) {
+    return Buffer.from(buffer).toString('base64url');
+}
+
+function base64urlToBuffer(base64url) {
+    return Buffer.from(base64url, 'base64url');
+}
+
+function parseCOSEPublicKey(coseBuffer) {
+    var data = coseBuffer;
+    if (typeof data === 'string') data = base64urlToBuffer(data);
+    var offset = 0;
+    function readUint() {
+        var b = data[offset]; offset++;
+        if (b <= 0x17) return b;
+        if (b === 0x18) { var v = data.readUInt8(offset); offset += 1; return v; }
+        if (b === 0x19) { var v = data.readUInt16BE(offset); offset += 2; return v; }
+        if (b === 0x1a) { var v = data.readUInt32BE(offset); offset += 4; return v; }
+        return 0;
+    }
+    function readBytes() {
+        var len = readUint();
+        var buf = data.slice(offset, offset + len);
+        offset += len;
+        return buf;
+    }
+    function readInt() {
+        var b = data[offset]; offset++;
+        if (b <= 0x17) return b;
+        if (b === 0x18) { var v = data.readUInt8(offset); offset += 1; return v; }
+        if (b === 0x19) { var v = data.readUInt16BE(offset); offset += 2; return v; }
+        if (b === 0x1a) { var v = data.readUInt32BE(offset); offset += 4; return v; }
+        return 0;
+    }
+    try {
+        var mapLen = readUint();
+        var result = {};
+        for (var i = 0; i < mapLen; i++) {
+            var key = readInt();
+            var valType = data[offset]; offset++;
+            if (valType <= 0x17 || valType === 0x18 || valType === 0x19 || valType === 0x1a) {
+                result[key] = readInt();
+            } else if (valType >= 0x40 && valType <= 0x5f) {
+                result[key] = readBytes();
+            } else if (valType === 0x60 || valType === 0x61) {
+                result[key] = readBytes();
+            } else {
+                offset++;
+                result[key] = 0;
+            }
+        }
+        return result;
+    } catch(e) {
+        return null;
+    }
+}
+
+function createCOSEPublicKeyEC2(x, y) {
+    var parts = [];
+    parts.push(Buffer.from([0xa3]));
+    parts.push(Buffer.from([0x01, 0x02]));
+    parts.push(Buffer.from([0x03, 0x26]));
+    parts.push(Buffer.from([0x20, 0x01]));
+    parts.push(Buffer.from([0x21, 0x58, 0x20]));
+    parts.push(x);
+    parts.push(Buffer.from([0x22, 0x58, 0x20]));
+    parts.push(y);
+    return Buffer.concat(parts);
+}
+
+function webAuthnGenerateChallenge() {
+    return crypto.randomBytes(32).toString('base64url');
+}
+
+function webAuthnVerifyAttestation(authenticatorDataB64, clientDataJSONB64, expectedChallenge, expectedOrigin, expectedRPID) {
+    var authenticatorData = base64urlToBuffer(authenticatorDataB64);
+    var clientDataJSON = base64urlToBuffer(clientDataJSONB64);
+    var clientData;
+    try { clientData = JSON.parse(clientDataJSON.toString()); } catch(e) { return { verified: false, error: 'clientData نامعتبر' }; }
+
+    if (clientData.type !== 'webauthn.create') return { verified: false, error: 'type نامعتبر' };
+    if (clientData.challenge !== expectedChallenge) return { verified: false, error: 'challenge نامعتبر' };
+
+    var originUrl;
+    try { originUrl = new URL(clientData.origin); } catch(e) { return { verified: false, error: 'origin نامعتبر' }; }
+    var expectedOriginUrl;
+    try { expectedOriginUrl = new URL(expectedOrigin); } catch(e) { return { verified: false, error: 'origin سرور نامعتبر' }; }
+    if (originUrl.origin !== expectedOriginUrl.origin) return { verified: false, error: 'origin مطابقت ندارد' };
+
+    if (authenticatorData.length < 37) return { verified: false, error: 'authenticatorData نامعتبر' };
+    var rpIdHash = authenticatorData.slice(0, 32);
+    var expectedRPIDHash = crypto.createHash('sha256').update(expectedRPID).digest();
+    if (!rpIdHash.equals(expectedRPIDHash)) return { verified: false, error: 'rpID مطابقت ندارد' };
+
+    var flags = authenticatorData[32];
+    var hasAttestedCredentialData = (flags & 0x40) !== 0;
+    if (!hasAttestedCredentialData) return { verified: false, error: 'attestedCredentialData موجود نیست' };
+
+    var attestedCredentialData = authenticatorData.slice(37);
+    if (attestedCredentialData.length < 18) return { verified: false, error: 'attestedCredentialData نامعتبر' };
+
+    var credentialIdLength = attestedCredentialData.readUInt16BE(16);
+    var credentialID = attestedCredentialData.slice(18, 18 + credentialIdLength);
+    var cosePublicKeyBytes = attestedCredentialData.slice(18 + credentialIdLength);
+
+    return {
+        verified: true,
+        credentialID: credentialID,
+        credentialPublicKey: cosePublicKeyBytes,
+        counter: authenticatorData.readUInt32BE(33)
+    };
+}
+
+function webAuthnVerifyAssertion(authenticatorDataB64, clientDataJSONB64, signatureB64, expectedChallenge, expectedOrigin, expectedRPID, publicKeyBuffer, prevCounter) {
+    var authenticatorData = base64urlToBuffer(authenticatorDataB64);
+    var clientDataJSON = base64urlToBuffer(clientDataJSONB64);
+    var signature = base64urlToBuffer(signatureB64);
+    var clientData;
+    try { clientData = JSON.parse(clientDataJSON.toString()); } catch(e) { return { verified: false, error: 'clientData نامعتبر' }; }
+
+    if (clientData.type !== 'webauthn.get') return { verified: false, error: 'type نامعتبر' };
+    if (clientData.challenge !== expectedChallenge) return { verified: false, error: 'challenge نامعتبر' };
+
+    var originUrl;
+    try { originUrl = new URL(clientData.origin); } catch(e) { return { verified: false, error: 'origin نامعتبر' }; }
+    var expectedOriginUrl;
+    try { expectedOriginUrl = new URL(expectedOrigin); } catch(e) { return { verified: false, error: 'origin سرور نامعتبر' }; }
+    if (originUrl.origin !== expectedOriginUrl.origin) return { verified: false, error: 'origin مطابقت ندارد' };
+
+    if (authenticatorData.length < 37) return { verified: false, error: 'authenticatorData نامعتبر' };
+    var rpIdHash = authenticatorData.slice(0, 32);
+    var expectedRPIDHash = crypto.createHash('sha256').update(expectedRPID).digest();
+    if (!rpIdHash.equals(expectedRPIDHash)) return { verified: false, error: 'rpID مطابقت ندارد' };
+
+    var flags = authenticatorData[32];
+    var userPresent = (flags & 0x01) !== 0;
+    if (!userPresent) return { verified: false, error: 'User Present تایید نشد' };
+
+    var newCounter = authenticatorData.readUInt32BE(33);
+    if (prevCounter > 0 && newCounter <= prevCounter) return { verified: false, error: 'Counter نامعتبر' };
+
+    var signedData = Buffer.concat([authenticatorData, crypto.createHash('sha256').update(clientDataJSON).digest()]);
+
+    var coseKey = parseCOSEPublicKey(publicKeyBuffer);
+    if (!coseKey) return { verified: false, error: 'کلید عمومی نامعتبر' };
+
+    var x = coseKey[-2];
+    var y = coseKey[-3];
+    if (!x || !y) return { verified: false, error: 'کلید EC نامعتبر' };
+
+    var rawKey = Buffer.concat([
+        Buffer.from([0x04]),
+        x instanceof Buffer ? x : Buffer.from([x]),
+        y instanceof Buffer ? y : Buffer.from([y])
+    ]);
+    var keyObject = crypto.createPublicKey({ key: rawKey, format: 'der', type: 'spki' });
+    var valid = crypto.verify(null, signedData, keyObject, signature);
+
+    return { verified: valid, newCounter: newCounter };
+}
+
+app.post('/api/webauthn/register-options', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    const username = req.user.username;
+    const existingCredentials = await db.getWebAuthnCredentialsByUsername(username);
+    const excludeCredentials = existingCredentials.map(function(c) {
+        return { id: c.credentialId, type: 'public-key', transports: c.transports };
+    });
+
+    const challenge = webAuthnGenerateChallenge();
+    storeChallenge(username, challenge, 'register');
+
+    res.json({
+        challenge,
+        rp: { name: RP_NAME, id: RP_ID },
+        user: {
+            id: Buffer.from(username).toString('base64url'),
+            name: username,
+            displayName: username,
+        },
+        pubKeyCredParams: [
+            { type: 'public-key', alg: -7 },
+            { type: 'public-key', alg: -257 },
+        ],
+        timeout: 60000,
+        attestation: 'none',
+        excludeCredentials,
+        authenticatorSelection: {
+            residentKey: 'preferred',
+            userVerification: 'preferred',
+        },
+    });
+}));
+
+app.post('/api/webauthn/register', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    const { credential, deviceName } = req.body;
+    const username = req.user.username;
+
+    const expectedChallenge = getAndRemoveChallenge(username);
+    if (!expectedChallenge || expectedChallenge.type !== 'register') {
+        return res.status(400).json({ error: 'چالش نامعتبر یا منقضی شده است' });
+    }
+
+    try {
+        var result = webAuthnVerifyAttestation(
+            credential.response.authenticatorData,
+            credential.response.clientDataJSON,
+            expectedChallenge.challenge,
+            ORIGIN,
+            RP_ID
+        );
+    } catch(e) {
+        return res.status(400).json({ error: 'تایید ثبت‌نام ناموفق' });
+    }
+
+    if (!result.verified) {
+        return res.status(400).json({ error: result.error || 'تایید ثبت‌نام ناموفق' });
+    }
+
+    var cred_id = bufferToBase64url(result.credentialID);
+    var pub_key = bufferToBase64url(result.credentialPublicKey);
+    var id = 'wc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+    await db.createWebAuthnCredential({
+        id,
+        username,
+        credentialId: cred_id,
+        publicKey: pub_key,
+        counter: result.counter || 0,
+        deviceName: deviceName || 'دستگاه ناشناس',
+        transports: credential.response?.transports || [],
+        createdAt: new Date().toISOString(),
+    });
+
+    res.json({ success: true, credential: { id, deviceName: deviceName || 'دستگاه ناشناس', createdAt: new Date().toISOString() } });
+}));
+
+app.post('/api/webauthn/auth-options', asyncHandler(async (req, res) => {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: 'نام کاربری الزامی است' });
+
+    const credentials = await db.getWebAuthnCredentialsByUsername(username);
+    if (credentials.length === 0) {
+        return res.status(404).json({ error: 'هیچ اثرانگشتی ثبت نشده است' });
+    }
+
+    const allowCredentials = credentials.map(function(c) {
+        return { id: c.credentialId, type: 'public-key', transports: c.transports };
+    });
+
+    const challenge = webAuthnGenerateChallenge();
+    storeChallenge(username, challenge, 'authenticate');
+
+    res.json({ challenge, timeout: 60000, rpID: RP_ID, allowCredentials, userVerification: 'preferred' });
+}));
+
+app.post('/api/webauthn/authenticate', writeRateLimit, asyncHandler(async (req, res) => {
+    const { credential, username } = req.body;
+    if (!username || !credential) {
+        return res.status(400).json({ error: 'اطلاعات ناقص است' });
+    }
+
+    const expectedChallenge = getAndRemoveChallenge(username);
+    if (!expectedChallenge || expectedChallenge.type !== 'authenticate') {
+        return res.status(400).json({ error: 'چالش نامعتبر یا منقضی شده است' });
+    }
+
+    const storedCredential = await db.getWebAuthnCredentialByCredentialId(credential.id);
+    if (!storedCredential) {
+        return res.status(400).json({ error: 'اثرانگشت یافت نشد' });
+    }
+
+    try {
+        var result = webAuthnVerifyAssertion(
+            credential.response.authenticatorData,
+            credential.response.clientDataJSON,
+            credential.response.signature,
+            expectedChallenge.challenge,
+            ORIGIN,
+            RP_ID,
+            storedCredential.publicKey,
+            storedCredential.counter
+        );
+    } catch(e) {
+        return res.status(400).json({ error: 'تایید هویت ناموفق' });
+    }
+
+    if (!result.verified) {
+        return res.status(400).json({ error: result.error || 'تایید هویت ناموفق' });
+    }
+
+    await db.updateWebAuthnCredentialCounter(credential.id, result.newCounter);
+
+    const user = await db.getUser(username);
+    if (!user) return res.status(400).json({ error: 'کاربر یافت نشد' });
+
+    const token = signJWT({ username, isAdmin: !!user.isAdmin });
+    var cookieFlags = 'Path=/; HttpOnly; SameSite=Strict; Max-Age=86400' + (isVercel ? '; Secure' : '');
+    res.setHeader('Set-Cookie', 'token=' + encodeURIComponent(token) + '; ' + cookieFlags);
+    res.json({ success: true, token, isAdmin: !!user.isAdmin });
+}));
+
+app.get('/api/webauthn/credentials', requireUser, asyncHandler(async (req, res) => {
+    const credentials = await db.getWebAuthnCredentialsByUsername(req.user.username);
+    const result = credentials.map(function(c) {
+        return { id: c.id, deviceName: c.deviceName, createdAt: c.createdAt };
+    });
+    res.json(result);
+}));
+
+app.delete('/api/webauthn/credentials/:id', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    await db.deleteWebAuthnCredential(req.params.id, req.user.username);
+    res.json({ success: true });
+}));
+
 // ==================== SERVER ====================
 const PORT = process.env.PORT || 3003;
 let server;

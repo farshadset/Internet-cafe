@@ -1,15 +1,88 @@
 var _origFetch = window.fetch;
 var _cachedAdminToken = null;
 var _cachedUserToken = null;
+var _autoLogoutTimer = null;
 
 function _refreshTokenCache() {
     try { var d = JSON.parse(localStorage.getItem('adminData') || 'null'); _cachedAdminToken = (d && d.token) ? d.token : null; } catch(e) { _cachedAdminToken = null; }
     try { var d = JSON.parse(localStorage.getItem('userData') || 'null'); _cachedUserToken = (d && d.token) ? d.token : null; } catch(e) { _cachedUserToken = null; }
+    _setupAutoLogout();
 }
 _refreshTokenCache();
 window.addEventListener('storage', function(e) {
     if (e.key === 'adminData' || e.key === 'userData') _refreshTokenCache();
 });
+
+function _parseJWT(token) {
+    try {
+        var parts = token.split('.');
+        if (parts.length !== 3) return null;
+        return JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    } catch(e) { return null; }
+}
+
+function _setupAutoLogout() {
+    if (_autoLogoutTimer) { clearTimeout(_autoLogoutTimer); _autoLogoutTimer = null; }
+    var tokens = [];
+    if (_cachedAdminToken) tokens.push({ token: _cachedAdminToken, type: 'admin' });
+    if (_cachedUserToken) tokens.push({ token: _cachedUserToken, type: 'user' });
+    if (tokens.length === 0) return;
+    var soonest = null;
+    tokens.forEach(function(t) {
+        var payload = _parseJWT(t.token);
+        if (payload && payload.exp) {
+            var remaining = payload.exp - Date.now();
+            if (remaining <= 0) {
+                _forceLogout(t.type);
+            } else if (!soonest || remaining < soonest.remaining) {
+                soonest = { type: t.type, remaining: remaining };
+            }
+        }
+    });
+    if (soonest) {
+        var fireAt = Math.max(soonest.remaining - 30000, 5000);
+        _autoLogoutTimer = setTimeout(function() {
+            _forceLogout(soonest.type);
+        }, fireAt);
+    }
+}
+
+function _forceLogout(type) {
+    if (_autoLogoutTimer) { clearTimeout(_autoLogoutTimer); _autoLogoutTimer = null; }
+    if (type === 'admin') {
+        localStorage.removeItem('adminData');
+        _cachedAdminToken = null;
+    } else {
+        localStorage.removeItem('userData');
+        _cachedUserToken = null;
+    }
+    if (type === 'admin' && location.pathname.indexOf('/admin') !== -1) {
+        location.href = 'login.html';
+    } else if (type === 'user' && location.pathname.indexOf('/admin') === -1) {
+        location.href = 'login.html';
+    }
+}
+
+function isTokenExpired(token) {
+    var payload = _parseJWT(token);
+    return !payload || (payload.exp && Date.now() > payload.exp);
+}
+
+function checkAdminAuth() {
+    var d = null;
+    try { d = JSON.parse(localStorage.getItem('adminData') || 'null'); } catch(e) {}
+    if (!d || !d.token) { window.location.href = 'login.html'; return false; }
+    if (isTokenExpired(d.token)) { localStorage.removeItem('adminData'); window.location.href = 'login.html'; return false; }
+    return true;
+}
+
+function checkUserAuth() {
+    var d = null;
+    try { d = JSON.parse(localStorage.getItem('userData') || 'null'); } catch(e) {}
+    if (!d || !d.token) { window.location.href = 'login.html'; return false; }
+    if (isTokenExpired(d.token)) { localStorage.removeItem('userData'); window.location.href = 'login.html'; return false; }
+    return true;
+}
 
 window.fetch = function(url, opts) {
     opts = opts || {};
@@ -25,6 +98,116 @@ window.fetch = function(url, opts) {
         }
     }
     return _origFetch.call(this, url, opts);
+};
+
+// ==================== WEBAUTHN CLIENT ====================
+var WebAuthnClient = {
+    isSupported: function() {
+        return window.PublicKeyCredential !== undefined &&
+               typeof window.PublicKeyCredential === 'function' &&
+               typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function';
+    },
+    isPlatformAuthenticatorAvailable: async function() {
+        if (!this.isSupported()) return false;
+        try {
+            return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        } catch(e) { return false; }
+    },
+    arrayBufferToBase64url: function(buffer) {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(buffer)))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    },
+    base64urlToArrayBuffer: function(base64url) {
+        var str = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        while (str.length % 4) str += '=';
+        var binary = atob(str);
+        var buffer = new ArrayBuffer(binary.length);
+        var view = new Uint8Array(buffer);
+        for (var i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
+        return buffer;
+    },
+    register: async function(deviceName) {
+        var optionsRes = await fetch('/api/webauthn/register-options', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!optionsRes.ok) throw new Error('خطا در دریافت تنظیمات ثبت‌نام');
+        var options = await optionsRes.json();
+        options.challenge = this.base64urlToArrayBuffer(options.challenge);
+        options.user.id = this.base64urlToArrayBuffer(options.user.id);
+        if (options.excludeCredentials) {
+            options.excludeCredentials = options.excludeCredentials.map(function(c) {
+                return Object.assign({}, c, { id: this.base64urlToArrayBuffer(c.id) });
+            }.bind(this));
+        }
+        var credential = await navigator.credentials.create({ publicKey: options });
+        var credentialData = {
+            id: credential.id,
+            rawId: this.arrayBufferToBase64url(credential.rawId),
+            type: credential.type,
+            response: {
+                attestationObject: this.arrayBufferToBase64url(credential.response.attestationObject),
+                clientDataJSON: this.arrayBufferToBase64url(credential.response.clientDataJSON),
+                transports: credential.response.getTransports ? credential.response.getTransports() : [],
+            },
+            authenticatorAttachment: credential.authenticatorAttachment,
+            clientExtensionResults: credential.getClientExtensionResults(),
+        };
+        var regRes = await fetch('/api/webauthn/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential: credentialData, deviceName: deviceName || 'دستگاه ناشناس' })
+        });
+        var regResult = await regRes.json();
+        if (!regRes.ok || !regResult.success) throw new Error(regResult.error || 'خطا در ثبت‌نام');
+        return regResult;
+    },
+    authenticate: async function(username) {
+        var optionsRes = await fetch('/api/webauthn/auth-options', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username })
+        });
+        if (!optionsRes.ok) throw new Error('خطا در دریافت تنظیمات احراز هویت');
+        var options = await optionsRes.json();
+        options.challenge = this.base64urlToArrayBuffer(options.challenge);
+        if (options.allowCredentials) {
+            options.allowCredentials = options.allowCredentials.map(function(c) {
+                return Object.assign({}, c, { id: this.base64urlToArrayBuffer(c.id) });
+            }.bind(this));
+        }
+        var assertion = await navigator.credentials.get({ publicKey: options });
+        var assertionData = {
+            id: assertion.id,
+            rawId: this.arrayBufferToBase64url(assertion.rawId),
+            type: assertion.type,
+            response: {
+                authenticatorData: this.arrayBufferToBase64url(assertion.response.authenticatorData),
+                clientDataJSON: this.arrayBufferToBase64url(assertion.response.clientDataJSON),
+                signature: this.arrayBufferToBase64url(assertion.response.signature),
+                userHandle: assertion.response.userHandle ? this.arrayBufferToBase64url(assertion.response.userHandle) : null,
+            },
+            clientExtensionResults: assertion.getClientExtensionResults(),
+        };
+        var authRes = await fetch('/api/webauthn/authenticate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential: assertionData, username: username })
+        });
+        var authResult = await authRes.json();
+        if (!authRes.ok || !authResult.success) throw new Error(authResult.error || 'خطا در احراز هویت');
+        return authResult;
+    },
+    getCredentials: async function() {
+        var res = await fetch('/api/webauthn/credentials');
+        if (!res.ok) throw new Error('خطا در دریافت لیست اثرانگشت‌ها');
+        return await res.json();
+    },
+    removeCredential: async function(id) {
+        var res = await fetch('/api/webauthn/credentials/' + encodeURIComponent(id), { method: 'DELETE' });
+        if (!res.ok) throw new Error('خطا در حذف اثرانگشت');
+        return await res.json();
+    }
 };
 
 function escapeHtml(v) {

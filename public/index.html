@@ -112,9 +112,11 @@
     }
     @media(max-width:767px){
         .skel-content{padding:60px 16px 80px}
-        .skel-cards{gap:0.5rem}
+        .skel-cards{gap:0.5rem;flex-wrap:nowrap}
+        .skel-card{flex:1;min-width:0}
         .skel-card-img{width:100%;max-width:120px;height:auto;aspect-ratio:1}
         .skel-card-label{width:100%;max-width:120px;height:18px}
+        .skel-banner{aspect-ratio:3/1}
     }
     </style>
     <script>
@@ -318,7 +320,6 @@
     <a href="#" class="profile-icon" title="پروفایل" id="profileBtn">
         <i class="fas fa-user"></i>
     </a>
-    <a href="#" class="support-icon" title="پشتیبانی" id="supportBtn"><i class="fas fa-headset"></i></a>
     <nav class="bottom-nav">
         <a href="index.html"><i class="fas fa-home"></i><span>خانه</span></a>
         <a href="orders.html" class="user-only"><i class="fas fa-list-alt"></i><span>سفارش‌ها</span></a>

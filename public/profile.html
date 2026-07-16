@@ -51,6 +51,18 @@
                     <i class="fas fa-key"></i>
                     تغییر رمز عبور
                 </a>
+                <a href="#" class="profile-option" id="biometricToggle" style="display:none;">
+                    <i class="fas fa-fingerprint"></i>
+                    ورود با اثرانگشت
+                    <span id="biometricStatus" style="font-size:0.75rem;margin-right:auto;margin-left:0.5rem;color:#888;"></span>
+                </a>
+                <div id="biometricSection" style="display:none;margin:0.75rem 0;padding:1rem;background:#f8f9fa;border-radius:12px;border:1px solid #e9ecef;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                        <strong style="font-size:0.9rem;">اثرانگشت‌های ثبت‌شده</strong>
+                        <button id="addBiometricBtn" style="padding:6px 14px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer;font-size:0.8rem;">افزودن</button>
+                    </div>
+                    <div id="biometricList" style="font-size:0.85rem;color:#555;">در حال بارگذاری...</div>
+                </div>
                 <a href="#" class="profile-option" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     خروج
@@ -87,6 +99,85 @@
 
             updateCounts();
             setInterval(updateCounts, 3000);
+
+            var biometricToggle = document.getElementById('biometricToggle');
+            var biometricSection = document.getElementById('biometricSection');
+            var biometricStatus = document.getElementById('biometricStatus');
+            var biometricList = document.getElementById('biometricList');
+            var addBiometricBtn = document.getElementById('addBiometricBtn');
+
+            if (WebAuthnClient.isSupported()) {
+                WebAuthnClient.isPlatformAuthenticatorAvailable().then(function(available) {
+                    if (available) {
+                        biometricToggle.style.display = '';
+                        loadBiometricStatus();
+                    }
+                });
+            }
+
+            biometricToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                var isOpen = biometricSection.style.display !== 'none';
+                biometricSection.style.display = isOpen ? 'none' : '';
+                if (!isOpen) loadBiometricCredentials();
+            });
+
+            function loadBiometricStatus() {
+                WebAuthnClient.getCredentials().then(function(creds) {
+                    biometricStatus.textContent = creds.length > 0 ? creds.length + ' ثبت‌شده' : 'فعال نشده';
+                }).catch(function() {
+                    biometricStatus.textContent = '';
+                });
+            }
+
+            function loadBiometricCredentials() {
+                biometricList.innerHTML = 'در حال بارگذاری...';
+                WebAuthnClient.getCredentials().then(function(creds) {
+                    if (creds.length === 0) {
+                        biometricList.innerHTML = '<div style="color:#999;text-align:center;padding:0.5rem;">هیچ اثرانگشتی ثبت نشده</div>';
+                        return;
+                    }
+                    biometricList.innerHTML = '';
+                    creds.forEach(function(c) {
+                        var div = document.createElement('div');
+                        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid #eee;';
+                        div.innerHTML = '<div><i class="fas fa-fingerprint" style="color:#667eea;margin-left:0.5rem;"></i>' + escapeHtml(c.deviceName || 'دستگاه ناشناس') + '<div style="font-size:0.7rem;color:#999;">' + new Date(c.createdAt).toLocaleDateString('fa-IR') + '</div></div>';
+                        var delBtn = document.createElement('button');
+                        delBtn.textContent = 'حذف';
+                        delBtn.style.cssText = 'padding:4px 12px;border:none;background:#e74c3c;color:#fff;border-radius:6px;cursor:pointer;font-size:0.75rem;';
+                        delBtn.addEventListener('click', function() {
+                            if (!confirm('آیا از حذف این اثرانگشت مطمئن هستید؟')) return;
+                            WebAuthnClient.removeCredential(c.id).then(function() {
+                                loadBiometricCredentials();
+                                loadBiometricStatus();
+                            }).catch(function(e) { alert(e.message); });
+                        });
+                        div.appendChild(delBtn);
+                        biometricList.appendChild(div);
+                    });
+                }).catch(function(e) {
+                    biometricList.innerHTML = '<div style="color:red;text-align:center;">' + escapeHtml(e.message) + '</div>';
+                });
+            }
+
+            addBiometricBtn.addEventListener('click', function() {
+                var name = prompt('نام دستگاه (مثلاً: گوشی من):');
+                if (name === null) return;
+                name = name.trim() || 'دستگاه ناشناس';
+                addBiometricBtn.disabled = true;
+                addBiometricBtn.textContent = 'در حال ثبت...';
+                WebAuthnClient.register(name).then(function() {
+                    loadBiometricCredentials();
+                    loadBiometricStatus();
+                    addBiometricBtn.disabled = false;
+                    addBiometricBtn.textContent = 'افزودن';
+                    alert('اثرانگشت با موفقیت ثبت شد!');
+                }).catch(function(e) {
+                    addBiometricBtn.disabled = false;
+                    addBiometricBtn.textContent = 'افزودن';
+                    alert('خطا: ' + e.message);
+                });
+            });
         });
     </script>
 </body>
