@@ -173,10 +173,11 @@ var ChillUtils = (function() {
     // ── Canvas-based Image Compression (always compresses for chat) ──
     function compressImageFile(file, options) {
         options = options || {};
-        var maxWidthOrHeight = options.maxWidthOrHeight || 1200;
-        var targetBytes = (options.maxSizeMB || 2) * 1024 * 1024;
+        var maxWidthOrHeight = options.maxWidthOrHeight || 800;
+        var targetBytes = (options.maxSizeMB || 0.3) * 1024 * 1024;
 
-        return new Promise(function(resolve, reject) {
+        return new Promise(function(resolve) {
+            if (!isImageFile(file)) { resolve(file); return; }
             var img = new Image();
             var url = URL.createObjectURL(file);
             img.onload = function() {
@@ -194,22 +195,22 @@ var ChillUtils = (function() {
                     var ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, w, h);
 
-                    function tryCompress(q, nextQ) {
+                    var qualities = [0.6, 0.4, 0.25, 0.15];
+                    var qi = 0;
+                    function tryNext() {
+                        if (qi >= qualities.length) { resolve(file); return; }
+                        var q = qualities[qi++];
                         canvas.toBlob(function(blob) {
-                            if (!blob || blob.size === 0) {
-                                if (nextQ !== null) tryCompress(nextQ, null);
-                                else resolve(file);
-                                return;
-                            }
-                            if (blob.size <= targetBytes || nextQ === null) {
+                            if (!blob || blob.size === 0) { tryNext(); return; }
+                            if (blob.size <= targetBytes || qi >= qualities.length) {
                                 var result = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
                                 resolve(result);
                             } else {
-                                tryCompress(nextQ, null);
+                                tryNext();
                             }
                         }, 'image/jpeg', q);
                     }
-                    tryCompress(0.82, 0.5);
+                    tryNext();
                 } catch(e) {
                     resolve(file);
                 }

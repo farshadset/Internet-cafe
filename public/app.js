@@ -1831,8 +1831,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function inlineCompressImage(file, callback, onError) {
             ChillUtils.compressImageFile(file, {
-                maxSizeMB: 2,
-                maxWidthOrHeight: 1200
+                maxSizeMB: 0.3,
+                maxWidthOrHeight: 800
             }).then(function(compressed) {
                 callback(compressed);
             }).catch(function(e) {
@@ -2133,6 +2133,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!text && inlineAttachments.length === 0) return;
         if (pendingReads > 0) return;
         if (inlineSendBtn && inlineSendBtn.disabled) return;
+
+        var totalSize = 0;
+        inlineAttachments.forEach(function(a) { totalSize += (a.dataUrl || '').length; });
+        if (totalSize > 3 * 1024 * 1024) {
+            ChillUtils.showAlert('حجم فایل‌های پیوست زیاد است. لطفاً تصاویر کم‌حجم‌تری آپلود کنید.', 'error');
+            return;
+        }
 
         function doSend(conversationId) {
             var userData = JSON.parse(localStorage.getItem('userData') || 'null');
