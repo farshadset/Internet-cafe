@@ -4,18 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>چت با مشتری</title>
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script>
-        (function(){
-            try{
-                var d=JSON.parse(localStorage.getItem('adminData')||'null');
-                if(!d||!d.token){location.replace('login.html');return;}
-                var parts=d.token.split('.');
-                if(parts.length===3){
-                    var payload=JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
-                    if(payload.exp && Date.now()>payload.exp){localStorage.removeItem('adminData');location.replace('login.html');return;}
-                }
-            }catch(e){location.replace('login.html');return;}
-        })();
+        (function(){ if (!checkAdminAuth()) return; })();
     </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,6 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
     <style>
         * { box-sizing: border-box; }
 
@@ -33,6 +26,7 @@
             background: #f8f9fa;
             color: #111827;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
         }
 
@@ -40,6 +34,7 @@
         .admin-chat-layout {
             display: flex;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
         }
 
@@ -165,6 +160,7 @@
             flex-direction: column;
             min-width: 0;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             width: 100%;
         }
@@ -432,6 +428,7 @@
             font-size: 0.9rem;
             line-height: 1.6;
             word-break: break-word;
+            white-space: pre-wrap;
         }
 
         /* ── استایل موبایل ── */
@@ -439,12 +436,23 @@
             body {
                 height: 100vh;
                 height: 100dvh;
+                height: var(--app-height, 100dvh);
             }
 
             .admin-chat-layout {
                 height: 100vh;
                 height: 100dvh;
+                height: var(--app-height, 100dvh);
                 position: relative;
+            }
+
+            .admin-chat-main {
+                height: var(--app-height, 100dvh);
+                padding-bottom: 12px;
+            }
+
+            .admin-chat-header .back-link span {
+                display: none;
             }
 
             .admin-sidebar {
@@ -504,6 +512,18 @@
             .admin-sidebar:not(.collapsed) ~ .admin-sidebar-overlay {
                 display: block;
             }
+
+            .admin-chat-input-area {
+                position: sticky;
+                bottom: 0;
+                z-index: 10;
+                padding-bottom: env(safe-area-inset-bottom, 8px);
+                margin-bottom: 8px;
+            }
+
+            .admin-chat-input-area textarea {
+                min-height: 44px;
+                max-height: 150px;
             }
 
             .message {
@@ -557,6 +577,45 @@
         .toast-notification.show {
             opacity: 1;
         }
+
+        .file-size-modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            z-index: 10000; display: flex; align-items: center; justify-content: center;
+        }
+        .file-size-modal {
+            background: #fff; border-radius: 16px; padding: 1.5rem; width: 90%; max-width: 340px;
+            text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .file-size-modal-icon {
+            width: 48px; height: 48px; border-radius: 50%; background: #fef3c7;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1rem; font-size: 1.5rem; color: #d97706;
+        }
+        .file-size-modal-title {
+            font-size: 1rem; font-weight: 700; color: #111827; margin-bottom: 0.5rem;
+        }
+        .file-size-modal-text {
+            font-size: 0.85rem; color: #6b7280; line-height: 1.6; margin-bottom: 1.2rem;
+        }
+        .file-size-modal-actions {
+            display: flex; gap: 0.5rem; justify-content: center;
+        }
+        .file-size-modal-btn {
+            flex: 1; padding: 0.6rem 1rem; border-radius: 10px; border: none;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+        }
+        .file-size-modal-btn.confirm {
+            background: #667eea; color: #fff;
+        }
+        .file-size-modal-btn.confirm:hover {
+            background: #5568d3;
+        }
+        .file-size-modal-btn.cancel {
+            background: #f3f4f6; color: #374151;
+        }
+        .file-size-modal-btn.cancel:hover {
+            background: #e5e7eb;
+        }
     </style>
 </head>
 <body>
@@ -582,7 +641,7 @@
             <div class="admin-chat-header">
                 <a href="admin-chat.html" class="back-link">
                     <i class="fas fa-arrow-right"></i>
-                    بازگشت
+                    <span>بازگشت</span>
                 </a>
                 <strong id="chatPartner">در حال بارگذاری...</strong>
             </div>
@@ -611,19 +670,23 @@
         </div>
     </div>
 
+    <div class="file-size-modal-overlay" id="fileSizeModal" style="display:none">
+        <div class="file-size-modal">
+            <div class="file-size-modal-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="file-size-modal-title">حجم فایل زیاد است</div>
+            <div class="file-size-modal-text" id="fileSizeModalText"></div>
+            <div class="file-size-modal-actions">
+                <button class="file-size-modal-btn confirm" id="fileSizeModalConfirm">بله، کم کن</button>
+                <button class="file-size-modal-btn cancel" id="fileSizeModalCancel">لغو</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="libs/browser-image-compression.js"></script>
+    <script src="libs/utils.js"></script>
     <script src="app.js"></script>
     <script>
-        (function(){
-            try{
-                var d=JSON.parse(localStorage.getItem('adminData')||'null');
-                if(!d||!d.token){window.location.href='login.html';return;}
-                var parts=d.token.split('.');
-                if(parts.length===3){
-                    var payload=JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
-                    if(payload.exp && Date.now()>payload.exp){localStorage.removeItem('adminData');window.location.href='login.html';return;}
-                }
-            }catch(e){window.location.href='login.html';return;}
-        })();
+        (function(){ if (!checkAdminAuth()) return; })();
         document.addEventListener('DOMContentLoaded', function () {
             var params = new URLSearchParams(window.location.search);
             var username = params.get('username');
@@ -647,6 +710,30 @@
             var adminPendingReads = 0;
             var adminActiveReaders = {};
 
+            if (window.visualViewport) {
+                var updateAppHeight = function() {
+                    var vh = window.visualViewport.height;
+                    document.documentElement.style.setProperty('--app-height', vh + 'px');
+                };
+                window.visualViewport.addEventListener('resize', updateAppHeight);
+                window.visualViewport.addEventListener('scroll', updateAppHeight);
+                updateAppHeight();
+            }
+
+            if (adminMessageInput) {
+                adminMessageInput.addEventListener('focus', function() {
+                    if (!window.visualViewport) return;
+                    var scrollIntoViewKeyboard = function() {
+                        var inputArea = document.querySelector('.admin-chat-input-area');
+                        if (inputArea) {
+                            inputArea.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                        }
+                    };
+                    setTimeout(scrollIntoViewKeyboard, 300);
+                    window.visualViewport.addEventListener('resize', scrollIntoViewKeyboard);
+                });
+            }
+
             function updateAdminSendButton() {
                 if (adminSendBtn) {
                     var hasText = adminMessageInput && adminMessageInput.value.trim();
@@ -655,15 +742,7 @@
                 }
             }
 
-            function showToast(message) {
-                var toast = document.getElementById('toastNotification');
-                if (!toast) return;
-                toast.textContent = message;
-                toast.classList.add('show');
-                setTimeout(function() {
-                    toast.classList.remove('show');
-                }, 3000);
-            }
+            var showToast = ChillUtils.showToast;
 
             chatPartner.textContent = currentUsername;
 
@@ -682,26 +761,20 @@
             var adminPinAttachment = document.getElementById('adminPinAttachment');
             var adminAttachmentFile = document.getElementById('adminAttachmentFile');
 
-            function escapeHtml(value) {
-                return String(value || '').replace(/[&<>"']/g, function(char) {
-                    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
-                });
-            }
-
-            function safeUrl(url) {
-                if (!url) return '';
-                if (/^(https?:\/\/|data:)/i.test(url)) return url;
-                return '';
-            }
+            var escapeHtml = ChillUtils.escapeHtml;
+            var safeUrl = ChillUtils.safeUrl;
+            var generateId = ChillUtils.generateId;
+            var isImageFile = ChillUtils.isImageFile;
 
             function renderAdminAttachmentPreview(attachment, dataUrl) {
                 if (!adminAttachmentPreview) return;
-                var isImage = attachment.type && attachment.type.startsWith('image/');
+                var isImage = isImageFile(attachment);
                 var html = '<div class="attachment-thumbnail" data-attachment-id="' + escapeHtml(attachment.id) + '">';
                 if (isImage) {
-                    html += '<img src="' + escapeHtml(dataUrl) + '" alt="' + escapeHtml(attachment.name) + '">';
+                    html += '<img src="' + escapeHtml(dataUrl || attachment.dataUrl) + '" alt="' + escapeHtml(attachment.name) + '">';
                 } else {
-                    html += '<div class="pdf-icon">PDF</div>';
+                    var ext = (attachment.name || '').split('.').pop().toUpperCase() || 'FILE';
+                    html += '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
                 }
                 html += '<span class="upload-status"><i class="fas fa-check"></i></span>';
                 html += '<button type="button" class="remove-attachment" onclick="window.removeAdminAttachment(this)"><i class="fas fa-times"></i></button>';
@@ -716,14 +789,15 @@
                     showToast('فقط می توان چهار فایل آپلود کرد');
                     return;
                 }
-                var attId = 'att_' + Date.now() + '_' + Math.random().toString(16).slice(2);
-                var isImage = file.type && file.type.startsWith('image/');
+                var attId = ChillUtils.generateId('att_');
+                var isImage = isImageFile(file);
 
                 var html = '<div class="attachment-thumbnail uploading" data-attachment-id="' + escapeHtml(attId) + '">';
                 if (isImage) {
                     html += '<img src="" alt="' + escapeHtml(file.name) + '" style="opacity:0.3">';
                 } else {
-                    html += '<div class="pdf-icon" style="opacity:0.3">PDF</div>';
+                    var ext = (file.name || '').split('.').pop().toUpperCase() || 'FILE';
+                    html += '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;opacity:0.3;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
                 }
                 html += '<div class="upload-progress-overlay"><svg class="upload-progress-ring" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle class="upload-progress-circle" data-progress-ring="' + attId + '" cx="18" cy="18" r="14" fill="none" stroke="#667eea" stroke-width="3" stroke-dasharray="87.96" stroke-dashoffset="87.96" transform="rotate(-90 18 18)" stroke-linecap="round"/></svg><span class="upload-progress-text" data-progress-text="' + attId + '">0%</span></div>';
                 html += '<button type="button" class="remove-attachment upload-cancel-btn" data-cancel-reader="' + attId + '"><i class="fas fa-times"></i></button>';
@@ -811,17 +885,19 @@
                 var attContainer = document.createElement('div');
                 attContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.4rem;';
                 msg.attachments.forEach(function(att) {
+                    var isImg = isImageFile(att);
                     var thumb = document.createElement('div');
                     thumb.className = 'attachment-thumbnail';
-                    thumb.style.cssText = 'width: 70px; height: 70px; cursor: pointer; position: relative;';
-                    if (att.type && att.type.startsWith('image/')) {
+                    thumb.style.cssText = 'width: 70px; height: 70px; cursor: pointer; position: relative; border-radius: 6px; overflow: hidden;';
+                    if (isImg && (att.dataUrl || att.url)) {
                         var img = document.createElement('img');
                         img.src = att.dataUrl || att.url || '';
                         img.alt = att.name;
                         img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 6px;';
                         thumb.appendChild(img);
                     } else {
-                        thumb.innerHTML = '<div class="pdf-icon" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f5f5f5; color: #667eea; font-weight: 700; font-size: 0.55rem; border-radius: 6px;">PDF</div>';
+                        var ext = (att.name || '').split('.').pop().toUpperCase() || 'FILE';
+                        thumb.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;border-radius:6px;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
                     }
                     var dlBtn = document.createElement('button');
                     dlBtn.type = 'button';
@@ -830,27 +906,11 @@
                     dlBtn.style.cssText = 'position: absolute; bottom: -6px; right: -6px; width: 20px; height: 20px; background: #667eea; border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);';
                     dlBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
-                        var safeHref = safeUrl(att.dataUrl);
-                        if (safeHref) {
-                            var a = document.createElement('a');
-                            a.href = safeHref;
-                            a.download = att.name;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                        }
+                        ChillUtils.downloadAttachment(att.dataUrl || att.url, att.name);
                     });
                     thumb.appendChild(dlBtn);
                     thumb.addEventListener('click', function() {
-                        var safeHref = safeUrl(att.dataUrl);
-                        if (safeHref) {
-                            var a = document.createElement('a');
-                            a.href = safeHref;
-                            a.download = att.name;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                        }
+                        ChillUtils.downloadAttachment(att.dataUrl || att.url, att.name);
                     });
                     attContainer.appendChild(thumb);
                 });
@@ -986,7 +1046,7 @@
             function sendMessage() {
                 var text = adminMessageInput.value.trim();
                 if (text.length > 5000) {
-                    alert('متن پیام نمی‌تواند بیشتر از 5000 کاراکتر باشد.');
+                    ChillUtils.showAlert('متن پیام نمی‌تواند بیشتر از 5000 کاراکتر باشد.');
                     return;
                 }
                 if (!text && adminCurrentAttachments.length === 0) return;
@@ -1006,7 +1066,7 @@
                 .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
                 .then(function(result) {
                     if (!result.ok || !result.data.text) {
-                        alert(result.data.error || 'خطا در ارسال پیام');
+                        ChillUtils.showAlert(result.data.error || 'خطا در ارسال پیام', 'error');
                         if (adminSendBtn) { adminSendBtn.disabled = false; }
                         return;
                     }
@@ -1035,7 +1095,7 @@
                     if (adminSendBtn) { adminSendBtn.disabled = false; }
                 })
                 .catch(function () {
-                    alert('خطا در ارتباط با سرور');
+                    ChillUtils.showAlert('خطا در ارتباط با سرور', 'error');
                     if (adminSendBtn) { adminSendBtn.disabled = false; }
                 });
             }
@@ -1078,17 +1138,49 @@
 
             adminSendBtn.addEventListener('click', sendMessage);
             adminMessageInput.addEventListener('input', autoResize);
-            adminMessageInput.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
 
             if (adminPinAttachment && adminAttachmentFile) {
                 adminPinAttachment.addEventListener('click', function() {
                     adminAttachmentFile.click();
                 });
+
+                var FILE_MAX_BYTES = 3 * 1024 * 1024;
+
+                function compressImage(file, callback, onError) {
+                    ChillUtils.compressImageFile(file, {
+                        maxSizeMB: 2,
+                        maxWidthOrHeight: 1200
+                    }).then(function(compressed) {
+                        callback(compressed);
+                    }).catch(function(e) {
+                        console.error('Compression error:', e);
+                        if (onError) onError();
+                    });
+                }
+
+                var _fileSizeModalCleanup = null;
+                function showFileSizeModal(file, onConfirm, onCancel) {
+                    if (_fileSizeModalCleanup) _fileSizeModalCleanup();
+                    var modal = document.getElementById('fileSizeModal');
+                    var text = document.getElementById('fileSizeModalText');
+                    var confirmBtn = document.getElementById('fileSizeModalConfirm');
+                    var cancelBtn = document.getElementById('fileSizeModalCancel');
+                    var sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+                    text.textContent = 'حجم فایل شما ' + sizeMB + ' مگابایت است. حجم مجاز ' + (FILE_MAX_BYTES / (1024 * 1024)) + ' مگابایت است. مایل هستید حجم فایل خودکار کم شود؟';
+                    modal.style.display = 'flex';
+                    function onConfirmClick() { hideModal(); if (onConfirm) onConfirm(); }
+                    function onCancelClick() { hideModal(); if (onCancel) onCancel(); }
+                    function hideModal() {
+                        modal.style.display = 'none';
+                        confirmBtn.removeEventListener('click', onConfirmClick);
+                        cancelBtn.removeEventListener('click', onCancelClick);
+                        _fileSizeModalCleanup = null;
+                    }
+                    _fileSizeModalCleanup = hideModal;
+                    confirmBtn.addEventListener('click', onConfirmClick);
+                    cancelBtn.addEventListener('click', onCancelClick);
+                }
+
                 adminAttachmentFile.addEventListener('change', function(e) {
                     var files = Array.from(e.target.files || []);
                     var remaining = 4 - adminCurrentAttachments.length - adminPendingReads;
@@ -1097,9 +1189,27 @@
                         adminAttachmentFile.value = '';
                         return;
                     }
-                    files.slice(0, remaining).forEach(function(file) {
-                        addAdminAttachmentFromFile(file);
-                    });
+                    var toProcess = files.slice(0, remaining);
+                    var index = 0;
+                    function processNext() {
+                        if (index >= toProcess.length) return;
+                        var file = toProcess[index];
+                        index++;
+                        var isImage = isImageFile(file);
+                        if (isImage) {
+                            compressImage(file, function(compressed) {
+                                addAdminAttachmentFromFile(compressed);
+                                processNext();
+                            }, function() {
+                                addAdminAttachmentFromFile(file);
+                                processNext();
+                            });
+                        } else {
+                            addAdminAttachmentFromFile(file);
+                            processNext();
+                        }
+                    }
+                    processNext();
                     adminAttachmentFile.value = '';
                 });
             }

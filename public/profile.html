@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
 </head>
 <body>
     <div class="container">
@@ -71,6 +72,8 @@
             </div>
         </main>
     </div>
+    <script src="libs/browser-image-compression.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -146,11 +149,12 @@
                         delBtn.textContent = 'حذف';
                         delBtn.style.cssText = 'padding:4px 12px;border:none;background:#e74c3c;color:#fff;border-radius:6px;cursor:pointer;font-size:0.75rem;';
                         delBtn.addEventListener('click', function() {
-                            if (!confirm('آیا از حذف این اثرانگشت مطمئن هستید؟')) return;
-                            WebAuthnClient.removeCredential(c.id).then(function() {
-                                loadBiometricCredentials();
-                                loadBiometricStatus();
-                            }).catch(function(e) { alert(e.message); });
+                            ChillUtils.showConfirm('آیا از حذف این اثرانگشت مطمئن هستید؟', function() {
+                                WebAuthnClient.removeCredential(c.id).then(function() {
+                                    loadBiometricCredentials();
+                                    loadBiometricStatus();
+                                }).catch(function(e) { ChillUtils.showAlert(e.message, 'error'); });
+                            });
                         });
                         div.appendChild(delBtn);
                         biometricList.appendChild(div);
@@ -171,11 +175,11 @@
                     loadBiometricStatus();
                     addBiometricBtn.disabled = false;
                     addBiometricBtn.textContent = 'افزودن';
-                    alert('اثرانگشت با موفقیت ثبت شد!');
+                    ChillUtils.showAlert('اثرانگشت با موفقیت ثبت شد!');
                 }).catch(function(e) {
                     addBiometricBtn.disabled = false;
                     addBiometricBtn.textContent = 'افزودن';
-                    alert('خطا: ' + e.message);
+                    ChillUtils.showAlert('خطا: ' + e.message, 'error');
                 });
             });
         });

@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&family=Markazi+Text:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
     <style>
 :root{--ink:#122A33;--deep:#0B3B4A;--firouzeh:#17A2A6;--firouzeh-dark:#0E7E82;--firouzeh-soft:#E4F3F3;--gold:#E2A93B;--paper:#227164;--card:#FEFFF7;--line:#D8E4E4;--muted:#5B7078;--radius:14px}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -54,6 +55,9 @@ header h1{color:#fff;font-family:"Markazi Text","Vazirmatn",serif;font-size:24px
             </div>
         </main>
     </div>
+    <script src="libs/browser-image-compression.js"></script>
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script src="app.js?v=20260707"></script>
     <script src="service-extra-configs.js"></script>
     <script>
@@ -380,13 +384,13 @@ var formFieldsHtml = renderFormFields(order);
                                     if (result.ok && result.data.success) {
                                         location.reload();
                                     } else {
-                                        alert(result.data.error || 'خطا در پرداخت');
+                                        ChillUtils.showAlert(result.data.error || 'خطا در پرداخت', 'error');
                                         confirmPaymentBtn.disabled = false;
                                         confirmPaymentBtn.textContent = 'تایید پرداخت';
                                     }
                                 })
                                 .catch(function() {
-                                    alert('خطا در اتصال به سرور');
+                                    ChillUtils.showAlert('خطا در اتصال به سرور', 'error');
                                     confirmPaymentBtn.disabled = false;
                                     confirmPaymentBtn.textContent = 'تایید پرداخت';
                                 });

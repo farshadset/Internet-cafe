@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لیست سفارش‌ها</title>
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+        (function(){ if (!checkAdminAuth()) return; })();
     </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
 </head>
 <body>
     <div class="container">
@@ -61,9 +64,11 @@
          </div>
      </div>
 
-<script src="app.js"></script>
+<script src="libs/browser-image-compression.js"></script>
+    <script src="libs/utils.js"></script>
+    <script src="app.js"></script>
     <script>
-            (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
+            (function(){ if (!checkAdminAuth()) return; })();
             var currentTrackingCode = null;
             var currentOrderData = null;
             var SERVICE_TITLES = {
@@ -105,10 +110,7 @@
                 }
             }
 
-            function toEnDigits(str) {
-                if (!str) return '';
-                return str.replace(/[۰-۹]/g, function(d) { return String.fromCharCode(d.charCodeAt(0) - 1728); });
-            }
+            var toEnDigits = ChillUtils.toEnDigits;
 
             function renderOrders(orders) {
                 container.innerHTML = '';
@@ -195,12 +197,12 @@
                                  });
                                  updateOrdersBadge();
                              } else {
-                                 alert(result.data.error || 'خطا در تغییر وضعیت');
+                                 ChillUtils.showAlert(result.data.error || 'خطا در تغییر وضعیت', 'error');
                              }
                              self.disabled = false;
                          })
                         .catch(function() {
-                             alert('خطا در ارتباط با سرور.');
+                             ChillUtils.showAlert('خطا در ارتباط با سرور.', 'error');
                              self.disabled = false;
                          });
                     });
@@ -240,11 +242,11 @@
                             if (result.ok && result.data.success) {
                                 location.reload();
                             } else {
-                                alert(result.data.error || 'خطا در تایید قیمت');
+                                ChillUtils.showAlert(result.data.error || 'خطا در تایید قیمت', 'error');
                                 self.disabled = false;
                             }
                         })
-                        .catch(function() { alert('خطا در اتصال به سرور'); self.disabled = false; });
+                        .catch(function() { ChillUtils.showAlert('خطا در اتصال به سرور', 'error'); self.disabled = false; });
                     });
                 });
             }
@@ -276,12 +278,12 @@
                             setTimeout(function() { toast.remove(); }, 300);
                         }, 3000);
                     } else {
-                        alert(result2.data.error || 'خطا در ذخیره نتیجه');
+                        ChillUtils.showAlert(result2.data.error || 'خطا در ذخیره نتیجه', 'error');
                         saveResultBtn.disabled = false;
                     }
                 })
                 .catch(function() {
-                    alert('خطا در ارتباط با سرور.');
+                    ChillUtils.showAlert('خطا در ارتباط با سرور.', 'error');
                     saveResultBtn.disabled = false;
                 });
             });
@@ -317,11 +319,11 @@
                             setTimeout(function() { toast.remove(); }, 300);
                         }, 3000);
                     } else {
-                        alert(result.data.error || 'خطا در ارسال قیمت');
+                        ChillUtils.showAlert(result.data.error || 'خطا در ارسال قیمت', 'error');
                         savePriceBtn.disabled = false;
                     }
                 })
-                .catch(function() { alert('خطا در اتصال به سرور'); savePriceBtn.disabled = false; });
+                .catch(function() { ChillUtils.showAlert('خطا در اتصال به سرور', 'error'); savePriceBtn.disabled = false; });
             });
 
             closeResultPopup.addEventListener('click', function() {

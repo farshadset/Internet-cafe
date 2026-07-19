@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
 </head>
 <body>
     <div class="container">
@@ -53,7 +54,7 @@
                             <div class="admin-chat-header">
                                 <a href="admin-chat.html" class="back-link" style="display: none;">
                                     <i class="fas fa-arrow-right"></i>
-                                    بازگشت
+                                    <span>بازگشت</span>
                                 </a>
                                 <strong id="chatPartner">پشتیبانی</strong>
                             </div>
@@ -81,6 +82,9 @@
             </div>
         </div>
     </div>
+    <script src="libs/browser-image-compression.js"></script>
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -298,9 +302,7 @@
             const attachmentField = orderedFields.includes('additionalNotes') ? 'additionalNotes' : orderedFields.includes('notes') ? 'notes' : orderedFields[orderedFields.length - 1];
             const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
 
-            function escapeHtml(value) {
-                return String(value ?? '').replace(/[&<>"']/g, char => HTML_ESCAPE_MAP[char]);
-            }
+            var escapeHtml = ChillUtils.escapeHtml;
 
             function joinDateParts(prefix) {
                 return [data[prefix + 'Year'], data[prefix + 'Month'], data[prefix + 'Day']].filter(Boolean).join('/');

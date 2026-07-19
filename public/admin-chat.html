@@ -3,18 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script>
-        (function(){
-            try{
-                var d=JSON.parse(localStorage.getItem('adminData')||'null');
-                if(!d||!d.token){location.replace('login.html');return;}
-                var parts=d.token.split('.');
-                if(parts.length===3){
-                    var payload=JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
-                    if(payload.exp && Date.now()>payload.exp){localStorage.removeItem('adminData');location.replace('login.html');return;}
-                }
-            }catch(e){location.replace('login.html');return;}
-        })();
+        (function(){ if (!checkAdminAuth()) return; })();
     </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,6 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
     <style>
         .customer-list {
             display: flex;
@@ -106,19 +99,11 @@
             </div>
         </main>
     </div>
+    <script src="libs/browser-image-compression.js"></script>
+    <script src="libs/utils.js"></script>
     <script src="app.js"></script>
     <script>
-        (function(){
-            try{
-                var d=JSON.parse(localStorage.getItem('adminData')||'null');
-                if(!d||!d.token){window.location.href='login.html';return;}
-                var parts=d.token.split('.');
-                if(parts.length===3){
-                    var payload=JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
-                    if(payload.exp && Date.now()>payload.exp){localStorage.removeItem('adminData');window.location.href='login.html';return;}
-                }
-            }catch(e){window.location.href='login.html';return;}
-        })();
+        (function(){ if (!checkAdminAuth()) return; })();
         document.addEventListener('DOMContentLoaded', function() {
             var listEl = document.getElementById('customersList');
 

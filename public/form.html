@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&family=Markazi+Text:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="fonts/all.css">
+<link rel="stylesheet" href="libs/notie.min.css">
 <style>
 :root{
   --ink:#122A33;
@@ -258,14 +259,13 @@ main{padding:40px 0 70px;background:#1C5E52}
     </div>
  </main>
 
-<script src="app.js"></script>
+    <script src="libs/browser-image-compression.js"></script>
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
+    <script src="app.js"></script>
 <script src="service-extra-configs.js"></script>
 <script>
-function escapeHtml(v) {
-    return String(v || '').replace(/[&<>"']/g, function(c) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
-    });
-}
+var escapeHtml = ChillUtils.escapeHtml;
 // --- field templates -------------------------------------------------
 var F = {
   birth:    {key:'birth',    label:'تاریخ تولد'},
@@ -324,11 +324,8 @@ var omForm   = document.getElementById('serviceForm'),
     omDone   = document.getElementById('orderDone'),
     omFields = document.getElementById('omFields');
 
-function faDigits(s){ return String(s).replace(/\d/g, function(d){ return '۰۱۲۳۴۵۶۷۸۹'[d]; }); }
-function enDigits(s){
-  return String(s).replace(/[۰-۹]/g, function(d){ return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d); })
-                  .replace(/[٠-٩]/g, function(d){ return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); });
-}
+var faDigits = ChillUtils.toFaDigits;
+var enDigits = ChillUtils.toEnDigits;
 
 function autoResize(el){
   el.style.height = '';
@@ -445,14 +442,7 @@ function fieldHTML(f){
 })();
 
 // --- toast notification ---------------------------------------------------
-function showToast(msg) {
-  var t = document.createElement('div');
-  t.textContent = msg;
-  t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a73e8;color:#fff;padding:12px 28px;border-radius:10px;font-size:14px;font-family:Vazirmatn,sans-serif;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:toastIn .3s ease';
-  document.body.appendChild(t);
-  setTimeout(function(){ t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2500);
-  setTimeout(function(){ t.remove(); }, 3000);
-}
+var showToast = ChillUtils.showToast;
 
 // --- file attachment ---------------------------------------------------
 window._attachedFiles = [];
@@ -577,13 +567,7 @@ window._removeAttach = function(id){
 };
 
 // --- validation -------------------------------------------------------
-function validMelli(code){
-  if (!/^\d{10}$/.test(code) || /^(\d)\1{9}$/.test(code)) return false;
-  var sum = 0;
-  for (var i = 0; i < 9; i++) sum += (+code[i]) * (10 - i);
-  var r = sum % 11, c = +code[9];
-  return (r < 2 && c === r) || (r >= 2 && c === 11 - r);
-}
+var validMelli = ChillUtils.validNationalId;
 function setErr(input, msg){
   var wrap = input.closest('.f-field');
   wrap.classList.toggle('has-err', !!msg);
@@ -706,7 +690,7 @@ document.getElementById('btnPay').addEventListener('click', function(){
   .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
   .then(function(result){
     if (!result.ok || !result.data.trackingCode) {
-      alert(result.data.error || 'خطا در ثبت سفارش');
+      ChillUtils.showAlert(result.data.error || 'خطا در ثبت سفارش', 'error');
       btn.disabled = false;
       btn.textContent = 'پرداخت';
       return;
@@ -717,7 +701,7 @@ document.getElementById('btnPay').addEventListener('click', function(){
     window.scrollTo({top:0, behavior:'smooth'});
   })
   .catch(function(){
-    alert('خطا در اتصال به سرور');
+    ChillUtils.showAlert('خطا در اتصال به سرور', 'error');
     btn.disabled = false;
     btn.textContent = 'پرداخت';
   });
@@ -795,7 +779,7 @@ document.getElementById('btnConfirmPay').addEventListener('click', function(){
     .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
     .then(function(result){
       if (!result.ok || !result.data.trackingCode) {
-        alert(result.data.error || 'خطا در ثبت سفارش');
+        ChillUtils.showAlert(result.data.error || 'خطا در ثبت سفارش', 'error');
         return;
       }
       var code = result.data.trackingCode;
@@ -804,7 +788,7 @@ document.getElementById('btnConfirmPay').addEventListener('click', function(){
       showPendingPage(code, service, cat, data);
     })
     .catch(function(){
-      alert('خطا در اتصال به سرور');
+      ChillUtils.showAlert('خطا در اتصال به سرور', 'error');
     });
   }
 });

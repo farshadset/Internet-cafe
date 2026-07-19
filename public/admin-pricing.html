@@ -4,14 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>قیمت‌گذاری</title>
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+        (function(){ if (!checkAdminAuth()) return; })();
     </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
 </head>
 <body>
     <div class="container">
@@ -44,20 +47,12 @@
             </div>
         </div>
     </div>
-     <script src="app.js"></script>
+     <script src="libs/browser-image-compression.js"></script>
+    <script src="libs/utils.js"></script>
+    <script src="app.js"></script>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
-        function formatPrice(price) {
-            var numStr = (price !== undefined && price !== null && price !== '') ? String(price) : '0';
-            numStr = numStr.replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
-            numStr = numStr.replace(/[,٬٫]/g, '');
-            var match = numStr.match(/\d+/);
-            if (!match) return numStr;
-            var num = parseInt(match[0], 10);
-            if (isNaN(num)) return numStr;
-            var formatted = num.toLocaleString('fa-IR').replace(/[٬٫]/g, ',');
-            return formatted;
-        }
+        (function(){ if (!checkAdminAuth()) return; })();
+        var formatPrice = ChillUtils.formatPrice;
 
         var currentServiceKey = null;
         document.addEventListener('DOMContentLoaded', function() {
@@ -362,7 +357,7 @@
 
             var state = { expandedCategories: {}, expandedGroups: {} };
 
-            function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]})}
+            var escapeHtml = ChillUtils.escapeHtml;
 
             function renderPricing(pricingMap) {
                 container.innerHTML = '';
@@ -500,12 +495,12 @@
                         pricePopup.classList.remove('active');
                         renderPricing(pricingMap);
                     } else {
-                        alert(result.data.error || 'خطا در ذخیره قیمت');
+                        ChillUtils.showAlert(result.data.error || 'خطا در ذخیره قیمت', 'error');
                         savePriceBtn.disabled = false;
                     }
                 })
                 .catch(function() {
-                    alert('خطا در ارتباط با سرور.');
+                    ChillUtils.showAlert('خطا در ارتباط با سرور.', 'error');
                     savePriceBtn.disabled = false;
                 });
             });

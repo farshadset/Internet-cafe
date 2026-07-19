@@ -1,3 +1,5 @@
+// ChillUtils loaded from libs/utils.js
+
 var _origFetch = window.fetch;
 var _cachedAdminToken = null;
 var _cachedUserToken = null;
@@ -14,6 +16,9 @@ window.addEventListener('storage', function(e) {
 });
 
 function _parseJWT(token) {
+    if (typeof jwtDecode !== 'undefined') {
+        try { return jwtDecode(token); } catch(e) { return null; }
+    }
     try {
         var parts = token.split('.');
         if (parts.length !== 3) return null;
@@ -210,54 +215,34 @@ var WebAuthnClient = {
     }
 };
 
-function escapeHtml(v) {
-    return String(v || '').replace(/[&<>"']/g, function(c) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
-    });
-}
-
-function safeUrl(url) {
-    if (!url) return '';
-    if (/^(https?:\/\/|data:)/i.test(url)) return url;
-    return '';
-}
-
-function formatPrice(price) {
-    var numStr = (price !== undefined && price !== null && price !== '') ? String(price) : '0';
-    numStr = numStr.replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; });
-    numStr = numStr.replace(/[,٬٫]/g, '');
-    var match = numStr.match(/\d+/);
-    if (!match) return numStr;
-    var num = parseInt(match[0], 10);
-    if (isNaN(num)) return numStr;
-    var formatted = num.toLocaleString('fa-IR').replace(/[٬٫]/g, ',');
-    var result = '\u202A' + numStr.replace(match[0], formatted) + '\u202C';
-    return result;
-}
+var escapeHtml = ChillUtils.escapeHtml;
+var safeUrl = ChillUtils.safeUrl;
+var formatPrice = ChillUtils.formatPrice;
+var isImageFile = ChillUtils.isImageFile;
 
 function formatPriceInputValue(value) {
-    var digits = String(value || '')
-        .replace(/[۰-۹]/g, function(d) { return d.charCodeAt(0) - 0x06F0; })
-        .replace(/[٠-٩]/g, function(d) { return d.charCodeAt(0) - 0x0660; })
-        .replace(/\D/g, '');
-    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return ChillUtils.toEnDigits(value).replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 function setupPriceInputFormatting(input) {
     if (!input) return;
+    if (typeof Cleave !== 'undefined') {
+        new Cleave(input, {
+            numeral: true,
+            numeralThousandsGroupStyle: 'thousand',
+            delimiter: ',',
+            numeralPositiveOnly: true
+        });
+        return;
+    }
     input.addEventListener('input', function() {
         var caretFromEnd = input.value.length - input.selectionStart;
         var formatted = formatPriceInputValue(input.value);
         if (input.value !== formatted) {
             input.value = formatted;
             var newCaret = Math.max(0, formatted.length - caretFromEnd);
-            if (input.setSelectionRange) {
-                input.setSelectionRange(newCaret, newCaret);
-            }
+            if (input.setSelectionRange) input.setSelectionRange(newCaret, newCaret);
         }
-    });
-    input.addEventListener('blur', function() {
-        input.value = formatPriceInputValue(input.value);
     });
 }
 
@@ -1445,7 +1430,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
             .then(async result => {
                 if (!result.ok || !result.data.trackingCode) {
-                    alert(result.data.error || 'خطا در ثبت سفارش');
+                    ChillUtils.showAlert(result.data.error || 'خطا در ثبت سفارش', 'error');
                     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت سفارش'; }
                     return;
                 }
@@ -1455,7 +1440,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = 'review.html';
             })
             .catch(async () => {
-                alert('خطا در اتصال به سرور. لطفاً دوباره تلاش کنید.');
+                ChillUtils.showAlert('خطا در اتصال به سرور. لطفاً دوباره تلاش کنید.', 'error');
                 if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت سفارش'; }
             });
         });
@@ -1493,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const confirmPassword = document.getElementById('confirmPassword').value;
 
             if (password !== confirmPassword) {
-                alert('رمز عبور و تکرار آن مطابقت ندارند!');
+                ChillUtils.showAlert('رمز عبور و تکرار آن مطابقت ندارند!');
                 return;
             }
 
@@ -1506,7 +1491,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
             .then(function(result) {
                 if (!result.ok || !result.data.success) {
-                    alert(result.data.error || 'خطا در ثبت نام');
+                    ChillUtils.showAlert(result.data.error || 'خطا در ثبت نام', 'error');
                     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت نام'; }
                     return;
                 }
@@ -1514,7 +1499,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = 'index.html';
             })
             .catch(function() {
-                alert('خطا در اتصال به سرور');
+                ChillUtils.showAlert('خطا در اتصال به سرور', 'error');
                 if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت نام'; }
             });
         });
@@ -1541,7 +1526,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('adminData', JSON.stringify({ username: username, token: result.data.token }));
                     window.location.href = 'admin.html';
                 } else if (result.data.error && result.data.error.indexOf('قفل') !== -1) {
-                    alert(result.data.error);
+                    ChillUtils.showAlert(result.data.error, 'error');
                     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ورود'; }
                 } else {
                     fetch('/api/login', {
@@ -1555,18 +1540,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             localStorage.setItem('userData', JSON.stringify({ username: username, token: result2.data.token }));
                             window.location.href = 'index.html';
                         } else {
-                            alert(result2.data.error || 'نام کاربری یا رمز عبور اشتباه است!');
+                            ChillUtils.showAlert(result2.data.error || 'نام کاربری یا رمز عبور اشتباه است!', 'error');
                             if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ورود'; }
                         }
                     })
                     .catch(function() {
-                        alert('خطا در اتصال به سرور.');
+                        ChillUtils.showAlert('خطا در اتصال به سرور.', 'error');
                         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ورود'; }
                     });
                 }
             })
             .catch(function() {
-                alert('خطا در اتصال به سرور. لطفاً دوباره تلاش کنید.');
+                ChillUtils.showAlert('خطا در اتصال به سرور. لطفاً دوباره تلاش کنید.', 'error');
                 if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ورود'; }
             });
         });
@@ -1647,7 +1632,7 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmPaymentBtn.addEventListener('click', function() {
             const trackingCode = localStorage.getItem('lastTrackingCode');
             if (!trackingCode) {
-                alert('کد سفارش پیدا نشد. لطفاً دوباره ثبت نام کنید.');
+                ChillUtils.showAlert('کد سفارش پیدا نشد. لطفاً دوباره ثبت نام کنید.');
                 window.location.href = 'index.html';
                 return;
             }
@@ -1663,13 +1648,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (result.ok && result.data.success) {
                     window.location.href = 'success.html';
                 } else {
-                    alert(result.data.error || 'خطا در تایید پرداخت');
+                    ChillUtils.showAlert(result.data.error || 'خطا در تایید پرداخت', 'error');
                     confirmPaymentBtn.disabled = false;
                     confirmPaymentBtn.textContent = 'تایید و پرداخت';
                 }
             })
             .catch(function() {
-                alert('خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.');
+                ChillUtils.showAlert('خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.', 'error');
                 confirmPaymentBtn.disabled = false;
                 confirmPaymentBtn.textContent = 'تایید و پرداخت';
             });
@@ -1693,6 +1678,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let inlineAttachmentPreview = null;
     let inlinePinAttachment = null;
     let inlineAttachmentFile = null;
+
+    var showToast = ChillUtils.showToast;
 
     function initializeChat() {
         if (!chatPanel) return Promise.resolve();
@@ -1839,52 +1826,90 @@ document.addEventListener('DOMContentLoaded', () => {
         inlinePinAttachment.addEventListener('click', function() {
             inlineAttachmentFile.click();
         });
-        inlineAttachmentFile.addEventListener('change', function(e) {
-            var files = Array.from(e.target.files || []);
-            var remaining = 4 - inlineAttachments.length - pendingReads;
-            if (remaining <= 0) {
-                alert('فقط می توان چهار فایل آپلود کرد');
-                inlineAttachmentFile.value = '';
-                return;
+
+        var INLINE_FILE_MAX_BYTES = 3 * 1024 * 1024;
+
+        function inlineCompressImage(file, callback, onError) {
+            ChillUtils.compressImageFile(file, {
+                maxSizeMB: 2,
+                maxWidthOrHeight: 1200
+            }).then(function(compressed) {
+                callback(compressed);
+            }).catch(function(e) {
+                console.error('Compression error:', e);
+                if (onError) onError();
+            });
+        }
+
+        var _inlineFileSizeModalCleanup = null;
+        function showInlineFileSizeModal(file, onConfirm, onCancel) {
+            if (_inlineFileSizeModalCleanup) _inlineFileSizeModalCleanup();
+            if (!document.getElementById('inlineFileSizeModal')) {
+                var div = document.createElement('div');
+                div.id = 'inlineFileSizeModal';
+                div.className = 'file-size-modal-overlay';
+                div.style.display = 'none';
+                div.innerHTML = '<div class="file-size-modal"><div class="file-size-modal-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="file-size-modal-title">حجم فایل زیاد است</div><div class="file-size-modal-text" id="inlineFileSizeModalText"></div><div class="file-size-modal-actions"><button class="file-size-modal-btn confirm" id="inlineFileSizeModalConfirm">بله، کم کن</button><button class="file-size-modal-btn cancel" id="inlineFileSizeModalCancel">لغو</button></div></div>';
+                document.body.appendChild(div);
+                var style = document.createElement('style');
+                style.textContent = '.file-size-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center}.file-size-modal{background:#fff;border-radius:16px;padding:1.5rem;width:90%;max-width:340px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2)}.file-size-modal-icon{width:48px;height:48px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;color:#d97706}.file-size-modal-title{font-size:1rem;font-weight:700;color:#111827;margin-bottom:0.5rem}.file-size-modal-text{font-size:0.85rem;color:#6b7280;line-height:1.6;margin-bottom:1.2rem}.file-size-modal-actions{display:flex;gap:0.5rem;justify-content:center}.file-size-modal-btn{flex:1;padding:0.6rem 1rem;border-radius:10px;border:none;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.15s}.file-size-modal-btn.confirm{background:#667eea;color:#fff}.file-size-modal-btn.confirm:hover{background:#5568d3}.file-size-modal-btn.cancel{background:#f3f4f6;color:#374151}.file-size-modal-btn.cancel:hover{background:#e5e7eb}';
+                document.head.appendChild(style);
             }
-            var toAdd = files.slice(0, remaining);
-            if (files.length > remaining) {
-                alert('فقط می توان چهار فایل آپلود کرد. ' + (files.length - remaining) + ' فایل حذف شد.');
+            var modal = document.getElementById('inlineFileSizeModal');
+            var text = document.getElementById('inlineFileSizeModalText');
+            var confirmBtn = document.getElementById('inlineFileSizeModalConfirm');
+            var cancelBtn = document.getElementById('inlineFileSizeModalCancel');
+            var sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+            text.textContent = 'حجم فایل شما ' + sizeMB + ' مگابایت است. حجم مجاز ' + (INLINE_FILE_MAX_BYTES / (1024 * 1024)) + ' مگابایت است. مایل هستید حجم فایل خودکار کم شود؟';
+            modal.style.display = 'flex';
+            function onConfirmClick() { hideModal(); if (onConfirm) onConfirm(); }
+            function onCancelClick() { hideModal(); if (onCancel) onCancel(); }
+            function hideModal() {
+                modal.style.display = 'none';
+                confirmBtn.removeEventListener('click', onConfirmClick);
+                cancelBtn.removeEventListener('click', onCancelClick);
+                _inlineFileSizeModalCleanup = null;
             }
-            toAdd.forEach(function(file) {
-                var attId = 'att_' + Date.now() + '_' + Math.random().toString(16).slice(2);
-                var isImage = file.type && file.type.startsWith('image/');
+            _inlineFileSizeModalCleanup = hideModal;
+            confirmBtn.addEventListener('click', onConfirmClick);
+            cancelBtn.addEventListener('click', onCancelClick);
+        }
 
-                var html = '<div class="attachment-thumbnail uploading" data-attachment-id="' + escapeHtml(attId) + '">';
-                if (isImage) {
-                    html += '<img src="" alt="' + escapeHtml(file.name) + '" style="opacity:0.3">';
-                } else {
-                    html += '<div class="pdf-icon" style="opacity:0.3">PDF</div>';
-                }
-                html += '<div class="upload-progress-overlay"><svg class="upload-progress-ring" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle class="upload-progress-circle" data-progress-ring="' + attId + '" cx="18" cy="18" r="14" fill="none" stroke="#667eea" stroke-width="3" stroke-dasharray="87.96" stroke-dashoffset="87.96" transform="rotate(-90 18 18)" stroke-linecap="round"/></svg><span class="upload-progress-text" data-progress-text="' + attId + '">0%</span></div>';
-                html += '<button type="button" class="remove-attachment upload-cancel-btn" data-cancel-reader="' + attId + '"><i class="fas fa-times"></i></button>';
-                html += '</div>';
-                inlineAttachmentPreview.insertAdjacentHTML('beforeend', html);
-                inlineAttachmentPreview.classList.remove('hidden');
+        function addInlineAttachmentFile(file) {
+            var attId = ChillUtils.generateId('att_');
+            var isImage = isImageFile(file);
 
-                if (isImage) {
-                    var previewReader = new FileReader();
-                    previewReader.onload = function(ev) {
-                        var img = inlineAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"] img');
-                        if (img) { img.src = ev.target.result; img.style.opacity = '1'; }
-                    };
-                    previewReader.readAsDataURL(file);
-                }
+            var html = '<div class="attachment-thumbnail uploading" data-attachment-id="' + escapeHtml(attId) + '">';
+            if (isImage) {
+                html += '<img src="" alt="' + escapeHtml(file.name) + '" style="opacity:0.3">';
+            } else {
+                var ext = (file.name || '').split('.').pop().toUpperCase() || 'FILE';
+                html += '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;opacity:0.3;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
+            }
+            html += '<div class="upload-progress-overlay"><svg class="upload-progress-ring" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle class="upload-progress-circle" data-progress-ring="' + attId + '" cx="18" cy="18" r="14" fill="none" stroke="#667eea" stroke-width="3" stroke-dasharray="87.96" stroke-dashoffset="87.96" transform="rotate(-90 18 18)" stroke-linecap="round"/></svg><span class="upload-progress-text" data-progress-text="' + attId + '">0%</span></div>';
+            html += '<button type="button" class="remove-attachment upload-cancel-btn" data-cancel-reader="' + attId + '"><i class="fas fa-times"></i></button>';
+            html += '</div>';
+            inlineAttachmentPreview.insertAdjacentHTML('beforeend', html);
+            inlineAttachmentPreview.classList.remove('hidden');
 
-                pendingReads++;
-                updateInlineSendButton();
+            if (isImage) {
+                var previewReader = new FileReader();
+                previewReader.onload = function(ev) {
+                    var img = inlineAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"] img');
+                    if (img) { img.src = ev.target.result; img.style.opacity = '1'; }
+                };
+                previewReader.readAsDataURL(file);
+            }
 
-                var reader = new FileReader();
-                activeReaders[attId] = reader;
+            pendingReads++;
+            updateInlineSendButton();
 
-                reader.onprogress = function(ev) {
-                    if (ev.lengthComputable) {
-                        var pct = Math.round((ev.loaded / ev.total) * 100);
+            var reader = new FileReader();
+            activeReaders[attId] = reader;
+
+            reader.onprogress = function(ev) {
+                if (ev.lengthComputable) {
+                    var pct = Math.round((ev.loaded / ev.total) * 100);
                         var circle = document.querySelector('[data-progress-ring="' + attId + '"]');
                         var text = document.querySelector('[data-progress-text="' + attId + '"]');
                         if (circle) circle.style.strokeDashoffset = (87.96 * (1 - pct / 100));
@@ -1920,7 +1945,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 reader.readAsDataURL(file);
-            });
+        }
+
+        inlineAttachmentFile.addEventListener('change', function(e) {
+            var files = Array.from(e.target.files || []);
+            var remaining = 4 - inlineAttachments.length - pendingReads;
+            if (remaining <= 0) {
+                ChillUtils.showAlert('فقط می توان چهار فایل آپلود کرد');
+                inlineAttachmentFile.value = '';
+                return;
+            }
+            var toProcess = files.slice(0, remaining);
+            var index = 0;
+            function processNext() {
+                if (index >= toProcess.length) return;
+                var file = toProcess[index];
+                index++;
+                var isImage = isImageFile(file);
+                if (isImage) {
+                    inlineCompressImage(file, function(compressed) {
+                        addInlineAttachmentFile(compressed);
+                        processNext();
+                    }, function() {
+                        addInlineAttachmentFile(file);
+                        processNext();
+                    });
+                } else {
+                    addInlineAttachmentFile(file);
+                    processNext();
+                }
+            }
+            processNext();
             inlineAttachmentFile.value = '';
         });
 
@@ -1942,12 +1997,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderInlineAttachmentPreview(attachment, dataUrl) {
         if (!inlineAttachmentPreview) return;
-        var isImage = attachment.type && attachment.type.startsWith('image/');
+        var isImage = isImageFile(attachment);
         var html = '<div class="attachment-thumbnail" data-attachment-id="' + escapeHtml(attachment.id) + '">';
         if (isImage) {
-            html += '<img src="' + escapeHtml(dataUrl) + '" alt="' + escapeHtml(attachment.name) + '">';
+            html += '<img src="' + escapeHtml(dataUrl || attachment.dataUrl) + '" alt="' + escapeHtml(attachment.name) + '">';
         } else {
-            html += '<div class="pdf-icon">PDF</div>';
+            var ext = (attachment.name || '').split('.').pop().toUpperCase() || 'FILE';
+            html += '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
         }
         html += '<span class="upload-status"><i class="fas fa-check"></i></span>';
         html += '<button type="button" class="remove-attachment" onclick="window.removeInlineAttachment(this)"><i class="fas fa-times"></i></button>';
@@ -1979,12 +2035,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.downloadInlineAttachment = function(attachmentId) {
         var attachment = inlineAttachments.find(function(a) { return a.id === attachmentId; });
         if (!attachment) return;
-        var a = document.createElement('a');
-        a.href = safeUrl(attachment.dataUrl);
-        a.download = attachment.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        ChillUtils.downloadAttachment(attachment.dataUrl, attachment.name);
     };
 
     function loadInlineMessages() {
@@ -2008,30 +2059,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     var attContainer = document.createElement('div');
                     attContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem;';
                     msg.attachments.forEach(function(att) {
+                        var isImg = isImageFile(att);
                         var thumb = document.createElement('div');
                         thumb.className = 'attachment-thumbnail';
-                        thumb.style.cssText = 'width: 80px; height: 80px; cursor: pointer;';
-                        if (att.type && att.type.startsWith('image/')) {
+                        thumb.style.cssText = 'width: 80px; height: 80px; cursor: pointer; border-radius: 8px; overflow: hidden;';
+                        if (isImg && (att.dataUrl || att.url)) {
                             var img = document.createElement('img');
                             img.src = att.dataUrl || att.url || '';
                             img.alt = att.name;
                             img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 8px;';
                             thumb.appendChild(img);
                         } else {
-                            thumb.innerHTML = '<div class="pdf-icon" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f5f5f5; color: #667eea; font-weight: 700; font-size: 0.6rem; border-radius: 8px;">PDF</div>';
+                            var ext = (att.name || '').split('.').pop().toUpperCase() || 'FILE';
+                            thumb.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;border-radius:8px;"><i class="fas fa-file" style="font-size:20px;margin-bottom:3px;"></i><span style="font-size:0.55rem;">' + escapeHtml(ext) + '</span></div>';
                         }
                         thumb.addEventListener('click', function() {
-                            if (att.dataUrl) {
-                                var safeHref = safeUrl(att.dataUrl);
-                                if (safeHref) {
-                                    var a = document.createElement('a');
-                                    a.href = safeHref;
-                                    a.download = att.name;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                }
-                            }
+                            ChillUtils.downloadAttachment(att.dataUrl || att.url, att.name);
                         });
                         attContainer.appendChild(thumb);
                     });
@@ -2107,7 +2150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
               .then(function(result) {
                   if (!result.ok) {
-                      alert(result.data.error || 'خطا در ارسال پیام');
+                      ChillUtils.showAlert(result.data.error || 'خطا در ارسال پیام', 'error');
                       if (inlineSendBtn) { inlineSendBtn.disabled = false; }
                       return;
                   }
@@ -2123,7 +2166,7 @@ document.addEventListener('DOMContentLoaded', () => {
               })
               .catch(function(err) {
                   console.error('خطا در ارسال پیام:', err);
-                  alert('خطا در ارسال پیام');
+                  ChillUtils.showAlert('خطا در ارسال پیام', 'error');
                   if (inlineSendBtn) { inlineSendBtn.disabled = false; }
               });
         }
@@ -2190,9 +2233,6 @@ document.addEventListener('DOMContentLoaded', () => {
             inlineSendBtn.addEventListener('click', sendInlineMessage);
         }
         if (inlineMessageInput) {
-            inlineMessageInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') sendInlineMessage();
-            });
             inlineMessageInput.addEventListener('input', function() {
                 var len = inlineMessageInput.value.length;
                 var charCounter = document.getElementById('charCounter');
@@ -2239,6 +2279,36 @@ document.addEventListener('DOMContentLoaded', () => {
             chatPanel.addEventListener('transitionend', function() {
                 if (chatPanel.style.display !== 'none' && !inlinePolling) {
                     inlinePolling = setInterval(loadInlineMessages, 8000);
+                }
+            });
+        }
+
+        if (window.visualViewport) {
+            var updateAppHeight = function() {
+                var vh = window.visualViewport.height;
+                document.documentElement.style.setProperty('--app-height', vh + 'px');
+            };
+            window.visualViewport.addEventListener('resize', updateAppHeight);
+            window.visualViewport.addEventListener('scroll', updateAppHeight);
+            updateAppHeight();
+        }
+
+        if (inlineMessageInput && supportModal) {
+            inlineMessageInput.addEventListener('focus', function() {
+                if (!window.visualViewport) return;
+                var scrollIntoViewKeyboard = function() {
+                    if (!supportModal.classList.contains('active')) return;
+                    var inputArea = supportModal.querySelector('.admin-chat-input-area');
+                    if (inputArea) {
+                        inputArea.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    }
+                };
+                setTimeout(scrollIntoViewKeyboard, 300);
+                window.visualViewport.addEventListener('resize', scrollIntoViewKeyboard);
+            });
+            inlineMessageInput.addEventListener('blur', function() {
+                if (window.visualViewport) {
+                    window.visualViewport.removeEventListener('resize', function() {});
                 }
             });
         }
@@ -2345,7 +2415,7 @@ const bannerUpload = document.getElementById('bannerUpload');
               .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
               .then(result => {
                   if (!result.ok) {
-                      alert(result.data.error || 'خطا در ذخیره بنر');
+                      ChillUtils.showAlert(result.data.error || 'خطا در ذخیره بنر', 'error');
                       saveBannerBtn.disabled = false;
                       return;
                   }
@@ -2361,7 +2431,7 @@ const bannerUpload = document.getElementById('bannerUpload');
                   window.location.href = 'index.html';
               })
               .catch(() => {
-                  alert('خطا در اتصال به سرور');
+                  ChillUtils.showAlert('خطا در اتصال به سرور', 'error');
                   saveBannerBtn.disabled = false;
               });
          });
@@ -2385,14 +2455,14 @@ if (pinAttachment && attachmentFile) {
 
           function countCurrentAttachments(type) {
               return currentAttachments.filter(function(attachment) {
-                  if (type === 'image') return attachment.type && attachment.type.startsWith('image/');
+                  if (type === 'image') return isImageFile(attachment);
                   return attachment.type === type;
               }).length;
           }
 
           function createAttachment(file, dataUrl) {
               return {
-                  id: 'att_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+                  id: ChillUtils.generateId('att_'),
                   name: file.name,
                   type: file.type,
                   size: file.size,
@@ -2438,10 +2508,11 @@ if (pinAttachment && attachmentFile) {
           function renderAttachmentPreview(attachment, dataUrl) {
               if (!attachmentPreview) return;
 
-              if (attachment.type.startsWith('image/')) {
+              if (isImageFile(attachment)) {
                   attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail" data-attachment-id="' + escapeAttachmentHtml(attachment.id) + '"><img src="' + escapeAttachmentHtml(dataUrl) + '" alt="' + escapeAttachmentHtml(attachment.name) + '"><span class="upload-status"><i class="fas fa-check"></i></span><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
               } else {
-                  attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail" data-attachment-id="' + escapeAttachmentHtml(attachment.id) + '"><div class="pdf-icon">PDF</div><span class="upload-status"><i class="fas fa-check"></i></span><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
+                  var ext = (attachment.name || '').split('.').pop().toUpperCase() || 'FILE';
+                  attachmentPreview.insertAdjacentHTML('beforeend', '<div class="attachment-thumbnail" data-attachment-id="' + escapeAttachmentHtml(attachment.id) + '"><div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeAttachmentHtml(ext) + '</span></div><span class="upload-status"><i class="fas fa-check"></i></span><button type="button" class="remove-attachment" onclick="removeAttachment(this)"><i class="fas fa-times"></i></button></div>');
               }
 
               attachmentPreview.classList.remove('hidden');
@@ -2450,7 +2521,7 @@ if (pinAttachment && attachmentFile) {
           function addAttachmentFromFile(file) {
               if (!file || !attachmentPreview || isReadingAttachment) return;
 
-              if (file.type.startsWith('image/') && countCurrentAttachments('image') >= 4) {
+              if (isImageFile(file) && countCurrentAttachments('image') >= 4) {
                   showAttachmentLimitToast('فقط می توان چهار فایل آپلود کرد');
                   attachmentFile.value = '';
                   return;
@@ -2462,7 +2533,7 @@ if (pinAttachment && attachmentFile) {
                   return;
               }
 
-if (file.type.startsWith('image/')) {
+if (isImageFile(file)) {
                    const reader = new FileReader();
                    isReadingAttachment = true;
                    reader.onload = function(event) {
@@ -2570,7 +2641,7 @@ popup.addEventListener('click', function(e) {
 
 const grid = document.getElementById('attachmentPopupGrid');
             grid.innerHTML = visibleAttachments.map(function(attachment) {
-                const isImage = attachment.type && attachment.type.startsWith('image/');
+                const isImage = isImageFile(attachment);
                 const safeName = escapeAttachmentHtml(attachment.name || 'فایل پیوست');
                 const safeUrl = escapeAttachmentHtml(attachment.url || attachment.dataUrl);
                 const jsUrl = (attachment.url || attachment.dataUrl || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");

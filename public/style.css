@@ -709,6 +709,28 @@ main {
     animation: uploadStatusFadeIn 0.3s ease forwards;
 }
 
+.attachment-thumbnail.uploading { position: relative; }
+.attachment-thumbnail .upload-progress-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.88); border-radius: 6px; z-index: 5;
+}
+.attachment-thumbnail .upload-progress-ring circle:first-child { stroke: #e5e7eb; }
+.attachment-thumbnail .upload-progress-ring .upload-progress-circle {
+    transition: stroke-dashoffset 0.15s ease-out; stroke: #667eea;
+}
+.attachment-thumbnail .upload-progress-text {
+    font-size: 0.5rem; font-weight: 700; color: #333; margin-top: 2px;
+}
+.attachment-thumbnail .upload-cancel-btn {
+    position: absolute; top: -4px; right: -4px; width: 18px; height: 18px;
+    background: #e74c3c; color: #fff; border: none; border-radius: 50%;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    transition: transform 0.15s;
+}
+.attachment-thumbnail .upload-cancel-btn:hover { transform: scale(1.15); }
+
 .file-thumb .upload-status {
     position: absolute;
     bottom: 2px;
@@ -1117,7 +1139,9 @@ input[inputmode="numeric"] {
     bottom: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
     min-height: 100vh;
+    min-height: 100dvh;
     border-radius: 0;
     box-sizing: border-box;
     overflow: hidden;
@@ -1631,6 +1655,7 @@ input[inputmode="numeric"] {
     font-size: 0.95rem;
     line-height: 1.6;
     word-break: break-word;
+    white-space: pre-wrap;
 }
 
 .message.user .bubble {
@@ -1847,6 +1872,28 @@ input[inputmode="numeric"] {
     
     .order-item {
         flex: 1 1 30%;
+    }
+
+    .modal.active .modal-content {
+        height: var(--app-height, 100dvh);
+        min-height: var(--app-height, 100dvh);
+    }
+
+    .modal.active .admin-chat-main {
+        height: var(--app-height, 100dvh);
+    }
+
+    .modal.active .admin-chat-input-area {
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        padding-bottom: env(safe-area-inset-bottom, 8px);
+        margin-bottom: 8px;
+    }
+
+    .modal.active .admin-chat-input-area textarea {
+        min-height: 44px;
+        max-height: 150px;
     }
 }
 
