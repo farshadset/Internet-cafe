@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت بنرها</title>
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+        (function(){ if (!checkAdminAuth()) return; })();
     </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
 </head>
 <body>
     <div class="container">
@@ -85,8 +88,10 @@
             </div>
         </div>
     </div>
+    <script src="libs/utils.js"></script>
+    <script src="app.js"></script>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
+        (function(){ if (!checkAdminAuth()) return; })();
         function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]})}
         var bannersData = [];
         var pendingBannerSrc = null;
@@ -156,15 +161,15 @@
                             if (this.disabled) return;
                             var self = this;
                             var id = this.getAttribute('data-id');
-                            if (confirm('آیا از حذف این بنر اطمینان دارید؟')) {
+                            ChillUtils.showConfirm('آیا از حذف این بنر اطمینان دارید؟', function() {
                                 self.disabled = true;
                                 fetch('/api/banner/' + id, { method: 'DELETE' })
                                     .then(function(r) {
                                         if (r.ok) { loadBanners(); }
-                                        else { alert('خطا در حذف بنر'); self.disabled = false; }
+                                        else { ChillUtils.showAlert('خطا در حذف بنر', 'error'); self.disabled = false; }
                                     })
-                                    .catch(function() { alert('خطا در اتصال به سرور'); self.disabled = false; });
-                            }
+                                    .catch(function() { ChillUtils.showAlert('خطا در اتصال به سرور', 'error'); self.disabled = false; });
+                            });
                         });
                     });
                 })
@@ -194,7 +199,7 @@
         function openPopup() {
             var selectedGroup = getSelectedBannerGroup();
             if (bannersData && bannersData.length >= 6) {
-                alert('حداکثر تعداد بنرهای هر گروه ۶ عدد است. برای افزودن بنر جدید، یکی از بنرهای موجود را حذف کنید.');
+                ChillUtils.showAlert('حداکثر تعداد بنرهای هر گروه ۶ عدد است. برای افزودن بنر جدید، یکی از بنرهای موجود را حذف کنید.');
                 return;
             }
             pendingBannerSrc = null;
@@ -229,7 +234,7 @@
                     var file = e.target.files[0];
                     if (!file) return;
                     if (file.size > 5 * 1024 * 1024) {
-                        alert('حجم فایل نباید بیش از ۵ مگابایت باشد');
+                        ChillUtils.showAlert('حجم فایل نباید بیش از ۵ مگابایت باشد');
                         return;
                     }
                     fileInput.disabled = true;
@@ -286,14 +291,14 @@
                                 statusEl.textContent = 'خطا';
                                 barEl.style.background = '#e74c3c';
                                 fileInput.disabled = false;
-                                alert(res.error || 'خطا در آپلود تصویر');
+                                ChillUtils.showAlert(res.error || 'خطا در آپلود تصویر', 'error');
                             }
                         } catch(ex) {
                             clearInterval(serverInterval);
                             statusEl.textContent = 'خطا';
                             barEl.style.background = '#e74c3c';
                             fileInput.disabled = false;
-                            alert('خطا در آپلود تصویر');
+                            ChillUtils.showAlert('خطا در آپلود تصویر', 'error');
                         }
                     };
                     xhr.onerror = function() {
@@ -301,16 +306,16 @@
                         statusEl.textContent = 'خطا';
                         barEl.style.background = '#e74c3c';
                         fileInput.disabled = false;
-                        alert('خطا در آپلود تصویر');
+                        ChillUtils.showAlert('خطا در آپلود تصویر', 'error');
                     };
                     xhr.send(JSON.stringify({ image: { name: file.name, dataUrl: dataUrl } }));
-                }).catch(function() { alert('خطا در پردازش تصویر'); progressEl.style.display = 'none'; fileInput.disabled = false; });
+                }).catch(function() { ChillUtils.showAlert('خطا در پردازش تصویر', 'error'); progressEl.style.display = 'none'; fileInput.disabled = false; });
             });
 
             document.getElementById('saveBannerPopupBtn').addEventListener('click', function() {
                 var bannerSrc = pendingBannerSrc;
                 if (!bannerSrc) {
-                    alert('لطفاً ابتدا تصویر بنر را آپلود کنید');
+                    ChillUtils.showAlert('لطفاً ابتدا تصویر بنر را آپلود کنید');
                     return;
                 }
                 var saveBtn = document.getElementById('saveBannerPopupBtn');
@@ -331,7 +336,7 @@
                 function fail(errMsg) {
                     saveBtn.disabled = false;
                     saveBtn.textContent = 'ذخیره';
-                    alert(errMsg);
+                    ChillUtils.showAlert(errMsg);
                 }
 
                 if (editingBannerId) {
@@ -344,7 +349,7 @@
                             finish();
                             showToast('بنر با موفقیت ویرایش شد');
                         } else {
-                            alert('خطا در ویرایش بنر');
+                            ChillUtils.showAlert('خطا در ویرایش بنر', 'error');
                         }
                     }).catch(function(err) { fail('خطا: ' + err.message); });
                 } else {
@@ -389,17 +394,7 @@
             pendingBannerSrc = src;
         }
 
-        function showToast(message) {
-            var toast = document.createElement('div');
-            toast.className = 'toast-success';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(function() { toast.classList.add('show'); }, 10);
-            setTimeout(function() {
-                toast.classList.remove('show');
-                setTimeout(function() { toast.remove(); }, 300);
-            }, 3000);
-        }
+        var showToast = ChillUtils.showToast;
     </script>
 </body>
 </html>

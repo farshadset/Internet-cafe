@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت</title>
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+        (function(){ if (!checkAdminAuth()) return; })();
     </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,6 +16,7 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
     <link rel="stylesheet" href="mega-menu.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -115,9 +118,11 @@
             </div>
         </main>
     </div>
+    <script src="libs/browser-image-compression.js"></script>
+    <script src="libs/utils.js"></script>
     <script src="app.js" defer></script>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
+        (function(){ if (!checkAdminAuth()) return; })();
         document.addEventListener('DOMContentLoaded', function() {
             function toFa(n) { return n.toLocaleString('fa-IR'); }
 
@@ -229,11 +234,12 @@
                         delBtn.textContent = 'حذف';
                         delBtn.style.cssText = 'padding:4px 12px;border:none;background:#e74c3c;color:#fff;border-radius:6px;cursor:pointer;font-size:0.75rem;';
                         delBtn.addEventListener('click', function() {
-                            if (!confirm('آیا از حذف این اثرانگشت مطمئن هستید؟')) return;
-                            WebAuthnClient.removeCredential(c.id).then(function() {
-                                loadAdminBiometricCredentials();
-                                loadAdminBiometricStatus();
-                            }).catch(function(e) { alert(e.message); });
+                            ChillUtils.showConfirm('آیا از حذف این اثرانگشت مطمئن هستید؟', function() {
+                                WebAuthnClient.removeCredential(c.id).then(function() {
+                                    loadAdminBiometricCredentials();
+                                    loadAdminBiometricStatus();
+                                }).catch(function(e) { ChillUtils.showAlert(e.message, 'error'); });
+                            });
                         });
                         div.appendChild(delBtn);
                         adminBiometricList.appendChild(div);
@@ -255,11 +261,11 @@
                         loadAdminBiometricStatus();
                         addAdminBiometricBtn.disabled = false;
                         addAdminBiometricBtn.textContent = 'افزودن';
-                        alert('اثرانگشت با موفقیت ثبت شد!');
+                        ChillUtils.showAlert('اثرانگشت با موفقیت ثبت شد!', 'success');
                     }).catch(function(e) {
                         addAdminBiometricBtn.disabled = false;
                         addAdminBiometricBtn.textContent = 'افزودن';
-                        alert('خطا: ' + e.message);
+                        ChillUtils.showAlert('خطا: ' + e.message, 'error');
                     });
                 });
             }

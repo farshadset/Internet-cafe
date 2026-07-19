@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>اطلاعات تماس</title>
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){location.replace('login.html');return;}}catch(e){location.replace('login.html');return;}})();
+        (function(){ if (!checkAdminAuth()) return; })();
     </script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
 </head>
 <body>
     <nav class="desktop-sidebar" id="desktopSidebar">
@@ -67,8 +70,10 @@
             </div>
         </main>
     </div>
+    <script src="libs/utils.js"></script>
+    <script src="app.js"></script>
     <script>
-        (function(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');if(!d||!d.token){window.location.href='login.html';return;}}catch(e){window.location.href='login.html';return;}})();
+        (function(){ if (!checkAdminAuth()) return; })();
         document.addEventListener('DOMContentLoaded', function() {
             // Sidebar toggle
             var sidebar = document.getElementById('desktopSidebar');
@@ -120,22 +125,12 @@
                         localStorage.setItem('caffint_social_links', JSON.stringify(data));
                         showToast('اطلاعات تماس با موفقیت ذخیره شد');
                     } catch(e) {
-                        alert('خطا در ذخیره اطلاعات');
+                        ChillUtils.showAlert('خطا در ذخیره اطلاعات', 'error');
                     }
                 });
             }
 
-            function showToast(message) {
-                var toast = document.createElement('div');
-                toast.className = 'toast';
-                toast.textContent = message;
-                document.body.appendChild(toast);
-                setTimeout(function() { toast.classList.add('show'); }, 10);
-                setTimeout(function() {
-                    toast.classList.remove('show');
-                    setTimeout(function() { toast.remove(); }, 300);
-                }, 3000);
-            }
+            var showToast = ChillUtils.showToast;
 
             loadSocialLinks();
 

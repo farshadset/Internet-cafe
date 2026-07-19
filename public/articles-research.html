@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="fonts/all.css">
+    <link rel="stylesheet" href="libs/notie.min.css">
 </head>
 <body>
     <header class="site">
@@ -94,6 +95,9 @@
             </form>
         </div>
     </main>
+    <script src="libs/browser-image-compression.js"></script>
+    <script src="libs/utils.js"></script>
+    <script src="libs/notie.min.js"></script>
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -103,14 +107,14 @@
             var attachmentFile = document.getElementById('attachmentFile');
             var attachmentPreview = document.getElementById('attachmentPreview');
             window.currentAttachments = window.currentAttachments || [];
-            function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]})}
+            var escapeHtml = ChillUtils.escapeHtml;
             if(attachmentFile && attachmentPreview){
                 attachmentFile.addEventListener('change', function(e){
                     var file = e.target.files[0];
                     if(!file) return;
-                    if(file.type.startsWith('image/') && window.currentAttachments.filter(function(a){return a.type&&a.type.startsWith('image/');}).length>=4){alert('فقط می توان چهار فایل آپلود کرد');attachmentFile.value='';return;}
-                    if(file.type==='application/pdf' && window.currentAttachments.filter(function(a){return a.type==='application/pdf';}).length>=4){alert('فقط می توان چهار فایل آپلود کرد');attachmentFile.value='';return;}
-                    var id='att_'+Date.now()+'_'+Math.random().toString(16).slice(2);
+                    if(file.type.startsWith('image/') && window.currentAttachments.filter(function(a){return a.type&&a.type.startsWith('image/');}).length>=4){ChillUtils.showAlert('فقط می توان چهار فایل آپلود کرد');attachmentFile.value='';return;}
+                    if(file.type==='application/pdf' && window.currentAttachments.filter(function(a){return a.type==='application/pdf';}).length>=4){ChillUtils.showAlert('فقط می توان چهار فایل آپلود کرد');attachmentFile.value='';return;}
+                    var id = ChillUtils.generateId('att_');
                     var isImage=file.type.startsWith('image/');
                     var thumb=document.createElement('div');
                     thumb.className='file-thumb uploading';
@@ -231,7 +235,7 @@
                         });
                         const result = await response.json();
                         if (!response.ok || !result.trackingCode) {
-                            alert(result.error || 'خطا در ثبت سفارش');
+                            ChillUtils.showAlert(result.error || 'خطا در ثبت سفارش', 'error');
                             if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت سفارش'; }
                             return;
                         }
@@ -242,7 +246,7 @@
                         saveRegistrationData(data, result.trackingCode);
                         window.location.href = 'success.html';
                     } catch (error) {
-                        alert('خطا در اتصال به سرور');
+                        ChillUtils.showAlert('خطا در اتصال به سرور', 'error');
                         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت سفارش'; }
                     }
                 });
