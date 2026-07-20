@@ -5,8 +5,26 @@ const http = require('http');
 const crypto = require('crypto');
 const helmet = require('helmet');
 const compression = require('compression');
+const zlib = require('zlib');
 const { Server } = require('socket.io');
 const db = require('./db');
+
+// ==================== UPSTASH REDIS (optional — falls back to in-memory) ====================
+let upstashLimiter = null;
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    try {
+        const { Redis } = require('@upstash/redis');
+        const { Ratelimit } = require('@upstash/ratelimit');
+        const redis = new Redis({
+            url: process.env.UPSTASH_REDIS_REST_URL,
+            token: process.env.UPSTASH_REDIS_REST_TOKEN,
+        });
+        upstashLimiter = { Redis, Ratelimit, redis };
+        console.log('Upstash Redis rate limiting enabled');
+    } catch (e) {
+        console.warn('Upstash init failed, using in-memory rate limiter:', e.message);
+    }
+}
 
 const isVercel = !!process.env.VERCEL;
 
@@ -56,9 +74,37 @@ function withOrderLock(key, fn) {
     return curr;
 }
 
-// ==================== RATE LIMITER (in-memory) ====================
+// ==================== RATE LIMITER (Upstash Redis or in-memory) ====================
 const allRateLimitStores = [];
+const upstashLimiters = {};
+
 function rateLimit(windowMs, max) {
+    // Use Upstash when available
+    if (upstashLimiter) {
+        var limiterKey = windowMs + ':' + max;
+        if (!upstashLimiters[limiterKey]) {
+            var windowSec = Math.ceil(windowMs / 1000);
+            upstashLimiters[limiterKey] = new upstashLimiter.Ratelimit({
+                redis: upstashLimiter.redis,
+                limiter: upstashLimiter.Ratelimit.slidingWindow(max, windowSec + 's'),
+                analytics: false,
+            });
+        }
+        var ul = upstashLimiters[limiterKey];
+        return async function(req, res, next) {
+            var key = req.ip || req.connection.remoteAddress || 'unknown';
+            try {
+                var result = await ul.limit(key);
+                if (!result.success) {
+                    return res.status(429).json({ error: 'تعداد درخواست‌ها بیش از حد مجاز است. لطفاً چند لحظه صبر کنید.' });
+                }
+                next();
+            } catch (e) {
+                next(); // fail open on Redis errors
+            }
+        };
+    }
+    // Fallback: in-memory rate limiter
     var store = {};
     allRateLimitStores.push({ store: store, windowMs: windowMs });
     return function(req, res, next) {
@@ -145,6 +191,7 @@ function generateNonce() {
 // ==================== INPUT SANITIZATION ====================
 function sanitize(str) {
     if (typeof str !== 'string') return str;
+    if (str.startsWith('data:')) return str;
     return str
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -255,15 +302,91 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false
 }));
 
-// Response compression (gzip + brotli)
-app.use(compression({
-    filter: (req, res) => {
-        if (req.headers['x-no-compression']) return false;
-        return compression.filter(req, res);
-    },
-    level: 6,
-    threshold: 1024
-}));
+// Response compression (gzip + deflate) — Vercel CDN adds Brotli automatically
+if (!isVercel) {
+    // Self-hosted: unified Brotli + gzip middleware
+    app.use(function unifiedCompress(req, res, next) {
+        if (req.headers['x-no-compression']) return next();
+        var acceptEncoding = req.headers['accept-encoding'] || '';
+        var useBrotli = acceptEncoding.indexOf('br') !== -1;
+        var useGzip = acceptEncoding.indexOf('gzip') !== -1;
+
+        var origWrite = res.write;
+        var origEnd = res.end;
+        var chunks = [];
+
+        res.write = function(chunk, encoding, cb) {
+            if (typeof encoding === 'function') { cb = encoding; encoding = null; }
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, encoding || 'utf8'));
+            if (cb) cb();
+            return true;
+        };
+        res.end = function(chunk, encoding, cb) {
+            if (typeof chunk === 'function') { cb = chunk; chunk = null; }
+            if (typeof encoding === 'function') { cb = encoding; encoding = null; }
+            if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, encoding || 'utf8'));
+
+            var body = Buffer.concat(chunks);
+            var contentType = (res.getHeader('content-type') || '').toLowerCase();
+            var isCompressible = /text|json|javascript|css|html|xml|svg|font|woff|ttf/.test(contentType);
+
+            if (!isCompressible || body.length < 1024) {
+                res.setHeader('Content-Length', body.length);
+                origWrite.call(res, body);
+                if (cb) cb();
+                return origEnd.call(res);
+            }
+
+            function sendCompressed(encoder, encodingName) {
+                encoder(body, function(err, compressed) {
+                    if (err || compressed.length >= body.length) {
+                        // Fallback to uncompressed
+                        res.setHeader('Content-Length', body.length);
+                        origWrite.call(res, body);
+                        if (cb) cb();
+                        return origEnd.call(res);
+                    }
+                    res.setHeader('Content-Encoding', encodingName);
+                    res.setHeader('Content-Length', compressed.length);
+                    res.removeHeader('Content-MD5');
+                    res.removeHeader('ETag');
+                    origWrite.call(res, compressed);
+                    if (cb) cb();
+                    origEnd.call(res);
+                });
+            }
+
+            if (useBrotli) {
+                var brotliOpts = {};
+                brotliOpts[zlib.constants.BROTLI_PARAM_QUALITY] = 4;
+                brotliOpts[zlib.constants.BROTLI_PARAM_SIZE_HINT] = body.length;
+                sendCompressed(function(buf, cb) {
+                    zlib.brotliCompress(buf, { params: brotliOpts }, cb);
+                }, 'br');
+            } else if (useGzip) {
+                sendCompressed(function(buf, cb) {
+                    zlib.gzip(buf, { level: 6 }, cb);
+                }, 'gzip');
+            } else {
+                res.setHeader('Content-Length', body.length);
+                origWrite.call(res, body);
+                if (cb) cb();
+                origEnd.call(res);
+            }
+        };
+        next();
+    });
+} else {
+    // Vercel: CDN handles Brotli, just use basic gzip for origin
+    app.use(compression({
+        filter: (req, res) => {
+            if (req.headers['x-no-compression']) return false;
+            return compression.filter(req, res);
+        },
+        level: 6,
+        threshold: 1024
+    }));
+}
 
 // Security headers
 app.use(securityHeaders);
@@ -280,6 +403,7 @@ app.use(function(req, res, next) {
             "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
             "img-src 'self' data: blob:",
             "connect-src 'self' ws: wss:",
+            "worker-src 'self' blob:",
             "frame-src 'none'",
             "object-src 'none'"
         ].join('; ');
@@ -410,6 +534,19 @@ const dbReady = db.initDB().then(async () => {
         await db.migrateFromJSON();
     } catch (e) {
         console.error('DB init migration error:', e.message || e);
+    }
+
+    // Fix corrupted data URLs in chat attachments (sanitize() was replacing / with &#x2F;)
+    try {
+        var client = db.getClient();
+        var rows = await client.execute("SELECT id, attachments FROM chat WHERE attachments LIKE '%&#x2F;%'");
+        for (var row of rows.rows) {
+            var fixed = row.attachments.replace(/&#x2F;/g, '/');
+            await client.execute({ sql: 'UPDATE chat SET attachments = ? WHERE id = ?', args: [fixed, row.id] });
+        }
+        if (rows.rows.length > 0) console.log('Fixed ' + rows.rows.length + ' corrupted chat attachment(s)');
+    } catch (e) {
+        console.error('Chat attachment fix error:', e.message || e);
     }
 
     try {
@@ -887,9 +1024,15 @@ app.get('/api/admin/unread-count', requireAdmin, asyncHandler(async (req, res) =
 // ==================== PRICING ====================
 app.get('/api/pricing', asyncHandler(async (req, res) => {
     var cached = getCache('pricing', 60000);
-    if (cached) return res.json(cached);
+    if (cached) {
+        res.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=60');
+        res.set('CDN-Cache-Control', 'max-age=300');
+        return res.json(cached);
+    }
     const pricing = await db.getPricing();
     setCache('pricing', pricing);
+    res.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=60');
+    res.set('CDN-Cache-Control', 'max-age=300');
     res.json(pricing);
 }));
 
@@ -994,18 +1137,26 @@ app.get('/api/banner', asyncHandler(async (req, res) => {
     const { group } = req.query;
     var cacheKey = group ? 'banner:g' + group : 'banner:all';
     var cached = getCache(cacheKey, 30000);
-    if (cached) return res.json(cached);
+    if (cached) {
+        res.set('Cache-Control', 'public, max-age=30, s-maxage=300, stale-while-revalidate=30');
+        res.set('CDN-Cache-Control', 'max-age=300');
+        return res.json(cached);
+    }
 
     if (group) {
         const groupNum = parseInt(group);
         if (!Number.isNaN(groupNum)) {
             const banners = await db.getBanners(groupNum);
             setCache(cacheKey, banners);
+            res.set('Cache-Control', 'public, max-age=30, s-maxage=300, stale-while-revalidate=30');
+            res.set('CDN-Cache-Control', 'max-age=300');
             return res.json(banners);
         }
     }
     const allBanners = await db.getBanners();
     setCache(cacheKey, allBanners);
+    res.set('Cache-Control', 'public, max-age=30, s-maxage=300, stale-while-revalidate=30');
+    res.set('CDN-Cache-Control', 'max-age=300');
     res.json(allBanners);
 }));
 
@@ -1160,36 +1311,41 @@ app.get('/api/admin/chat/conversations', requireAdmin, asyncHandler(async (req, 
     if (!username) {
         return res.status(400).json({ error: 'نام کاربری الزامی است' });
     }
-    // Use chat_conversations table directly
     var convs = await db.getUserConversations(username);
     var result = [];
-    for (var i = 0; i < convs.length; i++) {
-        var c = convs[i];
-        var msgs = await db.getChatMessagesForConversation(c.id);
-        if (msgs.length === 0) continue;
-        var lastMsg = msgs[msgs.length - 1];
-        result.push({
-            id: c.id,
-            username: c.username,
-            createdAt: c.createdAt,
-            lastMessage: lastMsg.text,
-            lastTimestamp: lastMsg.timestamp,
-            messageCount: msgs.length
+    var promises = convs.map(function(c) {
+        return db.getLastMessageAndCount(c.id).then(function(info) {
+            if (!info.lastMsg) return null;
+            return {
+                id: c.id,
+                username: c.username,
+                createdAt: c.createdAt,
+                lastMessage: info.lastMsg.text,
+                lastTimestamp: info.lastMsg.timestamp,
+                messageCount: info.count
+            };
         });
-    }
+    });
+    var items = await Promise.all(promises);
+    result = items.filter(Boolean);
     result.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
     res.json(result);
 }));
 
 app.get('/api/admin/chat/conversation/:id', requireAdmin, asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+    const before = req.query.before || null;
     if (id === '_legacy') {
         const allMsgs = await db.getAllChatMessages(500);
         const legacy = allMsgs.filter(function(m) { return !m.conversationId || m.conversationId === '_legacy'; });
         res.json(legacy);
     } else {
-        const messages = await db.getChatMessagesForConversation(id);
-        res.json(messages);
+        const messages = await db.getChatMessagesPaginated(id, limit, before);
+        const fetchLimit = limit + 1;
+        const hasMore = messages.length >= limit;
+        const oldestId = messages.length > 0 ? messages[0].id : null;
+        res.json({ messages: messages.slice(0, limit), hasMore, oldestId });
     }
 }));
 
@@ -1200,17 +1356,15 @@ app.get('/api/admin/chat/customers', requireAdmin, asyncHandler(async (req, res)
     latestCustomerMsgs.forEach(function(m) {
         customers[m.username] = { username: m.username, lastMessage: m.text, lastTimestamp: m.timestamp, unread: 0 };
     });
-    // Check for unread: compare with last admin reply per user
-    var allMsgs = await db.getAllChatMessages(500);
+    // Check for unread: get last admin message per user and last global admin read time in parallel
+    var [lastAdminMsgs, lastAdminGlobal] = await Promise.all([
+        db.getLastAdminMessagesPerUser(),
+        db.getChatMeta('lastReadAt')
+    ]);
     var lastAdminByUser = {};
-    allMsgs.forEach(function(m) {
-        if (m.role === 'admin' && m.username) {
-            if (!lastAdminByUser[m.username] || m.timestamp > lastAdminByUser[m.username]) {
-                lastAdminByUser[m.username] = m.timestamp;
-            }
-        }
+    lastAdminMsgs.forEach(function(m) {
+        lastAdminByUser[m.username] = m.timestamp;
     });
-    var lastAdminGlobal = await db.getChatMeta('lastReadAt');
     Object.keys(customers).forEach(function(key) {
         var customer = customers[key];
         var lastAdminTs = lastAdminByUser[customer.username] || lastAdminGlobal;
@@ -1235,20 +1389,18 @@ app.post('/api/chat/conversation', requireUser, writeRateLimit, asyncHandler(asy
 app.get('/api/chat/conversation/:id', requireUser, asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { username } = req.query;
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+    const before = req.query.before || null;
     if (!username || username !== req.user.username) {
         return res.status(403).json({ error: 'دسترسی غیرمجاز' });
     }
-    var messages = await db.getChatMessagesForConversation(id);
-    var hasUserMessages = messages.some(function(m) {
-        return m.role === 'customer' && m.username === username;
-    });
-    if (!hasUserMessages) {
-        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
-    }
-    messages = messages.filter(function(m) {
+    const messages = await db.getChatMessagesPaginated(id, limit, before);
+    const filtered = messages.filter(function(m) {
         return (m.role === 'customer' && m.username === username) || (m.role === 'admin');
     });
-    res.json(messages);
+    const total = filtered.length;
+    const hasMore = filtered.length > 0 && filtered[0].id !== messages[0]?.id;
+    res.json({ messages: filtered, total, hasMore, oldestId: filtered.length > 0 ? filtered[0].id : null });
 }));
 
 app.get('/api/chat/conversations', requireUser, asyncHandler(async (req, res) => {
@@ -1256,25 +1408,54 @@ app.get('/api/chat/conversations', requireUser, asyncHandler(async (req, res) =>
     if (!username || username !== req.user.username) {
         return res.status(403).json({ error: 'دسترسی غیرمجاز' });
     }
-    // Use the chat_conversations table directly instead of loading all messages
     var convs = await db.getUserConversations(username);
     var result = [];
-    for (var i = 0; i < convs.length; i++) {
-        var c = convs[i];
-        var msgs = await db.getChatMessagesForConversation(c.id);
-        if (msgs.length === 0) continue;
-        var lastMsg = msgs[msgs.length - 1];
-        result.push({
-            id: c.id,
-            username: c.username,
-            createdAt: c.createdAt,
-            lastMessage: lastMsg.text,
-            lastTimestamp: lastMsg.timestamp,
-            messageCount: msgs.length
+    var promises = convs.map(function(c) {
+        return db.getLastMessageAndCount(c.id).then(function(info) {
+            if (!info.lastMsg) return null;
+            return {
+                id: c.id,
+                username: c.username,
+                createdAt: c.createdAt,
+                lastMessage: info.lastMsg.text,
+                lastTimestamp: info.lastMsg.timestamp,
+                messageCount: info.count
+            };
         });
-    }
+    });
+    var items = await Promise.all(promises);
+    result = items.filter(Boolean);
     result.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
     res.json(result);
+}));
+
+// ==================== IMAGE OPTIMIZATION (sharp) ====================
+app.post('/api/optimize-image', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    const { image, format, width, quality } = req.body;
+    if (!image || !image.dataUrl) {
+        return res.status(400).json({ error: 'تصویر الزامی است' });
+    }
+    try {
+        const sharp = require('sharp');
+        const decoded = decodeDataUrl(image.dataUrl);
+        if (!decoded) {
+            return res.status(400).json({ error: 'فرمت تصویر نامعتبر است' });
+        }
+        let pipeline = sharp(decoded.buffer);
+        const targetFormat = ['webp', 'avif', 'jpeg', 'png'].includes(format) ? format : 'webp';
+        const targetQuality = Math.min(Math.max(parseInt(quality) || 80, 10), 100);
+        if (width && parseInt(width) > 0) {
+            pipeline = pipeline.resize(parseInt(width), null, { withoutEnlargement: true });
+        }
+        pipeline = pipeline.toFormat(targetFormat, { quality: targetQuality });
+        const optimized = await pipeline.toBuffer();
+        const mimeType = { webp: 'image/webp', avif: 'image/avif', jpeg: 'image/jpeg', png: 'image/png' }[targetFormat];
+        const dataUrl = 'data:' + mimeType + ';base64,' + optimized.toString('base64');
+        res.json({ success: true, dataUrl, format: targetFormat, size: optimized.length });
+    } catch (e) {
+        console.error('Image optimization error:', e.message);
+        res.status(500).json({ error: 'خطا در پردازش تصویر' });
+    }
 }));
 
 // ==================== WEBAUTHN ====================

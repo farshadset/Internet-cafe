@@ -12,102 +12,10 @@
 # Error details
 
 ```
-Test timeout of 60000ms exceeded.
-```
-
-```
-Error: locator.hover: Test timeout of 60000ms exceeded.
+Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3003/index.html
 Call log:
-  - waiting for locator('[data-menu="identity-judicial"]')
+  - navigating to "http://localhost:3003/index.html", waiting until "domcontentloaded"
 
-```
-
-# Page snapshot
-
-```yaml
-- generic [active] [ref=e1]:
-  - navigation [ref=e2]:
-    - img "لیمو نت" [ref=e4]
-    - separator [ref=e5]
-    - link " خانه" [ref=e6] [cursor=pointer]:
-      - /url: index.html
-      - generic [ref=e7]: 
-      - generic: خانه
-    - link " لیست سفارش‌ها" [ref=e8] [cursor=pointer]:
-      - /url: admin-orders.html
-      - generic [ref=e9]: 
-      - generic: لیست سفارش‌ها
-    - link " چت با مشتری" [ref=e10] [cursor=pointer]:
-      - /url: admin-chat.html
-      - generic [ref=e11]: 
-      - generic: چت با مشتری
-    - button " پروفایل" [ref=e12] [cursor=pointer]:
-      - generic [ref=e13]: 
-      - generic: پروفایل
-    - link " اخبار" [ref=e14] [cursor=pointer]:
-      - /url: articles-research.html
-      - generic [ref=e15]: 
-      - generic: اخبار
-    - link " آموزش" [ref=e16] [cursor=pointer]:
-      - /url: faq.html
-      - generic [ref=e17]: 
-      - generic: آموزش
-  - generic [ref=e18]:
-    - banner [ref=e19]:
-      - heading "کافینت آنلاین" [level=1] [ref=e20]
-      - navigation "منوی اصلی" [ref=e23]:
-        - list [ref=e25]:
-          - listitem [ref=e26]:
-            - button "خدمات هویتی و قضایی" [ref=e27] [cursor=pointer]:
-              - text: خدمات هویتی و قضایی
-              - img [ref=e28]
-          - listitem [ref=e30]:
-            - button "بانکی، مالی و بورسی" [ref=e31] [cursor=pointer]:
-              - text: بانکی، مالی و بورسی
-              - img [ref=e32]
-          - listitem [ref=e34]:
-            - button "خودرو و حمل و نقل" [ref=e35] [cursor=pointer]:
-              - text: خودرو و حمل و نقل
-              - img [ref=e36]
-          - listitem [ref=e38]:
-            - button "آموزش و آزمون‌ها" [ref=e39] [cursor=pointer]:
-              - text: آموزش و آزمون‌ها
-              - img [ref=e40]
-          - listitem [ref=e42]:
-            - button "مالیات، مجوز و کسب‌وکار" [ref=e43] [cursor=pointer]:
-              - text: مالیات، مجوز و کسب‌وکار
-              - img [ref=e44]
-          - listitem [ref=e46]:
-            - button "سامانه‌های دولتی" [ref=e47] [cursor=pointer]:
-              - text: سامانه‌های دولتی
-              - img [ref=e48]
-    - generic [ref=e50]:
-      - textbox [ref=e52]
-      - generic:
-        - generic: وام ازدواج...
-    - main [ref=e53]:
-      - img "بنر کافینت" [ref=e56]
-      - heading "خدمات ویژه" [level=2] [ref=e61]
-      - generic [ref=e62]:
-        - link "رزومه و استخدام رزومه و استخدام" [ref=e63] [cursor=pointer]:
-          - /url: resume-employment.html
-          - img "رزومه و استخدام" [ref=e64]
-          - generic [ref=e65]: رزومه و استخدام
-        - link "خدمات سفارشی خدمات سفارشی" [ref=e66] [cursor=pointer]:
-          - /url: custom-services.html
-          - img "خدمات سفارشی" [ref=e67]
-          - generic [ref=e68]: خدمات سفارشی
-        - link "مقاله و تحقیق مقاله و تحقیق" [ref=e69] [cursor=pointer]:
-          - /url: articles-research.html
-          - img "مقاله و تحقیق" [ref=e70]
-          - generic [ref=e71]: مقاله و تحقیق
-      - link "بنر کافینت" [ref=e73] [cursor=pointer]:
-        - /url: www.google.com
-        - img "بنر کافینت" [ref=e75]
-  - text:         +  
-  - generic [ref=e80]:
-    - heading "منو" [level=3] [ref=e81]
-    - button "×" [ref=e82] [cursor=pointer]
 ```
 
 # Test source
@@ -193,7 +101,8 @@ Call log:
   78  | 
   79  | test.describe('Mega Menu Service Forms', () => {
   80  |     test.beforeEach(async ({ page }) => {
-  81  |         await page.goto(`${BASE_URL}/index.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+> 81  |         await page.goto(`${BASE_URL}/index.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      |                    ^ Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3003/index.html
   82  |         await page.evaluate(() => {
   83  |             localStorage.setItem('userData', JSON.stringify({ username: 'testuser' }));
   84  |         });
@@ -203,8 +112,7 @@ Call log:
   88  |         await page.waitForTimeout(500);
   89  | 
   90  |         const menuItem = page.locator('[data-menu="identity-judicial"]');
-> 91  |         await menuItem.hover({ force: true });
-      |                        ^ Error: locator.hover: Test timeout of 60000ms exceeded.
+  91  |         await menuItem.hover({ force: true });
   92  |         await page.waitForTimeout(500);
   93  | 
   94  |         const link = menuItem.locator('ul a').filter({ hasText: 'نوبت‌دهی قضایی' });
@@ -295,14 +203,4 @@ Call log:
   179 |         await page.waitForTimeout(500);
   180 | 
   181 |         const link = menuItem.locator('ul a').filter({ hasText: 'سایپا' });
-  182 |         await link.click();
-  183 | 
-  184 |         await expect(page).toHaveURL(/service\.html\?service=/);
-  185 |         await page.waitForTimeout(800);
-  186 | 
-  187 |         const formFields = page.locator('#serviceForm input, #serviceForm select, #serviceForm textarea');
-  188 |         const fieldCount = await formFields.count();
-  189 |         expect(fieldCount).toBeGreaterThan(0);
-  190 |     });
-  191 | 
 ```
