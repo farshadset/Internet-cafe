@@ -709,6 +709,15 @@
             var conversationsData = [];
             var adminPendingReads = 0;
             var adminActiveReaders = {};
+            var PAGE_SIZE = 30;
+            var oldestLoadedId = null;
+            var hasMoreMessages = true;
+            var isLoadingMore = false;
+            var pollInterval = 2000;
+            var pollIdleCount = 0;
+            var pollMaxIdle = 15;
+            var pollBaseInterval = 2000;
+            var pollMaxInterval = 10000;
 
             if (window.visualViewport) {
                 var updateAppHeight = function() {
@@ -805,59 +814,53 @@
                 adminAttachmentPreview.insertAdjacentHTML('beforeend', html);
                 adminAttachmentPreview.classList.remove('hidden');
 
-                if (isImage) {
-                    var previewReader = new FileReader();
-                    previewReader.onload = function(ev) {
-                        var img = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"] img');
-                        if (img) { img.src = ev.target.result; img.style.opacity = '1'; }
-                    };
-                    previewReader.readAsDataURL(file);
-                }
-
                 adminPendingReads++;
                 updateAdminSendButton();
 
-                var reader = new FileReader();
-                adminActiveReaders[attId] = reader;
+                var processFile = isImage ? ChillUtils.compressImageFile(file, { maxSizeMB: 2 }) : Promise.resolve(file);
+                processFile.then(function(finalFile) {
+                    var reader = new FileReader();
+                    adminActiveReaders[attId] = reader;
 
-                reader.onprogress = function(ev) {
-                    if (ev.lengthComputable) {
-                        var pct = Math.round((ev.loaded / ev.total) * 100);
-                        var circle = document.querySelector('[data-progress-ring="' + attId + '"]');
-                        var text = document.querySelector('[data-progress-text="' + attId + '"]');
-                        if (circle) circle.style.strokeDashoffset = (87.96 * (1 - pct / 100));
-                        if (text) text.textContent = pct + '%';
-                    }
-                };
-
-                reader.onload = function(ev) {
-                    var attachment = {
-                        id: attId,
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
-                        dataUrl: ev.target.result,
-                        uploadedAt: new Date().toISOString()
+                    reader.onprogress = function(ev) {
+                        if (ev.lengthComputable) {
+                            var pct = Math.round((ev.loaded / ev.total) * 100);
+                            var circle = document.querySelector('[data-progress-ring="' + attId + '"]');
+                            var text = document.querySelector('[data-progress-text="' + attId + '"]');
+                            if (circle) circle.style.strokeDashoffset = (87.96 * (1 - pct / 100));
+                            if (text) text.textContent = pct + '%';
+                        }
                     };
-                    adminCurrentAttachments.push(attachment);
-                    var thumb = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
-                    if (thumb) thumb.remove();
-                    renderAdminAttachmentPreview(attachment, ev.target.result);
-                    delete adminActiveReaders[attId];
-                    adminPendingReads--;
-                    updateAdminSendButton();
-                };
 
-                reader.onerror = function() {
-                    var thumb = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
-                    if (thumb) thumb.remove();
-                    delete adminActiveReaders[attId];
-                    adminPendingReads--;
-                    updateAdminSendButton();
-                    showToast('خطا در خواندن فایل');
-                };
+                    reader.onload = function(ev) {
+                        var attachment = {
+                            id: attId,
+                            name: finalFile.name,
+                            type: finalFile.type,
+                            size: finalFile.size,
+                            dataUrl: ev.target.result,
+                            uploadedAt: new Date().toISOString()
+                        };
+                        adminCurrentAttachments.push(attachment);
+                        var thumb = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
+                        if (thumb) thumb.remove();
+                        renderAdminAttachmentPreview(attachment, ev.target.result);
+                        delete adminActiveReaders[attId];
+                        adminPendingReads--;
+                        updateAdminSendButton();
+                    };
 
-                reader.readAsDataURL(file);
+                    reader.onerror = function() {
+                        var thumb = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
+                        if (thumb) thumb.remove();
+                        delete adminActiveReaders[attId];
+                        adminPendingReads--;
+                        updateAdminSendButton();
+                        showToast('خطا در خواندن فایل');
+                    };
+
+                    reader.readAsDataURL(finalFile);
+                });
             }
 
             window.removeAdminAttachment = function(button) {
@@ -893,6 +896,8 @@
                         var img = document.createElement('img');
                         img.src = att.dataUrl || att.url || '';
                         img.alt = att.name;
+                        img.loading = 'lazy';
+                        img.decoding = 'async';
                         img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 6px;';
                         thumb.appendChild(img);
                     } else {
@@ -974,31 +979,7 @@
                     });
             }
 
-            window.loadMessages = function() {
-                if (!currentConversationId) {
-                    chatMessages.innerHTML = '<div class="admin-empty-state">یک گفتگو را انتخاب کنید</div>';
-                    return;
-                }
-                fetch('/api/admin/chat/conversation/' + currentConversationId)
-                    .then(function(r) { r = _handle401(r); if (!r) return; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                    .then(function(messages) {
-                        lastMessageId = null;
-                        chatMessages.innerHTML = '';
-                        if (messages.length === 0) {
-                            chatMessages.innerHTML = '<div class="admin-empty-state">پیامی وجود ندارد</div>';
-                            return;
-                        }
-                        messages.forEach(function(msg) {
-                            appendMessage(msg);
-                        });
-                        lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
-                    })
-                    .catch(function() {
-                        chatMessages.innerHTML = '<div class="admin-empty-state" style="color:red;">خطا در بارگذاری پیام‌ها</div><div class="admin-empty-state"><button onclick="loadMessages()" style="padding:8px 20px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer;font-size:0.85rem;">تلاش مجدد</button></div>';
-                    });
-            }
-
-            function appendMessage(msg) {
+            function renderMessageEl(msg) {
                 var wrapper = document.createElement('div');
                 wrapper.className = 'message ' + (msg.role === 'admin' ? 'user' : 'support');
                 var bubble = document.createElement('div');
@@ -1009,38 +990,138 @@
                     renderMessageAttachments(msg, wrapper);
                 }
                 wrapper.setAttribute('data-msg-id', msg.id || '');
-                chatMessages.appendChild(wrapper);
-                if (chatMessages.scrollHeight > chatMessages.parentElement.clientHeight) {
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                return wrapper;
+            }
+
+            function prependOlderMessages() {
+                if (isLoadingMore || !hasMoreMessages || !currentConversationId) return;
+                isLoadingMore = true;
+                var sentinel = document.getElementById('loadOlderSentinel');
+                if (sentinel) sentinel.textContent = 'در حال بارگذاری...';
+                var url = '/api/admin/chat/conversation/' + currentConversationId + '?limit=' + PAGE_SIZE;
+                if (oldestLoadedId) url += '&before=' + encodeURIComponent(oldestLoadedId);
+                var prevScrollHeight = chatMessages.scrollHeight;
+                fetch(url)
+                    .then(function(r) { r = _handle401(r); if (!r) return null; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                    .then(function(data) {
+                        if (!data) return;
+                        var msgs = data.messages || [];
+                        hasMoreMessages = data.hasMore !== false && msgs.length === PAGE_SIZE;
+                        if (msgs.length > 0) {
+                            oldestLoadedId = msgs[0].id;
+                            var fragment = document.createDocumentFragment();
+                            msgs.forEach(function(msg) { fragment.appendChild(renderMessageEl(msg)); });
+                            chatMessages.insertBefore(fragment, chatMessages.firstChild);
+                            chatMessages.scrollTop = chatMessages.scrollHeight - prevScrollHeight;
+                            if (!hasMoreMessages && sentinel) sentinel.remove();
+                        } else {
+                            hasMoreMessages = false;
+                            if (sentinel) sentinel.remove();
+                        }
+                        isLoadingMore = false;
+                    })
+                    .catch(function() { isLoadingMore = false; });
+            }
+
+            function setupScrollSentinel() {
+                var old = document.getElementById('loadOlderSentinel');
+                if (old) old.remove();
+                if (!hasMoreMessages) return;
+                var sentinel = document.createElement('div');
+                sentinel.id = 'loadOlderSentinel';
+                sentinel.className = 'admin-empty-state';
+                sentinel.style.cssText = 'cursor:pointer;color:#667eea;padding:0.5rem;margin-bottom:0.5rem;min-height:30px;';
+                sentinel.textContent = 'بارگذاری پیام‌های قدیمی‌تر...';
+                chatMessages.insertBefore(sentinel, chatMessages.firstChild);
+                sentinel.addEventListener('click', prependOlderMessages);
+            }
+
+            window.loadMessages = function() {
+                if (!currentConversationId) {
+                    chatMessages.innerHTML = '<div class="admin-empty-state">یک گفتگو را انتخاب کنید</div>';
+                    return;
                 }
+                chatMessages.innerHTML = '<div class="admin-empty-state">در حال بارگذاری...</div>';
+                oldestLoadedId = null;
+                hasMoreMessages = true;
+                isLoadingMore = false;
+                fetch('/api/admin/chat/conversation/' + currentConversationId + '?limit=' + PAGE_SIZE)
+                    .then(function(r) { r = _handle401(r); if (!r) return; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                    .then(function(data) {
+                        var msgs = data.messages || [];
+                        hasMoreMessages = data.hasMore !== false && msgs.length === PAGE_SIZE;
+                        chatMessages.innerHTML = '';
+                        msgs.forEach(function(msg) { chatMessages.appendChild(renderMessageEl(msg)); });
+                        if (msgs.length > 0) {
+                            oldestLoadedId = msgs[0].id;
+                            lastMessageId = msgs[msgs.length - 1].id;
+                        }
+                        setupScrollSentinel();
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    })
+                    .catch(function() {
+                        chatMessages.innerHTML = '<div class="admin-empty-state" style="color:red;">خطا در بارگذاری پیام‌ها</div><div class="admin-empty-state"><button onclick="loadMessages()" style="padding:8px 20px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer;font-size:0.85rem;">تلاش مجدد</button></div>';
+                    });
+            }
+
+            var pollFailCount = 0;
+
+            function startPolling() {
+                if (conversationPolling) clearInterval(conversationPolling);
+                conversationPolling = setInterval(pollMessages, pollInterval);
+            }
+
+            function adjustPollInterval(hasNewMessages) {
+                if (hasNewMessages) {
+                    pollIdleCount = 0;
+                    pollInterval = pollBaseInterval;
+                } else {
+                    pollIdleCount++;
+                    if (pollIdleCount > pollMaxIdle) {
+                        pollInterval = Math.min(pollInterval + 1000, pollMaxInterval);
+                    }
+                }
+                startPolling();
             }
 
             function pollMessages() {
                 if (!currentConversationId) return;
-                fetch('/api/admin/chat/conversation/' + currentConversationId)
+                fetch('/api/admin/chat/conversation/' + currentConversationId + '?limit=' + PAGE_SIZE)
                     .then(function(r) { r = _handle401(r); if (!r) return; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                    .then(function(messages) {
-                        if (!lastMessageId && messages.length > 0) {
-                            lastMessageId = messages[messages.length - 1].id;
-                        }
-                        if (lastMessageId && messages.length > 0) {
-                            var newMessages = [];
-                            for (var i = messages.length - 1; i >= 0; i--) {
-                                if (messages[i].id === lastMessageId) break;
-                                newMessages.unshift(messages[i]);
+                    .then(function(data) {
+                        pollFailCount = 0;
+                        var msgs = data.messages || [];
+                        var newMessages = [];
+                        if (lastMessageId && msgs.length > 0) {
+                            for (var i = msgs.length - 1; i >= 0; i--) {
+                                if (msgs[i].id === lastMessageId) break;
+                                newMessages.unshift(msgs[i]);
                             }
-                            if (newMessages.length > 0) {
-                                if (chatMessages.querySelector('.admin-empty-state')) {
-                                    chatMessages.innerHTML = '';
-                                }
-                                newMessages.forEach(function(msg) {
-                                    appendMessage(msg);
-                                });
-                                lastMessageId = messages[messages.length - 1].id;
-                            }
+                        } else if (!lastMessageId && msgs.length > 0) {
+                            lastMessageId = msgs[msgs.length - 1].id;
                         }
+                        var hasNew = newMessages.length > 0;
+                        if (hasNew) {
+                            var wasAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 60;
+                            var emptyState = chatMessages.querySelector('.admin-empty-state');
+                            if (emptyState && !document.getElementById('loadOlderSentinel')) chatMessages.innerHTML = '';
+                            newMessages.forEach(function(msg) { chatMessages.appendChild(renderMessageEl(msg)); });
+                            lastMessageId = msgs[msgs.length - 1].id;
+                            if (wasAtBottom) chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                        adjustPollInterval(hasNew);
                     })
-                    .catch(function() {});
+                    .catch(function() {
+                        pollFailCount++;
+                        if (pollFailCount >= 5) {
+                            clearInterval(conversationPolling);
+                            setTimeout(function() {
+                                pollFailCount = 0;
+                                pollInterval = pollBaseInterval;
+                                startPolling();
+                            }, 30000);
+                        }
+                    });
             }
 
             function sendMessage() {
@@ -1055,7 +1136,7 @@
 
                 var totalSize = 0;
                 adminCurrentAttachments.forEach(function(a) { totalSize += (a.dataUrl || '').length; });
-                if (totalSize > 3 * 1024 * 1024) {
+                if (totalSize > 12 * 1024 * 1024) {
                     ChillUtils.showAlert('حجم فایل‌های پیوست زیاد است. لطفاً تصاویر کم‌حجم‌تری آپلود کنید.', 'error');
                     return;
                 }
@@ -1079,16 +1160,9 @@
                         return;
                     }
                     var msg = result.data;
-                    var wrapper = document.createElement('div');
-                    wrapper.className = 'message user';
-                    var bubble = document.createElement('div');
-                    bubble.className = 'bubble';
-                    bubble.textContent = msg.text;
-                    wrapper.appendChild(bubble);
-                    if (msg.attachments && msg.attachments.length > 0) {
-                        renderMessageAttachments(msg, wrapper);
-                    }
-                    chatMessages.appendChild(wrapper);
+                    var emptyState = chatMessages.querySelector('.admin-empty-state');
+                    if (emptyState && !document.getElementById('loadOlderSentinel')) chatMessages.innerHTML = '';
+                    chatMessages.appendChild(renderMessageEl(msg));
                     lastMessageId = msg.id;
                     adminMessageInput.value = '';
                     adminCurrentAttachments = [];
@@ -1097,9 +1171,7 @@
                         adminAttachmentPreview.classList.add('hidden');
                     }
                     autoResize();
-                    if (chatMessages.scrollHeight > chatMessages.parentElement.clientHeight) {
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
                     if (adminSendBtn) { adminSendBtn.disabled = false; }
                 })
                 .catch(function () {
@@ -1117,7 +1189,7 @@
 
             loadConversations();
 
-            conversationPolling = setInterval(pollMessages, 2000);
+            startPolling();
 
             var sidebar = document.querySelector('.admin-sidebar');
             var sidebarToggle = document.getElementById('sidebarToggle');
@@ -1156,8 +1228,7 @@
 
                 function compressImage(file, callback, onError) {
                     ChillUtils.compressImageFile(file, {
-                        maxSizeMB: 0.3,
-                        maxWidthOrHeight: 800
+                        maxSizeMB: 2
                     }).then(function(compressed) {
                         callback(compressed);
                     }).catch(function(e) {
@@ -1203,13 +1274,17 @@
                         if (index >= toProcess.length) return;
                         var file = toProcess[index];
                         index++;
-                        var isImage = isImageFile(file);
-                        if (isImage) {
+                        var isImg = isImageFile(file);
+                        if (isImg) {
                             compressImage(file, function(compressed) {
                                 addAdminAttachmentFromFile(compressed);
                                 processNext();
                             }, function() {
-                                addAdminAttachmentFromFile(file);
+                                if (file.size > 2 * 1024 * 1024) {
+                                    showToast('فرمت تصویر پشتیبانی نمی‌شود. لطفاً تصویر را به JPEG تبدیل کنید.');
+                                } else {
+                                    addAdminAttachmentFromFile(file);
+                                }
                                 processNext();
                             });
                         } else {

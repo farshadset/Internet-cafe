@@ -1678,6 +1678,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let inlineAttachmentPreview = null;
     let inlinePinAttachment = null;
     let inlineAttachmentFile = null;
+    var INLINE_PAGE_SIZE = 30;
+    var inlineOldestId = null;
+    var inlineHasMore = true;
+    var inlineIsLoadingMore = false;
 
     var showToast = ChillUtils.showToast;
 
@@ -1831,8 +1835,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function inlineCompressImage(file, callback, onError) {
             ChillUtils.compressImageFile(file, {
-                maxSizeMB: 0.3,
-                maxWidthOrHeight: 800
+                maxSizeMB: 2
             }).then(function(compressed) {
                 callback(compressed);
             }).catch(function(e) {
@@ -1892,24 +1895,17 @@ document.addEventListener('DOMContentLoaded', () => {
             inlineAttachmentPreview.insertAdjacentHTML('beforeend', html);
             inlineAttachmentPreview.classList.remove('hidden');
 
-            if (isImage) {
-                var previewReader = new FileReader();
-                previewReader.onload = function(ev) {
-                    var img = inlineAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"] img');
-                    if (img) { img.src = ev.target.result; img.style.opacity = '1'; }
-                };
-                previewReader.readAsDataURL(file);
-            }
-
             pendingReads++;
             updateInlineSendButton();
 
-            var reader = new FileReader();
-            activeReaders[attId] = reader;
+            var processFile = isImage ? ChillUtils.compressImageFile(file, { maxSizeMB: 2 }) : Promise.resolve(file);
+            processFile.then(function(finalFile) {
+                var reader = new FileReader();
+                activeReaders[attId] = reader;
 
-            reader.onprogress = function(ev) {
-                if (ev.lengthComputable) {
-                    var pct = Math.round((ev.loaded / ev.total) * 100);
+                reader.onprogress = function(ev) {
+                    if (ev.lengthComputable) {
+                        var pct = Math.round((ev.loaded / ev.total) * 100);
                         var circle = document.querySelector('[data-progress-ring="' + attId + '"]');
                         var text = document.querySelector('[data-progress-text="' + attId + '"]');
                         if (circle) circle.style.strokeDashoffset = (87.96 * (1 - pct / 100));
@@ -1920,9 +1916,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onload = function(ev) {
                     var att = {
                         id: attId,
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
+                        name: finalFile.name,
+                        type: finalFile.type,
+                        size: finalFile.size,
                         dataUrl: ev.target.result,
                         uploadedAt: new Date().toISOString()
                     };
@@ -1944,7 +1940,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast('خطا در خواندن فایل');
                 };
 
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(finalFile);
+            });
         }
 
         inlineAttachmentFile.addEventListener('change', function(e) {
@@ -1961,13 +1958,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (index >= toProcess.length) return;
                 var file = toProcess[index];
                 index++;
-                var isImage = isImageFile(file);
-                if (isImage) {
+                var isImg = isImageFile(file);
+                if (isImg) {
                     inlineCompressImage(file, function(compressed) {
                         addInlineAttachmentFile(compressed);
                         processNext();
                     }, function() {
-                        addInlineAttachmentFile(file);
+                        if (file.size > 2 * 1024 * 1024) {
+                            ChillUtils.showToast('فرمت تصویر پشتیبانی نمی‌شود. لطفاً تصویر را به JPEG تبدیل کنید.');
+                        } else {
+                            addInlineAttachmentFile(file);
+                        }
                         processNext();
                     });
                 } else {
@@ -2000,7 +2001,7 @@ document.addEventListener('DOMContentLoaded', () => {
         var isImage = isImageFile(attachment);
         var html = '<div class="attachment-thumbnail" data-attachment-id="' + escapeHtml(attachment.id) + '">';
         if (isImage) {
-            html += '<img src="' + escapeHtml(dataUrl || attachment.dataUrl) + '" alt="' + escapeHtml(attachment.name) + '">';
+            html += '<img src="' + escapeHtml(dataUrl || attachment.dataUrl) + '" alt="' + escapeHtml(attachment.name) + '" loading="lazy" decoding="async">';
         } else {
             var ext = (attachment.name || '').split('.').pop().toUpperCase() || 'FILE';
             html += '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
@@ -2038,50 +2039,86 @@ document.addEventListener('DOMContentLoaded', () => {
         ChillUtils.downloadAttachment(attachment.dataUrl, attachment.name);
     };
 
+    var INLINE_MAX_VISIBLE = 100;
+
+    function inlineRenderMessageEl(msg) {
+        var div = document.createElement('div');
+        div.className = 'message ' + (msg.role === 'admin' ? 'support' : 'user');
+        var bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = msg.text;
+        div.appendChild(bubble);
+        if (msg.attachments && msg.attachments.length > 0) {
+            var attContainer = document.createElement('div');
+            attContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem;';
+            msg.attachments.forEach(function(att) {
+                var isImg = isImageFile(att);
+                var thumb = document.createElement('div');
+                thumb.className = 'attachment-thumbnail';
+                thumb.style.cssText = 'width: 80px; height: 80px; cursor: pointer; border-radius: 8px; overflow: hidden;';
+                if (isImg && (att.dataUrl || att.url)) {
+                    var img = document.createElement('img');
+                    img.src = att.dataUrl || att.url || '';
+                    img.alt = att.name;
+                    img.loading = 'lazy';
+                    img.decoding = 'async';
+                    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 8px;';
+                    thumb.appendChild(img);
+                } else {
+                    var ext = (att.name || '').split('.').pop().toUpperCase() || 'FILE';
+                    thumb.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;border-radius:8px;"><i class="fas fa-file" style="font-size:20px;margin-bottom:3px;"></i><span style="font-size:0.55rem;">' + escapeHtml(ext) + '</span></div>';
+                }
+                thumb.addEventListener('click', function() {
+                    ChillUtils.downloadAttachment(att.dataUrl || att.url, att.name);
+                });
+                attContainer.appendChild(thumb);
+            });
+            div.appendChild(attContainer);
+        }
+        return div;
+    }
+
+    function inlinePrependOlder() {
+        if (inlineIsLoadingMore || !inlineHasMore || !currentConversationId) return;
+        inlineIsLoadingMore = true;
+        var oldScroll = inlineChatMessages.scrollHeight;
+        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+        var username = userData ? userData.username : 'مهمان';
+        var url = '/api/chat/conversation/' + currentConversationId + '?username=' + encodeURIComponent(username) + '&limit=' + INLINE_PAGE_SIZE;
+        if (inlineOldestId) url += '&before=' + encodeURIComponent(inlineOldestId);
+        fetch(url)
+            .then(function(r) { if (r.status === 404 || !r.ok) return { messages: [] }; return r.json().catch(function(){ return { messages: [] }; }); })
+            .then(function(data) {
+                var msgs = (data && data.messages) || [];
+                inlineHasMore = msgs.length === INLINE_PAGE_SIZE;
+                if (msgs.length > 0) {
+                    inlineOldestId = msgs[0].id;
+                    var fragment = document.createDocumentFragment();
+                    msgs.forEach(function(msg) { fragment.appendChild(inlineRenderMessageEl(msg)); });
+                    inlineChatMessages.insertBefore(fragment, inlineChatMessages.firstChild);
+                    inlineChatMessages.scrollTop = inlineChatMessages.scrollHeight - oldScroll;
+                } else {
+                    inlineHasMore = false;
+                }
+                inlineIsLoadingMore = false;
+            })
+            .catch(function() { inlineIsLoadingMore = false; });
+    }
+
     function loadInlineMessages() {
         if (!inlineChatMessages) return;
         var userData = JSON.parse(localStorage.getItem('userData') || 'null');
         var username = userData ? userData.username : 'مهمان';
+        inlineOldestId = null;
+        inlineHasMore = true;
+        inlineIsLoadingMore = false;
 
         function renderMessages(messages) {
             if (!messages || messages.length === 0) {
                 messages = [];
             }
             inlineChatMessages.innerHTML = '';
-            messages.forEach(function(msg) {
-                var div = document.createElement('div');
-                div.className = 'message ' + (msg.role === 'admin' ? 'support' : 'user');
-                var bubble = document.createElement('div');
-                bubble.className = 'bubble';
-                bubble.textContent = msg.text;
-                div.appendChild(bubble);
-                if (msg.attachments && msg.attachments.length > 0) {
-                    var attContainer = document.createElement('div');
-                    attContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem;';
-                    msg.attachments.forEach(function(att) {
-                        var isImg = isImageFile(att);
-                        var thumb = document.createElement('div');
-                        thumb.className = 'attachment-thumbnail';
-                        thumb.style.cssText = 'width: 80px; height: 80px; cursor: pointer; border-radius: 8px; overflow: hidden;';
-                        if (isImg && (att.dataUrl || att.url)) {
-                            var img = document.createElement('img');
-                            img.src = att.dataUrl || att.url || '';
-                            img.alt = att.name;
-                            img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 8px;';
-                            thumb.appendChild(img);
-                        } else {
-                            var ext = (att.name || '').split('.').pop().toUpperCase() || 'FILE';
-                            thumb.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;border-radius:8px;"><i class="fas fa-file" style="font-size:20px;margin-bottom:3px;"></i><span style="font-size:0.55rem;">' + escapeHtml(ext) + '</span></div>';
-                        }
-                        thumb.addEventListener('click', function() {
-                            ChillUtils.downloadAttachment(att.dataUrl || att.url, att.name);
-                        });
-                        attContainer.appendChild(thumb);
-                    });
-                    div.appendChild(attContainer);
-                }
-                inlineChatMessages.appendChild(div);
-            });
+            messages.forEach(function(msg) { inlineChatMessages.appendChild(inlineRenderMessageEl(msg)); });
             inlineChatMessages.scrollTop = inlineChatMessages.scrollHeight;
             if (messages.length === 0) {
                 var emptyDiv = document.createElement('div');
@@ -2089,16 +2126,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 emptyDiv.textContent = 'هیچ پیامی وجود ندارد';
                 inlineChatMessages.appendChild(emptyDiv);
             }
+            if (inlineHasMore && messages.length > 0) {
+                var sentinel = document.createElement('div');
+                sentinel.style.cssText = 'text-align:center;color:#667eea;padding:0.5rem;cursor:pointer;font-size:0.8rem;';
+                sentinel.textContent = 'بارگذاری پیام‌های قدیمی‌تر';
+                sentinel.addEventListener('click', inlinePrependOlder);
+                inlineChatMessages.insertBefore(sentinel, inlineChatMessages.firstChild);
+            }
         }
 
         if (currentConversationId) {
-            fetch('/api/chat/conversation/' + currentConversationId + '?username=' + encodeURIComponent(username))
+            fetch('/api/chat/conversation/' + currentConversationId + '?username=' + encodeURIComponent(username) + '&limit=' + INLINE_PAGE_SIZE)
                 .then(function(r) {
-                    if (r.status === 404 || !r.ok) return [];
-                    return r.json().catch(function(){ return []; });
+                    if (r.status === 404 || !r.ok) return { messages: [] };
+                    return r.json().catch(function(){ return { messages: [] }; });
                 })
-                .then(function(messages) {
-                    renderMessages(messages);
+                .then(function(data) {
+                    var msgs = (data && data.messages) || [];
+                    inlineHasMore = msgs.length === INLINE_PAGE_SIZE;
+                    if (msgs.length > 0) inlineOldestId = msgs[0].id;
+                    renderMessages(msgs);
                 })
                 .catch(function(err) {
                     console.error('خطا در بارگذاری پیام‌ها:', err);
@@ -2136,7 +2183,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         var totalSize = 0;
         inlineAttachments.forEach(function(a) { totalSize += (a.dataUrl || '').length; });
-        if (totalSize > 3 * 1024 * 1024) {
+        if (totalSize > 12 * 1024 * 1024) {
             ChillUtils.showAlert('حجم فایل‌های پیوست زیاد است. لطفاً تصاویر کم‌حجم‌تری آپلود کنید.', 'error');
             return;
         }

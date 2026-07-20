@@ -80,6 +80,16 @@
             var userData = JSON.parse(localStorage.getItem('userData') || 'null');
             var username = userData ? userData.username : null;
 
+            var logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    fetch('/api/logout', { method: 'POST' }).catch(function(){});
+                    localStorage.removeItem('userData');
+                    window.location.href = 'index.html';
+                });
+            }
+
             function updateCounts() {
                 fetch('/api/orders/user?username=' + encodeURIComponent(username))
                     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })

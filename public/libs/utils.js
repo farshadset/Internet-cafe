@@ -170,56 +170,135 @@ var ChillUtils = (function() {
         return false;
     }
 
-    // ── Canvas-based Image Compression (always compresses for chat) ──
+    // ── Lazy-load heic-to library ──
+    var _heicToPromise = null;
+    function loadHeicTo() {
+        if (_heicToPromise) return _heicToPromise;
+        _heicToPromise = new Promise(function(resolve) {
+            if (typeof HeicTo !== 'undefined' && typeof HeicTo.heicTo === 'function') { resolve(HeicTo); return; }
+            var script = document.createElement('script');
+            script.type = 'module';
+            script.onload = function() {
+                var check = setInterval(function() {
+                    if (typeof HeicTo !== 'undefined' && typeof HeicTo.heicTo === 'function') {
+                        clearInterval(check);
+                        resolve(HeicTo);
+                    }
+                }, 50);
+                setTimeout(function() { clearInterval(check); resolve(null); }, 5000);
+            };
+            script.onerror = function() { resolve(null); };
+            script.src = 'libs/heic-to-loader.js';
+            document.head.appendChild(script);
+        });
+        return _heicToPromise;
+    }
+
+    // ── Canvas-based Adaptive Image Compression ──
     function compressImageFile(file, options) {
         options = options || {};
-        var maxWidthOrHeight = options.maxWidthOrHeight || 800;
-        var targetBytes = (options.maxSizeMB || 0.3) * 1024 * 1024;
+        var maxSizeMB = options.maxSizeMB || 0.3;
+        var targetBytes = maxSizeMB * 1024 * 1024;
 
-        return new Promise(function(resolve) {
+        return new Promise(function(resolve, reject) {
             if (!isImageFile(file)) { resolve(file); return; }
-            var img = new Image();
-            var url = URL.createObjectURL(file);
-            img.onload = function() {
-                URL.revokeObjectURL(url);
-                try {
-                    var w = img.width;
-                    var h = img.height;
-                    if (w > maxWidthOrHeight || h > maxWidthOrHeight) {
-                        if (w > h) { h = Math.round(h * maxWidthOrHeight / w); w = maxWidthOrHeight; }
-                        else { w = Math.round(w * maxWidthOrHeight / h); h = maxWidthOrHeight; }
-                    }
-                    var canvas = document.createElement('canvas');
-                    canvas.width = w;
-                    canvas.height = h;
-                    var ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, w, h);
+            if (file.size <= targetBytes) { resolve(file); return; }
 
-                    var qualities = [0.6, 0.4, 0.25, 0.15];
-                    var qi = 0;
-                    function tryNext() {
-                        if (qi >= qualities.length) { resolve(file); return; }
-                        var q = qualities[qi++];
-                        canvas.toBlob(function(blob) {
-                            if (!blob || blob.size === 0) { tryNext(); return; }
-                            if (blob.size <= targetBytes || qi >= qualities.length) {
-                                var result = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
-                                resolve(result);
-                            } else {
-                                tryNext();
-                            }
-                        }, 'image/jpeg', q);
+            var isHeic = /\.(heic|heif)$/i.test(file.name || '') || (file.type === 'image/heic') || (file.type === 'image/heif');
+
+            if (isHeic) {
+                loadHeicTo().then(function(heic) {
+                    if (heic && typeof heic.heicTo === 'function') {
+                        heic.heicTo({ blob: file, type: 'image/jpeg', quality: 0.82 }).then(function(jpegBlob) {
+                            var result = new File([jpegBlob], (file.name || 'image').replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
+                            compressToTarget(result, targetBytes).then(resolve).catch(function() { reject(result); });
+                        }).catch(function() {
+                            compressToTarget(file, targetBytes).then(resolve).catch(function() { reject(file); });
+                        });
+                    } else {
+                        compressToTarget(file, targetBytes).then(resolve).catch(function() { reject(file); });
                     }
-                    tryNext();
-                } catch(e) {
-                    resolve(file);
+                });
+            } else {
+                compressToTarget(file, targetBytes).then(resolve).catch(function() { reject(file); });
+            }
+        });
+    }
+
+    function compressToTarget(file, targetBytes) {
+        return new Promise(function(resolve) {
+            function drawToCanvas(imgWidth, imgHeight, drawFn) {
+                var w = imgWidth;
+                var h = imgHeight;
+                var ratio = file.size / targetBytes;
+                var maxDim;
+                if (ratio > 8)       maxDim = 600;
+                else if (ratio > 5)  maxDim = 800;
+                else if (ratio > 3)  maxDim = 1024;
+                else if (ratio > 2)  maxDim = 1280;
+                else                 maxDim = 1600;
+                if (w > maxDim || h > maxDim) {
+                    if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+                    else { w = Math.round(w * maxDim / h); h = maxDim; }
                 }
-            };
-            img.onerror = function() {
-                URL.revokeObjectURL(url);
-                resolve(file);
-            };
-            img.src = url;
+                var canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                var ctx = canvas.getContext('2d');
+                drawFn(ctx, w, h);
+                return canvas;
+            }
+
+            function encodeCanvas(canvas) {
+                var qualities = [0.82, 0.68, 0.55, 0.42, 0.30, 0.20, 0.12];
+                var qi = 0;
+                function tryNext() {
+                    if (qi >= qualities.length) { resolve(file); return; }
+                    var q = qualities[qi++];
+                    canvas.toBlob(function(blob) {
+                        if (!blob || blob.size === 0) { tryNext(); return; }
+                        if (blob.size <= targetBytes || qi >= qualities.length) {
+                            var result = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
+                            resolve(result);
+                        } else {
+                            tryNext();
+                        }
+                    }, 'image/jpeg', q);
+                }
+                tryNext();
+            }
+
+            function tryImageBitmap() {
+                if (typeof createImageBitmap === 'undefined') { tryOldImage(); return; }
+                createImageBitmap(file).then(function(bitmap) {
+                    var canvas = drawToCanvas(bitmap.width, bitmap.height, function(ctx, w, h) {
+                        ctx.drawImage(bitmap, 0, 0, w, h);
+                    });
+                    bitmap.close();
+                    encodeCanvas(canvas);
+                }).catch(function() { tryOldImage(); });
+            }
+
+            function tryOldImage() {
+                var img = new Image();
+                var url = URL.createObjectURL(file);
+                img.onload = function() {
+                    URL.revokeObjectURL(url);
+                    try {
+                        var canvas = drawToCanvas(img.width, img.height, function(ctx, w, h) {
+                            ctx.drawImage(img, 0, 0, w, h);
+                        });
+                        encodeCanvas(canvas);
+                    } catch(e) { reject(e); }
+                };
+                img.onerror = function() {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Cannot decode image'));
+                };
+                img.src = url;
+            }
+
+            tryImageBitmap();
         });
     }
 

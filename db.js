@@ -11,6 +11,8 @@ const JSON_PATH = isVercel ? '/tmp/database.json' : path.join(__dirname, 'databa
 let client = null;
 let ready = false;
 let initPromise = null;
+let queryCount = 0;
+let lastPoolLog = Date.now();
 
 function getTursoUrl() {
     let url = TURSO_URL;
@@ -32,6 +34,10 @@ async function initDB() {
                 authToken: TURSO_TOKEN,
                 syncUrl: url.replace(/\/$/, ''),
                 syncInterval: 60,
+                // Connection pooling: keep-alive for HTTP connections
+                fetchOptions: {
+                    keepalive: true,
+                },
             });
             try {
                 await client.sync();
@@ -43,12 +49,22 @@ async function initDB() {
         }
 
         await createTables(client);
+
         ready = true;
         return client;
     })();
 
     initPromise.catch(() => { initPromise = null; });
     return initPromise;
+}
+
+// Wrapper to track query count and log pool stats periodically
+function trackQuery() {
+    queryCount++;
+    if (Date.now() - lastPoolLog > 300000) {
+        console.log('DB pool stats: ' + queryCount + ' queries since start');
+        lastPoolLog = Date.now();
+    }
 }
 
 async function createTables(c) {
@@ -145,8 +161,13 @@ async function createTables(c) {
         CREATE INDEX IF NOT EXISTS idx_chat_timestamp ON chat(timestamp);
         CREATE INDEX IF NOT EXISTS idx_chat_role ON chat(role);
         CREATE INDEX IF NOT EXISTS idx_chat_username_conv ON chat(username, conversationId);
+        CREATE INDEX IF NOT EXISTS idx_chat_conv_timestamp ON chat(conversationId, timestamp);
         CREATE INDEX IF NOT EXISTS idx_conv_username ON chat_conversations(username);
     `);
+
+    try {
+        await c.execute('ANALYZE');
+    } catch(e) {}
 }
 
 // ==================== MIGRATION FROM JSON ====================
@@ -582,6 +603,46 @@ async function getChatMessagesForConversation(conversationId) {
     return r.rows.map(rowToMessage);
 }
 
+async function getChatMessagesPaginated(conversationId, limit, beforeId) {
+    if (beforeId) {
+        const cursorRow = await client.execute({
+            sql: 'SELECT timestamp FROM chat WHERE id = ?',
+            args: [beforeId]
+        });
+        if (cursorRow.rows.length === 0) return [];
+        const cursorTs = cursorRow.rows[0].timestamp;
+        const r = await client.execute({
+            sql: 'SELECT * FROM chat WHERE conversationId = ? AND timestamp < ? ORDER BY timestamp DESC LIMIT ?',
+            args: [conversationId, cursorTs, limit]
+        });
+        return r.rows.map(rowToMessage).reverse();
+    } else {
+        const r = await client.execute({
+            sql: 'SELECT * FROM chat WHERE conversationId = ? ORDER BY timestamp DESC LIMIT ?',
+            args: [conversationId, limit]
+        });
+        return r.rows.map(rowToMessage).reverse();
+    }
+}
+
+async function getTotalMessageCount(conversationId) {
+    const r = await client.execute({
+        sql: 'SELECT COUNT(*) as cnt FROM chat WHERE conversationId = ?',
+        args: [conversationId]
+    });
+    return r.rows[0] ? r.rows[0].cnt : 0;
+}
+
+async function getLastAdminMessagesPerUser() {
+    const r = await client.execute({
+        sql: `SELECT username, MAX(timestamp) as timestamp
+              FROM chat
+              WHERE role = 'admin' AND username IS NOT NULL
+              GROUP BY username`
+    });
+    return r.rows;
+}
+
 async function addChatMessage(data) {
     await client.execute({
         sql: `INSERT INTO chat (id, role, username, text, timestamp, conversationId, attachments)
@@ -655,6 +716,23 @@ async function getConversation(id) {
     const r = await client.execute({ sql: 'SELECT * FROM chat_conversations WHERE id = ?', args: [id] });
     if (r.rows.length === 0) return null;
     return rowToConversation(r.rows[0]);
+}
+
+async function getLastMessageAndCount(conversationId) {
+    const r = await client.execute({
+        sql: `SELECT text, timestamp FROM chat
+              WHERE conversationId = ?
+              ORDER BY timestamp DESC LIMIT 1`,
+        args: [conversationId]
+    });
+    const countR = await client.execute({
+        sql: 'SELECT COUNT(*) as cnt FROM chat WHERE conversationId = ?',
+        args: [conversationId]
+    });
+    return {
+        lastMsg: r.rows.length > 0 ? r.rows[0] : null,
+        count: countR.rows[0] ? countR.rows[0].cnt : 0
+    };
 }
 
 async function getUserConversations(username) {
@@ -798,6 +876,9 @@ module.exports = {
     deleteBanner,
     getChatMessages,
     getChatMessagesForConversation,
+    getChatMessagesPaginated,
+    getTotalMessageCount,
+    getLastAdminMessagesPerUser,
     addChatMessage,
     getAdminChatData,
     setChatMeta,
@@ -806,6 +887,7 @@ module.exports = {
     createConversation,
     getConversation,
     getUserConversations,
+    getLastMessageAndCount,
     trackVisit,
     getVisitCount,
     getAllVisits,
