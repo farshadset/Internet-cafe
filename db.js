@@ -29,20 +29,20 @@ async function initDB() {
     initPromise = (async () => {
         const url = getTursoUrl();
         if (url) {
-            client = createClient({
-                url: url,
-                authToken: TURSO_TOKEN,
-                syncUrl: url.replace(/\/$/, ''),
-                syncInterval: 60,
-                // Connection pooling: keep-alive for HTTP connections
-                fetchOptions: {
-                    keepalive: true,
-                },
-            });
-            try {
-                await client.sync();
-            } catch (e) {
-                // sync warning - non-critical
+            if (isVercel) {
+                client = createClient({
+                    url: url,
+                    authToken: TURSO_TOKEN,
+                });
+            } else {
+                client = createClient({
+                    url: url,
+                    authToken: TURSO_TOKEN,
+                    syncUrl: url.replace(/\/$/, ''),
+                    syncInterval: 60,
+                    fetchOptions: { keepalive: true },
+                });
+                try { await client.sync(); } catch (e) {}
             }
         } else {
             client = createClient({ url: 'file:' + DB_PATH });
@@ -68,6 +68,12 @@ function trackQuery() {
 }
 
 async function createTables(c) {
+    if (isVercel) {
+        try {
+            const check = await c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+            if (check.rows.length > 0) return;
+        } catch (e) {}
+    }
     await c.executeMultiple(`
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -734,18 +740,55 @@ async function getUserConversations(username) {
 }
 
 async function getUserConversationsWithLastMessage(username) {
-    const r = await client.execute({
-        sql: `SELECT c.id, c.username, c.createdAt, c.status,
-              m.text as lastMessage, m.timestamp as lastTimestamp
-              FROM chat_conversations c
-              LEFT JOIN chat m ON m.conversationId = c.id AND m.timestamp = (
-                  SELECT MAX(timestamp) FROM chat WHERE conversationId = c.id
-              )
-              WHERE c.username = ?
-              ORDER BY COALESCE(m.timestamp, c.createdAt) DESC`,
+    const convsR = await client.execute({
+        sql: 'SELECT * FROM chat_conversations WHERE username = ? ORDER BY createdAt DESC',
         args: [username]
     });
-    return r.rows;
+    const convs = convsR.rows.map(rowToConversation);
+    if (convs.length === 0) return [];
+    const ids = convs.map(function(c) { return c.id; });
+    const placeholders = ids.map(function() { return '?'; }).join(',');
+    const msgsR = await client.execute({
+        sql: `SELECT conversationId, MAX(timestamp) as maxTs
+              FROM chat WHERE conversationId IN (${placeholders})
+              GROUP BY conversationId`,
+        args: ids
+    });
+    var maxRows = Array.from(msgsR.rows || []);
+    const tsMap = {};
+    for (var i = 0; i < maxRows.length; i++) {
+        tsMap[maxRows[i].conversationId] = maxRows[i].maxTs;
+    }
+    var allIds = Object.keys(tsMap);
+    if (allIds.length === 0) {
+        return convs.map(function(c) {
+            return { id: c.id, username: c.username, createdAt: c.createdAt, status: c.status, lastMessage: null, lastTimestamp: null };
+        });
+    }
+    var msgPlaceholders = allIds.map(function() { return '(conversationId = ? AND timestamp = ?)'; }).join(' OR ');
+    var msgArgs = [];
+    for (var j = 0; j < allIds.length; j++) {
+        msgArgs.push(allIds[j], tsMap[allIds[j]]);
+    }
+    const textR = await client.execute({
+        sql: `SELECT conversationId, text FROM chat WHERE ${msgPlaceholders}`,
+        args: msgArgs
+    });
+    var textRows = Array.from(textR.rows || []);
+    var textMap = {};
+    for (var k = 0; k < textRows.length; k++) {
+        textMap[textRows[k].conversationId] = textRows[k].text;
+    }
+    return convs.map(function(c) {
+        return {
+            id: c.id,
+            username: c.username,
+            createdAt: c.createdAt,
+            status: c.status,
+            lastMessage: textMap[c.id] || null,
+            lastTimestamp: tsMap[c.id] || null
+        };
+    });
 }
 
 // ==================== VISITS ====================
