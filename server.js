@@ -1350,17 +1350,25 @@ app.get('/api/admin/chat/conversation/:id', requireAdmin, asyncHandler(async (re
 }));
 
 app.get('/api/admin/chat/customers', requireAdmin, asyncHandler(async (req, res) => {
-    // Optimized: get latest customer message per user via SQL
-    var latestCustomerMsgs = await db.getLatestCustomerMessages();
+    try {
+        var latestCustomerMsgs = await db.getLatestCustomerMessages();
+    } catch (e) {
+        console.error('getLatestCustomerMessages error:', e.message || e);
+        return res.status(500).json({ error: 'getLatestCustomerMessages failed', detail: e.message });
+    }
     var customers = {};
     latestCustomerMsgs.forEach(function(m) {
         customers[m.username] = { username: m.username, lastMessage: m.text, lastTimestamp: m.timestamp, unread: 0 };
     });
-    // Check for unread: get last admin message per user and last global admin read time in parallel
-    var [lastAdminMsgs, lastAdminGlobal] = await Promise.all([
-        db.getLastAdminMessagesPerUser(),
-        db.getChatMeta('lastReadAt')
-    ]);
+    try {
+        var [lastAdminMsgs, lastAdminGlobal] = await Promise.all([
+            db.getLastAdminMessagesPerUser(),
+            db.getChatMeta('lastReadAt')
+        ]);
+    } catch (e) {
+        console.error('chat meta query error:', e.message || e);
+        return res.status(500).json({ error: 'chat meta queries failed', detail: e.message });
+    }
     var lastAdminByUser = {};
     lastAdminMsgs.forEach(function(m) {
         lastAdminByUser[m.username] = m.timestamp;
