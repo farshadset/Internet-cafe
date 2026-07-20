@@ -1364,10 +1364,15 @@ app.get('/api/admin/chat/customers', requireAdmin, asyncHandler(async (req, res)
     var lastAdminGlobal = null;
     try {
         lastAdminMsgs = await db.getLastAdminMessagesPerUser();
+    } catch (e) {
+        console.error('getLastAdminMessagesPerUser FAILED:', e.message, e.stack);
+        return res.status(500).json({ error: 'getLastAdminMessagesPerUser failed', detail: e.message });
+    }
+    try {
         lastAdminGlobal = await db.getChatMeta('lastReadAt');
     } catch (e) {
-        console.error('chat meta query error:', e.message || e);
-        return res.status(500).json({ error: 'chat meta queries failed', detail: e.message });
+        console.error('getChatMeta FAILED:', e.message, e.stack);
+        return res.status(500).json({ error: 'getChatMeta failed', detail: e.message });
     }
     if (!Array.isArray(lastAdminMsgs)) lastAdminMsgs = [];
     var lastAdminByUser = {};
