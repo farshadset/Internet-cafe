@@ -1311,23 +1311,17 @@ app.get('/api/admin/chat/conversations', requireAdmin, asyncHandler(async (req, 
     if (!username) {
         return res.status(400).json({ error: 'نام کاربری الزامی است' });
     }
-    var convs = await db.getUserConversations(username);
-    var result = [];
-    var promises = convs.map(function(c) {
-        return db.getLastMessageAndCount(c.id).then(function(info) {
-            if (!info.lastMsg) return null;
-            return {
-                id: c.id,
-                username: c.username,
-                createdAt: c.createdAt,
-                lastMessage: info.lastMsg.text,
-                lastTimestamp: info.lastMsg.timestamp,
-                messageCount: info.count
-            };
-        });
+    var items = await db.getUserConversationsWithLastMessage(username);
+    var result = items.filter(function(c) { return c.lastMessage; }).map(function(c) {
+        return {
+            id: c.id,
+            username: c.username,
+            createdAt: c.createdAt,
+            lastMessage: c.lastMessage,
+            lastTimestamp: c.lastTimestamp,
+            messageCount: null
+        };
     });
-    var items = await Promise.all(promises);
-    result = items.filter(Boolean);
     result.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
     res.json(result);
 }));

@@ -162,6 +162,7 @@ async function createTables(c) {
         CREATE INDEX IF NOT EXISTS idx_chat_role ON chat(role);
         CREATE INDEX IF NOT EXISTS idx_chat_username_conv ON chat(username, conversationId);
         CREATE INDEX IF NOT EXISTS idx_chat_conv_timestamp ON chat(conversationId, timestamp);
+        CREATE INDEX IF NOT EXISTS idx_chat_conv_ts_desc ON chat(conversationId, timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_conv_username ON chat_conversations(username);
     `);
 
@@ -605,15 +606,11 @@ async function getChatMessagesForConversation(conversationId) {
 
 async function getChatMessagesPaginated(conversationId, limit, beforeId) {
     if (beforeId) {
-        const cursorRow = await client.execute({
-            sql: 'SELECT timestamp FROM chat WHERE id = ?',
-            args: [beforeId]
-        });
-        if (cursorRow.rows.length === 0) return [];
-        const cursorTs = cursorRow.rows[0].timestamp;
         const r = await client.execute({
-            sql: 'SELECT * FROM chat WHERE conversationId = ? AND timestamp < ? ORDER BY timestamp DESC LIMIT ?',
-            args: [conversationId, cursorTs, limit]
+            sql: `SELECT * FROM chat WHERE conversationId = ? AND timestamp < (
+                      SELECT timestamp FROM chat WHERE id = ?
+                  ) ORDER BY timestamp DESC LIMIT ?`,
+            args: [conversationId, beforeId, limit]
         });
         return r.rows.map(rowToMessage).reverse();
     } else {
@@ -732,11 +729,23 @@ async function getLastMessageAndCount(conversationId) {
 }
 
 async function getUserConversations(username) {
+    const r = await client.execute({ sql: 'SELECT * FROM chat_conversations WHERE username = ? ORDER BY createdAt DESC', args: [username] });
+    return r.rows.map(rowToConversation);
+}
+
+async function getUserConversationsWithLastMessage(username) {
     const r = await client.execute({
-        sql: 'SELECT * FROM chat_conversations WHERE username = ? ORDER BY createdAt DESC',
+        sql: `SELECT c.id, c.username, c.createdAt, c.status,
+              m.text as lastMessage, m.timestamp as lastTimestamp
+              FROM chat_conversations c
+              LEFT JOIN chat m ON m.conversationId = c.id AND m.timestamp = (
+                  SELECT MAX(timestamp) FROM chat WHERE conversationId = c.id
+              )
+              WHERE c.username = ?
+              ORDER BY COALESCE(m.timestamp, c.createdAt) DESC`,
         args: [username]
     });
-    return r.rows.map(rowToConversation);
+    return r.rows;
 }
 
 // ==================== VISITS ====================
@@ -883,6 +892,7 @@ module.exports = {
     createConversation,
     getConversation,
     getUserConversations,
+    getUserConversationsWithLastMessage,
     getLastMessageAndCount,
     trackVisit,
     getVisitCount,
