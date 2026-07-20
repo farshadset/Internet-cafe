@@ -492,7 +492,7 @@ async function getLatestCustomerMessages() {
         ) latest ON c.username = latest.username AND c.timestamp = latest.maxTs
         WHERE c.role = 'customer'
     `);
-    return r.rows;
+    return Array.from(r.rows || []);
 }
 
 async function getCustomerOrderDetails(username) {
@@ -640,7 +640,7 @@ async function getLastAdminMessagesPerUser() {
               WHERE role = 'admin' AND username IS NOT NULL
               GROUP BY username`
     });
-    return r.rows;
+    return Array.from(r.rows || []);
 }
 
 async function addChatMessage(data) {
@@ -673,7 +673,8 @@ async function setChatMeta(key, value) {
 
 async function getChatMeta(key) {
     const r = await client.execute({ sql: 'SELECT value FROM chat_meta WHERE key = ?', args: [key] });
-    return r.rows.length > 0 ? r.rows[0].value : null;
+    var rows = Array.from(r.rows || []);
+    return rows.length > 0 ? rows[0].value : null;
 }
 
 async function getAllChatMessages(limit) {

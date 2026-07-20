@@ -1357,18 +1357,19 @@ app.get('/api/admin/chat/customers', requireAdmin, asyncHandler(async (req, res)
         return res.status(500).json({ error: 'getLatestCustomerMessages failed', detail: e.message });
     }
     var customers = {};
-    latestCustomerMsgs.forEach(function(m) {
+    (Array.isArray(latestCustomerMsgs) ? latestCustomerMsgs : []).forEach(function(m) {
         customers[m.username] = { username: m.username, lastMessage: m.text, lastTimestamp: m.timestamp, unread: 0 };
     });
+    var lastAdminMsgs = [];
+    var lastAdminGlobal = null;
     try {
-        var [lastAdminMsgs, lastAdminGlobal] = await Promise.all([
-            db.getLastAdminMessagesPerUser(),
-            db.getChatMeta('lastReadAt')
-        ]);
+        lastAdminMsgs = await db.getLastAdminMessagesPerUser();
+        lastAdminGlobal = await db.getChatMeta('lastReadAt');
     } catch (e) {
         console.error('chat meta query error:', e.message || e);
         return res.status(500).json({ error: 'chat meta queries failed', detail: e.message });
     }
+    if (!Array.isArray(lastAdminMsgs)) lastAdminMsgs = [];
     var lastAdminByUser = {};
     lastAdminMsgs.forEach(function(m) {
         lastAdminByUser[m.username] = m.timestamp;
