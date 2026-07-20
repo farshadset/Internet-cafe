@@ -634,12 +634,7 @@ async function getTotalMessageCount(conversationId) {
 }
 
 async function getLastAdminMessagesPerUser() {
-    const r = await client.execute({
-        sql: `SELECT username, MAX(timestamp) as timestamp
-              FROM chat
-              WHERE role = 'admin' AND username IS NOT NULL
-              GROUP BY username`
-    });
+    const r = await client.execute('SELECT username, MAX(timestamp) as timestamp FROM chat WHERE role = \'admin\' AND username IS NOT NULL GROUP BY username');
     return Array.from(r.rows || []);
 }
 
@@ -657,9 +652,9 @@ async function addChatMessage(data) {
 }
 
 async function getAdminChatData() {
-    const r = await client.execute({ sql: 'SELECT * FROM chat ORDER BY timestamp DESC LIMIT 500' });
+    const r = await client.execute('SELECT * FROM chat ORDER BY timestamp DESC LIMIT 500');
     const messages = r.rows.map(rowToMessage).reverse();
-    const metaR = await client.execute({ sql: "SELECT value FROM chat_meta WHERE key = 'lastReadAt'" });
+    const metaR = await client.execute("SELECT value FROM chat_meta WHERE key = 'lastReadAt'");
     const lastReadAt = metaR.rows.length > 0 ? metaR.rows[0].value : null;
     return { messages, lastReadAt };
 }
