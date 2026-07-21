@@ -337,7 +337,7 @@
     <div class="modal" id="supportModal">
         <div class="modal-content">
             <span class="close-btn" id="closeModal">&times;</span>
-            <h2>پشتیبانی <button class="sidebar-toggle-btn" id="sidebarConvToggle"><i class="fas fa-chevron-left"></i></button></h2>
+            <h2>پشتیبانی</h2>
             <div class="support-layout">
                 <div class="support-sidebar" id="supportSidebar">
                     <div class="sidebar-header">
@@ -348,6 +348,7 @@
                     </div>
                     <div class="conversations-list" id="conversationsList"></div>
                 </div>
+                <button class="sidebar-toggle-btn" id="sidebarConvToggle" title="لیست گفتگوها"><i class="fas fa-comments"></i></button>
                 <div class="support-main">
                     <div class="support-panel" id="chatPanel">
                         <div class="admin-chat-main">
@@ -567,11 +568,9 @@
         (function(){
             var toggle = document.getElementById('sidebarConvToggle');
             var sidebar = document.getElementById('supportSidebar');
-            var icon = toggle?.querySelector('i');
             if(!toggle || !sidebar) return;
             toggle.addEventListener('click', function(){
                 sidebar.classList.toggle('expanded');
-                if(icon) icon.className = sidebar.classList.contains('expanded') ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
             });
         })();
 
