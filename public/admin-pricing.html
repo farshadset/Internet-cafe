@@ -32,9 +32,9 @@
     </div>
 
     <div class="pricing-save-bar" id="saveBar">
-        <span class="save-count"><strong id="dirtyCount">0</strong> تغییر ذخیره نشده</span>
+        <span class="save-count"><strong id="dirtyCount">0</strong> ذخیره نشده</span>
         <button class="btn-cancel-changes" id="cancelBtn">انصراف</button>
-        <button class="btn-save-all" id="saveAllBtn">ذخیره همه تغییرات</button>
+        <button class="btn-save-all" id="saveAllBtn">ذخیره همه</button>
     </div>
 
     <script src="libs/pricing-catalog.js"></script>
@@ -66,22 +66,6 @@
                 if (!/^\d*$/.test(raw)) return '';
                 if (raw === '') return '';
                 return parseInt(raw, 10).toLocaleString('en');
-            }
-
-            function countPriced(subServices) {
-                var n = 0;
-                Object.keys(subServices).forEach(function(k) {
-                    if (pricingMap[subServices[k]] !== undefined) n++;
-                });
-                return n;
-            }
-
-            function sumPrices(subServices) {
-                var s = 0;
-                Object.keys(subServices).forEach(function(k) {
-                    s += (pricingMap[subServices[k]] || 0);
-                });
-                return s;
             }
 
             function updateSaveBar() {
@@ -134,17 +118,7 @@
                             var groupHeader = document.createElement('div');
                             groupHeader.className = 'group-header';
 
-                            var priceText = '-';
-                            if (service.subServices) {
-                                var pricedCount = countPriced(service.subServices);
-                                var total = sumPrices(service.subServices);
-                                priceText = pricedCount > 0
-                                    ? pricedCount + ' خدمته (' + formatPrice(total) + ' تومان)'
-                                    : '-';
-                            }
-
                             groupHeader.innerHTML = '<span>' + serviceName + '</span>' +
-                                '<span style="font-weight:400;font-size:0.9rem;color:#666;margin-left:0.5rem;">' + priceText + '</span>' +
                                 '<i class="fas fa-chevron-left" style="transform:' + (grpExpanded ? 'rotate(-90deg)' : '') + ';"></i>';
                             groupHeader.addEventListener('click', function(e) {
                                 e.stopPropagation();
