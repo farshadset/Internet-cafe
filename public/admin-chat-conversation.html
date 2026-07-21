@@ -5,1321 +5,388 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>چت با مشتری</title>
     <script src="libs/utils.js"></script>
-    <script>
-        (function(){ if (!checkAdminAuth()) return; })();
-    </script>
+    <script>(function(){ if (!checkAdminAuth()) return; })();</script>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
     <link rel="stylesheet" href="libs/notie.min.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="libs/chat-core.js"></script>
     <style>
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Vazirmatn', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-            background: #f8f9fa;
-            color: #111827;
-            height: 100vh;
-            height: 100dvh;
-            overflow: hidden;
-        }
-
-        /* ── لایوت اصلی ── */
-        .admin-chat-layout {
-            display: flex;
-            height: 100vh;
-            height: 100dvh;
-            overflow: hidden;
-        }
-
-        /* ── سایدبار ── */
-        .admin-sidebar {
-            width: 300px;
-            min-width: 300px;
-            background: #f8f9fa;
-            border-left: 1px solid #e9ecef;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            transition: width 0.25s, min-width 0.25s, padding 0.25s;
-        }
-
-        .admin-sidebar.collapsed {
-            width: 0;
-            min-width: 0;
-            padding: 0;
-            border-left: none;
-        }
-
-        .sidebar-toggle {
-            position: fixed;
-            top: 12px;
-            right: 312px;
-            z-index: 100;
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            border: 1px solid #e9ecef;
-            background: #fff;
-            color: #667eea;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            transition: all 0.2s;
-        }
-
-        .sidebar-toggle:hover {
-            background: #f0f2ff;
-            border-color: #667eea;
-        }
-
-        .admin-sidebar.collapsed ~ .admin-chat-main .admin-chat-header {
-            padding-right: 56px;
-        }
-
-        .admin-sidebar.collapsed ~ .sidebar-toggle {
-            right: 12px;
-        }
-
-        .admin-sidebar-header {
-            padding: 1rem;
-            border-bottom: 1px solid #e9ecef;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex-shrink: 0;
-        }
-
-        .admin-sidebar-header h3 {
-            margin: 0;
-            font-size: 0.95rem;
-            color: #333;
-        }
-
-        .admin-conversations-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0.5rem;
-        }
-
-        .admin-conversation-item {
-            display: block;
-            padding: 0.75rem 0.85rem;
-            background: #fff;
-            border-radius: 10px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            transition: all 0.2s;
-            text-align: right;
-            margin-bottom: 0.35rem;
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .admin-conversation-item:hover {
-            border-color: #667eea;
-            background: #eef1ff;
-        }
-
-        .admin-conversation-item.active {
-            background: #667eea;
-            color: white;
-        }
-
-        .admin-conv-title {
-            font-weight: 700;
-            font-size: 0.85rem;
-            margin-bottom: 0.15rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .admin-conv-date {
-            font-size: 0.7rem;
-            color: #999;
-        }
-
-        .admin-conversation-item.active .admin-conv-date {
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        /* ── بخش اصلی چت ── */
-        .admin-chat-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-            height: 100vh;
-            height: 100dvh;
-            overflow: hidden;
-            width: 100%;
-        }
-
-        .admin-chat-header {
-            padding: 0.9rem 1.1rem;
-            border-bottom: 1px solid #e9ecef;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            flex-shrink: 0;
-            background: #fff;
-        }
-
-        .admin-chat-header .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.4rem 0.85rem;
-            background: #fff;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            text-decoration: none;
-            color: #111827;
-            font-size: 0.85rem;
-            font-weight: 500;
-            transition: all 0.15s;
-            flex-shrink: 0;
-        }
-
-        .admin-chat-header .back-link:hover {
-            background: #f3f4f6;
-            border-color: #d1d5db;
-        }
-
-        .admin-chat-header strong {
-            font-weight: 700;
-            font-size: 0.95rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* ── باکس پیام‌ها ── */
-        .admin-chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1rem 1.1rem;
-            padding-bottom: 80px;
-            display: flex;
-            flex-direction: column;
-            gap: 0.6rem;
-            min-height: 0;
-            background: #f8f9fa;
-        }
-
-        /* ── باکس ورودی ── */
-        .admin-chat-input-area {
-            padding: 0.75rem 1rem;
-            border-top: 1px solid #e9ecef;
-            background: #fff;
-            flex-shrink: 0;
-        }
-
-        .textarea-wrapper {
-            position: relative;
-            display: block;
-            overflow: visible;
-        }
-
-        .admin-chat-input-area textarea {
-            width: 100%;
-            min-height: 100px;
-            max-height: 300px;
-            display: block;
-            padding: 0.7rem 0.75rem;
-            padding-bottom: 48px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-family: inherit;
-            resize: none;
-            box-sizing: border-box;
-            overflow-y: auto;
-            pointer-events: auto;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-        .admin-chat-input-area textarea::-webkit-scrollbar {
-            display: none;
-        }
-
-        .admin-chat-input-area textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .pin-attachment {
-            position: absolute;
-            bottom: 8px;
-            left: 54px;
-            width: 38px;
-            height: 38px;
-            background: #667eea;
-            border: none;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-            font-size: 16px;
-            transition: all 0.15s;
-            flex-shrink: 0;
-        }
-
-        .pin-attachment:hover {
-            background: #5568d3;
-            transform: scale(1.05);
-        }
-
-        .char-counter {
-            position: absolute;
-            bottom: 8px;
-            left: 96px;
-            font-size: 0.7rem;
-            color: #6b7280;
-            white-space: nowrap;
-            line-height: 38px;
-        }
-
-        .attachment-preview {
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            left: 140px;
-            display: none;
-            flex-wrap: wrap;
-            gap: 6px;
-            z-index: 4;
-        }
-
-        .attachment-preview:not(.hidden) {
-            display: flex;
-        }
-
-        .attachment-thumbnail {
-            position: relative;
-            width: 38px;
-            height: 38px;
-            border-radius: 6px;
-            overflow: hidden;
-            border: 2px solid #667eea;
-            background: #fff;
-            flex-shrink: 0;
-        }
-
-        .attachment-thumbnail img,
-        .attachment-thumbnail .pdf-icon {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .attachment-thumbnail .pdf-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f5f5f5;
-            color: #667eea;
-            font-weight: 700;
-            font-size: 0.55rem;
-        }
-
-        .attachment-thumbnail .remove-attachment {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 15px;
-            height: 15px;
-            background: #e74c3c;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 8px;
-            line-height: 1;
-        }
-
-        .admin-send-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            border: none;
-            background: #667eea;
-            color: white;
-            cursor: pointer;
-            transition: all 0.15s;
-            flex-shrink: 0;
-            position: absolute;
-            bottom: 8px;
-            left: 8px;
-            z-index: 10;
-        }
-
-        .admin-send-btn:hover {
-            background: #5563d6;
-            transform: translateY(-1px);
-        }
-
-        .admin-send-btn:active {
-            transform: scale(0.95);
-        }
-
-        .admin-send-btn:disabled {
-            background: #d1d5db;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* ── استایل مشترک پیام‌ها ── */
-        .message {
-            display: flex;
-            flex-direction: column;
-            max-width: 75%;
-            animation: msgIn 0.2s ease-out;
-        }
-
-        @keyframes msgIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        .message.user {
-            align-self: flex-start;
-        }
-
-        .message.user .bubble {
-            background: #667eea;
-            color: white;
-            border-radius: 16px 4px 16px 16px;
-        }
-
-        .message.support {
-            align-self: flex-end;
-        }
-
-        .message.support .bubble {
-            background: #e8f5e9;
-            color: #2e7d32;
-            border: 1px solid #c8e6c9;
-            border-radius: 16px 16px 16px 4px;
-        }
-
-        .bubble {
-            padding: 0.6rem 1rem;
-            font-size: 0.9rem;
-            line-height: 1.6;
-            word-break: break-word;
-            white-space: pre-wrap;
-        }
-
-        /* ── استایل موبایل ── */
-        @media (max-width: 768px) {
-            body {
-                height: 100vh;
-                height: 100dvh;
-                height: var(--app-height, 100dvh);
-            }
-
-            .admin-chat-layout {
-                height: 100vh;
-                height: 100dvh;
-                height: var(--app-height, 100dvh);
-                position: relative;
-            }
-
-            .admin-chat-main {
-                height: var(--app-height, 100dvh);
-                padding-bottom: 12px;
-            }
-
-            .admin-chat-header .back-link span {
-                display: none;
-            }
-
-            .admin-sidebar {
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 280px;
-                min-width: 280px;
-                max-width: 80vw;
-                height: 100%;
-                border-left: none;
-                border-bottom: none;
-                z-index: 200;
-                box-shadow: -2px 0 12px rgba(0,0,0,0.15);
-                transform: translateX(0);
-                transition: transform 0.25s, width 0.25s;
-            }
-
-            .admin-sidebar.collapsed {
-                width: 0;
-                min-width: 0;
-                transform: translateX(100%);
-                box-shadow: none;
-                border-bottom: none;
-            }
-
-            .sidebar-toggle {
-                top: 12px;
-                right: 12px;
-                z-index: 300;
-            }
-
-            .admin-sidebar:not(.collapsed) ~ .sidebar-toggle {
-                top: 12px;
-                right: auto;
-                left: calc(100vw - 268px);
-            }
-
-            .admin-sidebar.collapsed ~ .sidebar-toggle {
-                top: 12px;
-                right: 12px;
-                left: auto;
-            }
-
-            .admin-sidebar.collapsed ~ .admin-chat-main .admin-chat-header {
-                padding-right: 12px;
-            }
-
-            .admin-sidebar-overlay {
-                display: none;
-                position: absolute;
-                inset: 0;
-                background: rgba(0,0,0,0.3);
-                z-index: 150;
-            }
-
-            .admin-sidebar:not(.collapsed) ~ .admin-sidebar-overlay {
-                display: block;
-            }
-
-            .admin-chat-input-area {
-                position: sticky;
-                bottom: 0;
-                z-index: 10;
-                padding-bottom: env(safe-area-inset-bottom, 8px);
-                margin-bottom: 8px;
-            }
-
-            .admin-chat-input-area textarea {
-                min-height: 44px;
-                max-height: 150px;
-            }
-
-            .message {
-                max-width: 88%;
-            }
-
-            .admin-chat-messages {
-                padding: 0.75rem;
-            }
-        }
-
-        /* ── اسکرول بار ── */
-        .admin-chat-messages::-webkit-scrollbar,
-        .admin-conversations-list::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .admin-chat-messages::-webkit-scrollbar-track,
-        .admin-conversations-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .admin-chat-messages::-webkit-scrollbar-thumb,
-        .admin-conversations-list::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 10px;
-        }
-
-        .admin-chat-messages::-webkit-scrollbar-thumb:hover,
-        .admin-conversations-list::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-        }
-
-        .toast-notification {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #3b82f6;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            z-index: 9999;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .toast-notification.show {
-            opacity: 1;
-        }
-
-        .file-size-modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-            z-index: 10000; display: flex; align-items: center; justify-content: center;
-        }
-        .file-size-modal {
-            background: #fff; border-radius: 16px; padding: 1.5rem; width: 90%; max-width: 340px;
-            text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        }
-        .file-size-modal-icon {
-            width: 48px; height: 48px; border-radius: 50%; background: #fef3c7;
-            display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 1rem; font-size: 1.5rem; color: #d97706;
-        }
-        .file-size-modal-title {
-            font-size: 1rem; font-weight: 700; color: #111827; margin-bottom: 0.5rem;
-        }
-        .file-size-modal-text {
-            font-size: 0.85rem; color: #6b7280; line-height: 1.6; margin-bottom: 1.2rem;
-        }
-        .file-size-modal-actions {
-            display: flex; gap: 0.5rem; justify-content: center;
-        }
-        .file-size-modal-btn {
-            flex: 1; padding: 0.6rem 1rem; border-radius: 10px; border: none;
-            font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
-        }
-        .file-size-modal-btn.confirm {
-            background: #667eea; color: #fff;
-        }
-        .file-size-modal-btn.confirm:hover {
-            background: #5568d3;
-        }
-        .file-size-modal-btn.cancel {
-            background: #f3f4f6; color: #374151;
-        }
-        .file-size-modal-btn.cancel:hover {
-            background: #e5e7eb;
-        }
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
+body{margin:0;padding:0;font-family:'Vazirmatn',system-ui,sans-serif;background:#f8f9fa;color:#111827;height:100dvh;overflow:hidden}
+.layout{display:flex;height:100dvh;overflow:hidden}
+.sidebar{width:300px;min-width:300px;background:#f8f9fa;border-left:1px solid #e9ecef;display:flex;flex-direction:column;overflow:hidden;transition:width .25s,min-width .25s}
+.sidebar.collapsed{width:0;min-width:0;border-left:none}
+.sidebar-toggle{position:fixed;top:12px;right:312px;z-index:100;width:40px;height:40px;border-radius:10px;border:1px solid #e9ecef;background:#fff;color:#667eea;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .2s}
+.sidebar-toggle:hover{background:#f0f2ff;border-color:#667eea}
+.sidebar.collapsed~.sidebar-toggle{right:12px}
+.sidebar-header{padding:1rem;border-bottom:1px solid #e9ecef;display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+.sidebar-header h3{margin:0;font-size:.95rem;color:#333}
+.conv-list{flex:1;overflow-y:auto;padding:.5rem}
+.conv-item{display:block;padding:.7rem .8rem;background:#fff;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:all .2s;text-align:right;margin-bottom:.35rem;position:relative}
+.conv-item:hover{border-color:#667eea;background:#eef1ff}
+.conv-item.active{background:#667eea;color:#fff}
+.conv-item .ct{font-weight:700;font-size:.85rem;margin-bottom:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-item .cp{font-size:.75rem;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-item.active .cp{color:rgba(255,255,255,.8)}
+.conv-item .cd{font-size:.7rem;color:#999}
+.conv-item.active .cd{color:rgba(255,255,255,.7)}
+.conv-item.closed{opacity:.5}
+.conv-badge{position:absolute;top:8px;left:8px;background:#e74c3c;color:#fff;font-size:.65rem;font-weight:700;padding:2px 6px;border-radius:8px;min-width:18px;text-align:center}
+.conv-status{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:4px}
+.conv-status.open{background:#27ae60}
+.conv-status.closed{background:#e74c3c}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;height:100dvh;overflow:hidden}
+.chat-header{padding:.75rem 1rem;border-bottom:1px solid #e9ecef;display:flex;align-items:center;gap:.5rem;flex-shrink:0;background:#fff}
+.back-link{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .7rem;background:#fff;border:1px solid #e9ecef;border-radius:8px;text-decoration:none;color:#111827;font-size:.85rem;flex-shrink:0}
+.back-link:hover{background:#f3f4f6}
+.conv-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.conv-user{font-weight:700;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-subject{font-size:.75rem;color:#888;cursor:pointer}
+.conv-subject:hover{color:#667eea}
+.hactions{display:flex;gap:.3rem;flex-shrink:0}
+.hactions button{width:34px;height:34px;border-radius:8px;border:1px solid #e9ecef;background:#fff;color:#555;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;transition:all .15s}
+.hactions button:hover{background:#f0f2ff;border-color:#667eea;color:#667eea}
+.hactions button.active{background:#667eea;color:#fff;border-color:#667eea}
+.close-btn{padding:.3rem .6rem;font-size:.75rem;border-radius:6px;border:1px solid #e74c3c;background:#fff;color:#e74c3c;cursor:pointer}
+.close-btn:hover{background:#e74c3c;color:#fff}
+.reopen-btn{padding:.3rem .6rem;font-size:.75rem;border-radius:6px;border:1px solid #27ae60;background:#fff;color:#27ae60;cursor:pointer}
+.reopen-btn:hover{background:#27ae60;color:#fff}
+.messages{flex:1;overflow-y:auto;padding:1rem;padding-bottom:80px;display:flex;flex-direction:column;gap:.6rem;min-height:0;background:#f8f9fa}
+.input-area{padding:.75rem 1rem;border-top:1px solid #e9ecef;background:#fff;flex-shrink:0}
+.input-wrap{position:relative;overflow:visible}
+.input-area textarea{width:100%;min-height:80px;max-height:300px;display:block;padding:.7rem .75rem;padding-bottom:48px;border:1px solid #ddd;border-radius:8px;font-size:.9rem;font-family:inherit;resize:none;box-sizing:border-box;overflow-y:auto;scrollbar-width:none}
+.input-area textarea::-webkit-scrollbar{display:none}
+.input-area textarea:focus{outline:none;border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.attach-btn{position:absolute;bottom:8px;left:50px;width:36px;height:36px;background:#667eea;border:none;border-radius:10px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;font-size:14px;transition:all .15s}
+.attach-btn:hover{background:#5568d3}
+.send-btn{position:absolute;bottom:8px;left:8px;width:36px;height:36px;border-radius:10px;border:none;background:#667eea;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;transition:all .15s}
+.send-btn:hover{background:#5563d6}
+.send-btn:disabled{background:#d1d5db;cursor:not-allowed}
+.char-count{position:absolute;bottom:8px;left:92px;font-size:.7rem;color:#999;line-height:36px}
+.att-preview{position:absolute;bottom:8px;right:8px;left:136px;display:none;flex-wrap:wrap;gap:6px;z-index:4}
+.att-preview:not(.hidden){display:flex}
+.typing-bar{padding:4px 16px;font-size:.75rem;color:#888;min-height:22px}
+.empty-state{display:flex;align-items:center;justify-content:center;flex:1;color:#999;font-size:.95rem}
+.notes-panel{width:0;overflow:hidden;transition:width .25s;background:#fff;border-right:1px solid #e9ecef;flex-shrink:0}
+.notes-panel.open{width:280px}
+.notes-inner{width:280px;height:100%;display:flex;flex-direction:column}
+.notes-header{padding:.75rem 1rem;border-bottom:1px solid #e9ecef;display:flex;align-items:center;justify-content:space-between}
+.notes-header h4{margin:0;font-size:.85rem}
+.notes-body{flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:.5rem}
+.note-item{background:#f8f9fa;border-radius:8px;padding:.5rem .7rem;font-size:.8rem;position:relative}
+.note-item .nt{word-break:break-word}
+.note-item .nd{font-size:.65rem;color:#999;margin-top:.3rem}
+.note-item .nx{position:absolute;top:4px;left:4px;background:none;border:none;color:#ccc;cursor:pointer;font-size:.7rem}
+.note-item .nx:hover{color:#e74c3c}
+.notes-input{padding:.5rem .75rem;border-top:1px solid #e9ecef;display:flex;gap:.4rem}
+.notes-input input{flex:1;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.8rem;font-family:inherit}
+.notes-input button{padding:.4rem .7rem;background:#667eea;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem}
+.search-bar{padding:.5rem 1rem;border-bottom:1px solid #e9ecef;background:#fff;display:none}
+.search-bar.open{display:flex;gap:.4rem}
+.search-bar input{flex:1;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.8rem;font-family:inherit}
+.search-bar button{padding:.4rem .7rem;background:#667eea;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem}
+.search-results{padding:4px 1rem;background:#fff;border-bottom:1px solid #e9ecef;display:none;max-height:150px;overflow-y:auto;font-size:.8rem}
+.search-results.open{display:block}
+.search-results .si{padding:4px 0;cursor:pointer;border-bottom:1px solid #f3f4f6}
+.search-results .si:hover{color:#667eea}
+.canned-dropdown{position:absolute;bottom:100%;left:0;background:#fff;border:1px solid #e9ecef;border-radius:8px;box-shadow:0 -4px 12px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;width:260px;display:none;z-index:20}
+.canned-dropdown.open{display:block}
+.canned-dropdown .ci{padding:.5rem .7rem;font-size:.8rem;cursor:pointer;border-bottom:1px solid #f3f4f6}
+.canned-dropdown .ci:hover{background:#f0f2ff}
+.conv-list::-webkit-scrollbar,.messages::-webkit-scrollbar{width:5px}
+.conv-list::-webkit-scrollbar-track,.messages::-webkit-scrollbar-track{background:transparent}
+.conv-list::-webkit-scrollbar-thumb,.messages::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:10px}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@media(max-width:768px){
+.sidebar{position:absolute;top:0;right:0;width:280px;min-width:280px;max-width:80vw;height:100%;border-left:none;z-index:200;box-shadow:-2px 0 12px rgba(0,0,0,.15)}
+.sidebar.collapsed{width:0;min-width:0}
+.sidebar-toggle{top:12px;right:12px;z-index:300}
+.sidebar:not(.collapsed)~.sidebar-toggle{top:12px;right:auto;left:calc(100vw - 268px)}
+.sidebar-overlay{display:none;position:absolute;inset:0;background:rgba(0,0,0,.3);z-index:150}
+.sidebar:not(.collapsed)~.sidebar-overlay{display:block}
+.back-link span{display:none}
+.input-area{position:sticky;bottom:0;z-index:10;padding-bottom:env(safe-area-inset-bottom,8px)}
+.input-area textarea{min-height:44px;max-height:150px}
+.notes-panel.open{width:100%;position:absolute;inset:0;z-index:250}
+.notes-inner{width:100%}
+}
     </style>
 </head>
 <body>
-    <div class="toast-notification" id="toastNotification"></div>
-    <div class="admin-chat-layout">
-        <!-- ── سایدبار ── -->
-        <div class="admin-sidebar">
-            <div class="admin-conversations-list" id="adminConversationsList">
-                <div class="admin-empty-state">در حال بارگذاری...</div>
-            </div>
-        </div>
-
-        <!-- ── overlay موبایل ── -->
-        <div class="admin-sidebar-overlay" id="sidebarOverlay"></div>
-
-        <!-- ── دکمه باز/بسته سایدبار ── -->
-        <button class="sidebar-toggle" id="sidebarToggle" title="لیست گفتگوها">
-            <i class="fas fa-comments"></i>
-        </button>
-
-        <!-- ── بخش اصلی چت ── -->
-        <div class="admin-chat-main">
-            <div class="admin-chat-header">
-                <a href="admin-chat.html" class="back-link">
-                    <i class="fas fa-arrow-right"></i>
-                    <span>بازگشت</span>
-                </a>
-                <strong id="chatPartner">در حال بارگذاری...</strong>
-            </div>
-
-            <div class="admin-chat-messages" id="adminChatMessages">
-                <div class="admin-empty-state">یک گفتگو را انتخاب کنید</div>
-            </div>
-
-            <div class="admin-chat-input-area">
-                <div class="textarea-wrapper">
-                    <textarea id="adminMessageInput" rows="1" maxlength="5000" placeholder="پاسخ خود را اینجا بنویسید..." class="additional-notes"></textarea>
-                    <div class="attachment-preview hidden" id="adminAttachmentPreview"></div>
-                    <button id="adminSendBtn" class="admin-send-btn" aria-label="ارسال پیام" disabled>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="19" x2="12" y2="5"></line>
-                            <polyline points="5 12 12 5 19 12"></polyline>
-                        </svg>
-                    </button>
-                    <button type="button" class="pin-attachment" id="adminPinAttachment" title="افزودن فایل">
-                        <i class="fas fa-paperclip"></i>
-                    </button>
-                    <span class="char-counter" id="charCounter">5000/0</span>
-                </div>
-                <input type="file" id="adminAttachmentFile" accept="image/*,.pdf" style="display: none;" multiple>
-            </div>
+<div class="layout">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header"><i class="fas fa-comments" style="color:#667eea"></i><h3>گفتگوها</h3></div>
+        <div class="conv-list" id="convList"><div class="empty-state">در حال بارگذاری...</div></div>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <button class="sidebar-toggle" id="sidebarToggle" title="لیست گفتگوها"><i class="fas fa-comments"></i></button>
+    <div class="notes-panel" id="notesPanel">
+        <div class="notes-inner">
+            <div class="notes-header"><h4><i class="fas fa-sticky-note" style="color:#667eea"></i> یادداشت‌ها</h4><button id="closeNotes" style="background:none;border:none;cursor:pointer;color:#999"><i class="fas fa-times"></i></button></div>
+            <div class="notes-body" id="notesBody"><div class="empty-state" style="font-size:.8rem">یادداشتی وجود ندارد</div></div>
+            <div class="notes-input"><input type="text" id="noteInput" placeholder="یادداشت جدید..."><button id="addNote"><i class="fas fa-plus"></i></button></div>
         </div>
     </div>
-
-    <div class="file-size-modal-overlay" id="fileSizeModal" style="display:none">
-        <div class="file-size-modal">
-            <div class="file-size-modal-icon"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="file-size-modal-title">حجم فایل زیاد است</div>
-            <div class="file-size-modal-text" id="fileSizeModalText"></div>
-            <div class="file-size-modal-actions">
-                <button class="file-size-modal-btn confirm" id="fileSizeModalConfirm">بله، کم کن</button>
-                <button class="file-size-modal-btn cancel" id="fileSizeModalCancel">لغو</button>
+    <div class="main">
+        <div class="chat-header">
+            <a href="admin-chat.html" class="back-link"><i class="fas fa-arrow-right"></i><span>بازگشت</span></a>
+            <div class="conv-info"><span class="conv-user" id="convUser">یک گفتگو را انتخاب کنید</span><span class="conv-subject" id="convSubject" title="موضوع"></span></div>
+            <div class="hactions">
+                <button id="searchToggle" title="جستجو"><i class="fas fa-search"></i></button>
+                <button id="notesToggle" title="یادداشت‌ها"><i class="fas fa-sticky-note"></i></button>
+                <span id="closeReopenBtn" style="display:none"></span>
             </div>
         </div>
+        <div class="search-bar" id="searchBar"><input type="text" id="searchInput" placeholder="جستجو..."><button id="searchBtn"><i class="fas fa-search"></i></button><button id="searchClose" style="background:#f3f4f6;color:#555"><i class="fas fa-times"></i></button></div>
+        <div class="search-results" id="searchResults"></div>
+        <div class="messages" id="messages"><div class="empty-state">یک گفتگو را انتخاب کنید</div></div>
+        <div class="typing-bar" id="typingBar"></div>
+        <div class="input-area">
+            <div class="input-wrap">
+                <div class="canned-dropdown" id="cannedDropdown"></div>
+                <textarea id="msgInput" rows="1" maxlength="5000" placeholder="پاسخ خود را اینجا بنویسید..."></textarea>
+                <div class="att-preview hidden" id="attPreview"></div>
+                <button class="send-btn" id="sendBtn" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>
+                <button class="attach-btn" id="attachBtn" title="افزودن فایل"><i class="fas fa-paperclip"></i></button>
+                <span class="char-count" id="charCount">0/5000</span>
+            </div>
+            <input type="file" id="fileInput" accept="image/*,.pdf" style="display:none" multiple>
+        </div>
     </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+    var CC=ChatCore,U=ChillUtils,q=function(s){return document.querySelector(s)};
+    var params=new URLSearchParams(window.location.search);
+    var targetUser=params.get('username'),targetConv=params.get('conv');
+    var sidebar=q('#sidebar'),sidebarToggle=q('#sidebarToggle'),sidebarOverlay=q('#sidebarOverlay');
+    var convList=q('#convList'),messagesEl=q('#messages'),msgInput=q('#msgInput');
+    var sendBtn=q('#sendBtn'),charCount=q('#charCount');
+    var attPreview=q('#attPreview'),fileInput=q('#fileInput'),attachBtn=q('#attachBtn');
+    var convUser=q('#convUser'),convSubject=q('#convSubject'),closeReopenBtn=q('#closeReopenBtn');
+    var searchToggle=q('#searchToggle'),searchBar=q('#searchBar'),searchInput=q('#searchInput');
+    var searchBtn=q('#searchBtn'),searchClose=q('#searchClose'),searchResults=q('#searchResults');
+    var notesToggle=q('#notesToggle'),notesPanel=q('#notesPanel'),closeNotes=q('#closeNotes');
+    var notesBody=q('#notesBody'),noteInput=q('#noteInput'),addNoteBtn=q('#addNote');
+    var typingBar=q('#typingBar'),cannedDropdown=q('#cannedDropdown');
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var params = new URLSearchParams(window.location.search);
-            var username = params.get('username');
-            if (!username) {
-                window.location.href = 'admin-chat.html';
-                return;
-            }
+    var adminData=null;try{adminData=JSON.parse(localStorage.getItem('adminData')||'null')}catch(e){}
+    var token=adminData?adminData.token:null,adminName=(adminData&&adminData.username)||'admin';
+    var convs=[],currentConvId=null,lastMsgId=null,oldestId=null,hasMore=true,loadingMore=false;
+    var curAtts=[],pendingReads={},activeReaders={};
+    var PAGE=30,typingTimer=null,convClosed=false;
+    CC.injectChatStyles();
 
-            var conversationsList = document.getElementById('adminConversationsList');
-            var chatMessages = document.getElementById('adminChatMessages');
-            var adminMessageInput = document.getElementById('adminMessageInput');
-            var adminSendBtn = document.getElementById('adminSendBtn');
-            var chatPartner = document.getElementById('chatPartner');
-            var charCounter = document.getElementById('charCounter');
+    function hdr(extra){var h=extra||{};if(token)h['Authorization']='Bearer '+token;return h}
+    function aGet(u){return fetch(u,{headers:hdr({'Accept':'application/json'})}).then(function(r){if(r.status===401){localStorage.removeItem('adminData');window.location.href='login.html';return null}if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})}
+    function aPost(u,d){return fetch(u,{method:'POST',headers:hdr({'Content-Type':'application/json'}),body:JSON.stringify(d)}).then(function(r){if(r.status===401){localStorage.removeItem('adminData');window.location.href='login.html';return null}return r.json().then(function(x){return{ok:r.ok,data:x}})})}
+    function aDel(u){return fetch(u,{method:'DELETE',headers:hdr()}).then(function(r){return r.json().then(function(x){return{ok:r.ok,data:x}})})}
 
-            var conversationPolling = null;
-            var currentUsername = username;
-            var currentConversationId = null;
-            var lastMessageId = null;
-            var conversationsData = [];
-            var adminPendingReads = 0;
-            var adminActiveReaders = {};
-            var PAGE_SIZE = 30;
-            var oldestLoadedId = null;
-            var hasMoreMessages = true;
-            var isLoadingMore = false;
-            var pollInterval = 2000;
-            var pollIdleCount = 0;
-            var pollMaxIdle = 15;
-            var pollBaseInterval = 2000;
-            var pollMaxInterval = 10000;
-
-            if (window.visualViewport) {
-                var updateAppHeight = function() {
-                    var vh = window.visualViewport.height;
-                    document.documentElement.style.setProperty('--app-height', vh + 'px');
-                };
-                window.visualViewport.addEventListener('resize', updateAppHeight);
-                window.visualViewport.addEventListener('scroll', updateAppHeight);
-                updateAppHeight();
-            }
-
-            if (adminMessageInput) {
-                adminMessageInput.addEventListener('focus', function() {
-                    if (!window.visualViewport) return;
-                    var scrollIntoViewKeyboard = function() {
-                        var inputArea = document.querySelector('.admin-chat-input-area');
-                        if (inputArea) {
-                            inputArea.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                        }
-                    };
-                    setTimeout(scrollIntoViewKeyboard, 300);
-                    window.visualViewport.addEventListener('resize', scrollIntoViewKeyboard);
-                });
-            }
-
-            function updateAdminSendButton() {
-                if (adminSendBtn) {
-                    var hasText = adminMessageInput && adminMessageInput.value.trim();
-                    var hasAttachments = adminCurrentAttachments.length > 0;
-                    adminSendBtn.disabled = (!hasText && !hasAttachments) || adminPendingReads > 0;
+    function initSocket(){
+        if(!token)return;var socket=CC.initSocket(token);if(!socket)return;
+        CC.setSocketCallbacks({
+            currentRole:'admin',
+            onNewMessage:function(d){
+                if(d.conversationId===currentConvId&&d.role==='customer'){
+                    var el=CC.renderMessage(d,{showSeen:true});
+                    var empty=messagesEl.querySelector('.empty-state');
+                    if(empty&&!q('#loadOlder'))messagesEl.innerHTML='';
+                    messagesEl.appendChild(el);lastMsgId=d.id;autoScroll();markRead();
                 }
-            }
+                convs.forEach(function(c){if(c.id===d.conversationId){c.lastMessage=d.text;c.lastTimestamp=d.timestamp}});
+            },
+            onTyping:function(d){if(d.conversationId===currentConvId&&d.username!==adminName){typingBar.textContent=d.username+' در حال تایپ...';clearTimeout(typingBar._t);typingBar._t=setTimeout(function(){typingBar.textContent=''},3000)}},
+            onStopTyping:function(d){if(d.conversationId===currentConvId)typingBar.textContent=''},
+            onConversationClosed:function(d){if(d.conversationId===currentConvId){convClosed=true;renderCRBtn()}},
+            onConversationReopened:function(d){if(d.conversationId===currentConvId){convClosed=false;renderCRBtn()}}
+        });
+        if(currentConvId)CC.joinConversation(currentConvId);
+    }
 
-            var showToast = ChillUtils.showToast;
+    function renderList(){
+        convList.innerHTML='';
+        if(!convs.length){convList.innerHTML='<div class="empty-state">هیچ گفتگویی وجود ندارد</div>';return}
+        convs.forEach(function(c){
+            var d=document.createElement('div');
+            d.className='conv-item'+(c.id===currentConvId?' active':'')+(c.status==='closed'?' closed':'');
+            d.setAttribute('data-conv-id',c.id);
+            var preview=CC.truncate(c.lastMessage||'گفتگوی جدید',35);
+            var dateStr=c.lastTimestamp?CC.formatDate(c.lastTimestamp):'';
+            var sc=c.status==='closed'?'closed':'open';
+            d.innerHTML='<div class="ct">'+U.escapeHtml(c.username)+'<span class="conv-status '+sc+'"></span></div><div class="cp">'+U.escapeHtml(preview)+'</div><div class="cd">'+dateStr+'</div>';
+            if(c.unreadCount>0)d.innerHTML+='<span class="conv-badge">'+c.unreadCount+'</span>';
+            d.addEventListener('click',function(){selectConv(c.id)});
+            convList.appendChild(d);
+        });
+    }
 
-            chatPartner.textContent = currentUsername;
+    function selectConv(id){
+        currentConvId=id;lastMsgId=null;oldestId=null;hasMore=true;loadingMore=false;
+        var c=convs.find(function(x){return x.id===id});
+        if(c){convUser.textContent=c.username;convSubject.textContent=c.subject||'';convSubject.title=c.subject||'موضوع تنظیم نشده';convClosed=c.status==='closed'}
+        renderCRBtn();renderList();loadMsgs();markRead();CC.joinConversation(id);loadNotes();
+        if(window.innerWidth<=768){sidebar.classList.add('collapsed');sidebarToggle.querySelector('i').className='fas fa-comments'}
+    }
 
-            function autoResize() {
-                adminMessageInput.style.height = 'auto';
-                adminMessageInput.style.height = Math.min(adminMessageInput.scrollHeight, 300) + 'px';
-                if (charCounter) {
-                    var len = adminMessageInput.value.length;
-                    charCounter.textContent = '5000/' + len;
-                }
-                adminSendBtn.disabled = !adminMessageInput.value.trim() && adminCurrentAttachments.length === 0;
-            }
+    function loadConvs(){
+        convList.innerHTML='<div class="empty-state">در حال بارگذاری...</div>';
+        var url='/api/admin/chat/conversations'+(targetUser?'?username='+encodeURIComponent(targetUser):'');
+        aGet(url).then(function(d){convs=d||[];renderList();
+            if(targetConv)selectConv(targetConv);else if(!currentConvId&&convs.length)selectConv(convs[0].id);
+        }).catch(function(){convList.innerHTML='<div class="empty-state" style="color:#e74c3c">خطا در بارگذاری</div>'});
+    }
 
-            var adminCurrentAttachments = [];
-            var adminAttachmentPreview = document.getElementById('adminAttachmentPreview');
-            var adminPinAttachment = document.getElementById('adminPinAttachment');
-            var adminAttachmentFile = document.getElementById('adminAttachmentFile');
+    function loadMsgs(){
+        if(!currentConvId){messagesEl.innerHTML='<div class="empty-state">یک گفتگو را انتخاب کنید</div>';return}
+        messagesEl.innerHTML='<div class="empty-state">در حال بارگذاری...</div>';
+        oldestId=null;hasMore=true;loadingMore=false;
+        aGet('/api/admin/chat/conversation/'+currentConvId+'?limit='+PAGE).then(function(data){
+            var msgs=data?data.messages||[]:[];
+            hasMore=data?data.hasMore!==false&&msgs.length===PAGE:false;
+            messagesEl.innerHTML='';
+            msgs.forEach(function(m){messagesEl.appendChild(CC.renderMessage(m,{showSeen:true}))});
+            if(msgs.length){oldestId=msgs[0].id;lastMsgId=msgs[msgs.length-1].id}
+            setupSentinel();autoScroll();
+        }).catch(function(){messagesEl.innerHTML='<div class="empty-state" style="color:#e74c3c">خطا در بارگذاری</div>'});
+    }
 
-            var escapeHtml = ChillUtils.escapeHtml;
-            var safeUrl = ChillUtils.safeUrl;
-            var generateId = ChillUtils.generateId;
-            var isImageFile = ChillUtils.isImageFile;
+    function loadOlder(){
+        if(loadingMore||!hasMore||!currentConvId)return;loadingMore=true;
+        var s=q('#loadOlder');if(s)s.textContent='در حال بارگذاری...';
+        var prevH=messagesEl.scrollHeight;
+        aGet('/api/admin/chat/conversation/'+currentConvId+'?limit='+PAGE+'&before='+encodeURIComponent(oldestId)).then(function(data){
+            if(!data)return;var msgs=data.messages||[];
+            hasMore=data.hasMore!==false&&msgs.length===PAGE;
+            if(msgs.length){oldestId=msgs[0].id;var f=document.createDocumentFragment();msgs.forEach(function(m){f.appendChild(CC.renderMessage(m,{showSeen:true}))});messagesEl.insertBefore(f,messagesEl.firstChild);messagesEl.scrollTop=messagesEl.scrollHeight-prevH;if(!hasMore&&s)s.remove()}
+            else{hasMore=false;if(s)s.remove()}
+            loadingMore=false;
+        }).catch(function(){loadingMore=false});
+    }
 
-            function renderAdminAttachmentPreview(attachment, dataUrl) {
-                if (!adminAttachmentPreview) return;
-                var isImage = isImageFile(attachment);
-                var html = '<div class="attachment-thumbnail" data-attachment-id="' + escapeHtml(attachment.id) + '">';
-                if (isImage) {
-                    html += '<img src="' + escapeHtml(dataUrl || attachment.dataUrl) + '" alt="' + escapeHtml(attachment.name) + '">';
-                } else {
-                    var ext = (attachment.name || '').split('.').pop().toUpperCase() || 'FILE';
-                    html += '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
-                }
-                html += '<span class="upload-status"><i class="fas fa-check"></i></span>';
-                html += '<button type="button" class="remove-attachment" onclick="window.removeAdminAttachment(this)"><i class="fas fa-times"></i></button>';
-                html += '</div>';
-                adminAttachmentPreview.insertAdjacentHTML('beforeend', html);
-                adminAttachmentPreview.classList.remove('hidden');
-            }
+    function setupSentinel(){
+        var old=q('#loadOlder');if(old)old.remove();if(!hasMore)return;
+        var s=document.createElement('div');s.id='loadOlder';s.className='empty-state';
+        s.style.cssText='cursor:pointer;color:#667eea;padding:.5rem;font-size:.85rem';
+        s.textContent='بارگذاری پیام‌های قدیمی‌تر';s.addEventListener('click',loadOlder);
+        messagesEl.insertBefore(s,messagesEl.firstChild);
+    }
 
-            function addAdminAttachmentFromFile(file) {
-                if (!file || !adminAttachmentPreview) return;
-                if (adminCurrentAttachments.length >= 4) {
-                    showToast('فقط می توان چهار فایل آپلود کرد');
-                    return;
-                }
-                var attId = ChillUtils.generateId('att_');
-                var isImage = isImageFile(file);
+    function autoScroll(){var d=messagesEl.scrollHeight-messagesEl.scrollTop-messagesEl.clientHeight;if(d<80)messagesEl.scrollTop=messagesEl.scrollHeight}
+    function markRead(){if(!currentConvId)return;aPost('/api/admin/chat/read',{conversationId:currentConvId});var c=convs.find(function(x){return x.id===currentConvId});if(c){c.unreadCount=0;renderList()}}
 
-                var html = '<div class="attachment-thumbnail uploading" data-attachment-id="' + escapeHtml(attId) + '">';
-                if (isImage) {
-                    html += '<img src="" alt="' + escapeHtml(file.name) + '" style="opacity:0.3">';
-                } else {
-                    var ext = (file.name || '').split('.').pop().toUpperCase() || 'FILE';
-                    html += '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;opacity:0.3;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
-                }
-                html += '<div class="upload-progress-overlay"><svg class="upload-progress-ring" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle class="upload-progress-circle" data-progress-ring="' + attId + '" cx="18" cy="18" r="14" fill="none" stroke="#667eea" stroke-width="3" stroke-dasharray="87.96" stroke-dashoffset="87.96" transform="rotate(-90 18 18)" stroke-linecap="round"/></svg><span class="upload-progress-text" data-progress-text="' + attId + '">0%</span></div>';
-                html += '<button type="button" class="remove-attachment upload-cancel-btn" data-cancel-reader="' + attId + '"><i class="fas fa-times"></i></button>';
-                html += '</div>';
-                adminAttachmentPreview.insertAdjacentHTML('beforeend', html);
-                adminAttachmentPreview.classList.remove('hidden');
+    function sendMessage(){
+        var text=msgInput.value.trim();
+        if(text.length>CC.MAX_MESSAGE_LENGTH){U.showAlert('متن پیام بیش از حد مجاز');return}
+        if(!text&&!curAtts.length)return;
+        var totalSz=0;curAtts.forEach(function(a){totalSz+=(a.dataUrl||'').length});
+        if(totalSz>CC.MAX_TOTAL_SIZE){U.showAlert('حجم فایل‌ها زیاد است','error');return}
+        sendBtn.disabled=true;
+        aPost('/api/admin/chat',{text:text,conversationId:currentConvId,attachments:curAtts}).then(function(r){
+            if(!r||!r.ok||!r.data.text){U.showAlert(r&&r.data&&r.data.error||'خطا در ارسال','error');sendBtn.disabled=false;return}
+            var msg=r.data,empty=messagesEl.querySelector('.empty-state');
+            if(empty&&!q('#loadOlder'))messagesEl.innerHTML='';
+            messagesEl.appendChild(CC.renderMessage(msg,{showSeen:true}));lastMsgId=msg.id;
+            msgInput.value='';curAtts=[];attPreview.innerHTML='';attPreview.classList.add('hidden');
+            autoResize();autoScroll();updateBtn();CC.stopTyping(currentConvId,adminName);
+        }).catch(function(){U.showAlert('خطا در ارتباط با سرور','error');sendBtn.disabled=false});
+    }
 
-                adminPendingReads++;
-                updateAdminSendButton();
+    function autoResize(){msgInput.style.height='auto';msgInput.style.height=Math.min(msgInput.scrollHeight,300)+'px';charCount.textContent=msgInput.value.length+'/5000';updateBtn()}
+    function updateBtn(){sendBtn.disabled=(!msgInput.value.trim()&&!curAtts.length)||Object.keys(pendingReads).length>0}
 
-                var processFile = isImage ? ChillUtils.compressImageFile(file, { maxSizeMB: 2 }) : Promise.resolve(file);
-                processFile.then(function(finalFile) {
-                    var reader = new FileReader();
-                    adminActiveReaders[attId] = reader;
+    function addAtt(file){
+        if(curAtts.length>=CC.MAX_ATTACHMENTS){U.showToast('فقط چهار فایل مجاز');return}
+        var v=CC.validateAttachment(file);if(!v.valid){U.showToast(v.error);return}
+        var aid=CC.generateId('att_'),isImg=CC.isImageFile(file);
+        attPreview.insertAdjacentHTML('beforeend',CC.renderAttachmentProgress(aid,file.name,isImg));
+        attPreview.classList.remove('hidden');pendingReads[aid]=true;updateBtn();
+        var proc=isImg?CC.compressImage(file,2):Promise.resolve(file);
+        proc.then(function(ff){CC.readFileAsDataURL(ff).then(function(att){curAtts.push(att);var t=attPreview.querySelector('[data-att-id="'+aid+'"]');if(t)t.remove();attPreview.insertAdjacentHTML('beforeend',CC.renderAttachmentThumb(att));delete pendingReads[aid];updateBtn()}).catch(function(){var t=attPreview.querySelector('[data-att-id="'+aid+'"]');if(t)t.remove();delete pendingReads[aid];updateBtn();U.showToast('خطا در خواندن فایل')})}).catch(function(){var t=attPreview.querySelector('[data-att-id="'+aid+'"]');if(t)t.remove();delete pendingReads[aid];updateBtn()});
+    }
+    function rmAtt(id){if(activeReaders[id]){activeReaders[id].abort();delete activeReaders[id]}curAtts=curAtts.filter(function(a){return a.id!==id});var t=attPreview.querySelector('[data-att-id="'+id+'"]');if(t)t.remove();if(!attPreview.querySelector('.att-thumb'))attPreview.classList.add('hidden');updateBtn()}
+    attPreview.addEventListener('click',function(e){var b=e.target.closest('.att-remove');if(b)rmAtt(b.getAttribute('data-remove')||b.getAttribute('data-cancel-read'))});
+    attachBtn.addEventListener('click',function(){fileInput.click()});
+    fileInput.addEventListener('change',function(e){var fs=Array.from(e.target.files||[]),rem=CC.MAX_ATTACHMENTS-curAtts.length-Object.keys(pendingReads).length;if(rem<=0){U.showToast('فقط چهار فایل مجاز');fileInput.value='';return}fs.slice(0,rem).forEach(function(f){addAtt(f)});fileInput.value=''});
 
-                    reader.onprogress = function(ev) {
-                        if (ev.lengthComputable) {
-                            var pct = Math.round((ev.loaded / ev.total) * 100);
-                            var circle = document.querySelector('[data-progress-ring="' + attId + '"]');
-                            var text = document.querySelector('[data-progress-text="' + attId + '"]');
-                            if (circle) circle.style.strokeDashoffset = (87.96 * (1 - pct / 100));
-                            if (text) text.textContent = pct + '%';
-                        }
-                    };
-
-                    reader.onload = function(ev) {
-                        var attachment = {
-                            id: attId,
-                            name: finalFile.name,
-                            type: finalFile.type,
-                            size: finalFile.size,
-                            dataUrl: ev.target.result,
-                            uploadedAt: new Date().toISOString()
-                        };
-                        adminCurrentAttachments.push(attachment);
-                        var thumb = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
-                        if (thumb) thumb.remove();
-                        renderAdminAttachmentPreview(attachment, ev.target.result);
-                        delete adminActiveReaders[attId];
-                        adminPendingReads--;
-                        updateAdminSendButton();
-                    };
-
-                    reader.onerror = function() {
-                        var thumb = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
-                        if (thumb) thumb.remove();
-                        delete adminActiveReaders[attId];
-                        adminPendingReads--;
-                        updateAdminSendButton();
-                        showToast('خطا در خواندن فایل');
-                    };
-
-                    reader.readAsDataURL(finalFile);
-                });
-            }
-
-            window.removeAdminAttachment = function(button) {
-                var thumbnail = button.closest('.attachment-thumbnail');
-                if (thumbnail) {
-                    var attachmentId = thumbnail.getAttribute('data-attachment-id');
-                    if (adminActiveReaders[attachmentId]) {
-                        adminActiveReaders[attachmentId].abort();
-                        delete adminActiveReaders[attachmentId];
-                        adminPendingReads--;
-                    }
-                    adminCurrentAttachments = adminCurrentAttachments.filter(function(a) {
-                        return a.id !== attachmentId;
-                    });
-                    thumbnail.remove();
-                    updateAdminSendButton();
-                }
-                if (adminAttachmentPreview && adminAttachmentPreview.querySelectorAll('.attachment-thumbnail').length === 0) {
-                    adminAttachmentPreview.classList.add('hidden');
-                }
-            };
-
-            function renderMessageAttachments(msg, wrapper) {
-                if (!msg.attachments || msg.attachments.length === 0) return;
-                var attContainer = document.createElement('div');
-                attContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.4rem;';
-                msg.attachments.forEach(function(att) {
-                    var isImg = isImageFile(att);
-                    var thumb = document.createElement('div');
-                    thumb.className = 'attachment-thumbnail';
-                    thumb.style.cssText = 'width: 70px; height: 70px; cursor: pointer; position: relative; border-radius: 6px; overflow: hidden;';
-                    if (isImg && (att.dataUrl || att.url)) {
-                        var img = document.createElement('img');
-                        img.src = att.dataUrl || att.url || '';
-                        img.alt = att.name;
-                        img.loading = 'lazy';
-                        img.decoding = 'async';
-                        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 6px;';
-                        thumb.appendChild(img);
-                    } else {
-                        var ext = (att.name || '').split('.').pop().toUpperCase() || 'FILE';
-                        thumb.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;border-radius:6px;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
-                    }
-                    var dlBtn = document.createElement('button');
-                    dlBtn.type = 'button';
-                    dlBtn.className = 'attachment-download-btn';
-                    dlBtn.innerHTML = '<i class="fas fa-download"></i>';
-                    dlBtn.style.cssText = 'position: absolute; bottom: -6px; right: -6px; width: 20px; height: 20px; background: #667eea; border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);';
-                    dlBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        ChillUtils.downloadAttachment(att.dataUrl || att.url, att.name);
-                    });
-                    thumb.appendChild(dlBtn);
-                    thumb.addEventListener('click', function() {
-                        ChillUtils.downloadAttachment(att.dataUrl || att.url, att.name);
-                    });
-                    attContainer.appendChild(thumb);
-                });
-                wrapper.appendChild(attContainer);
-            }
-
-            function highlightActiveConversation() {
-                if (!conversationsList) return;
-                var items = conversationsList.querySelectorAll('.admin-conversation-item');
-                items.forEach(function(item) {
-                    item.classList.remove('active');
-                    if (item.getAttribute('data-conv-id') === currentConversationId) {
-                        item.classList.add('active');
-                    }
-                });
-            }
-
-            function _handle401(r) {
-                if (r.status === 401) { localStorage.removeItem('adminData'); window.location.href = 'login.html'; return null; }
-                return r;
-            }
-            window.loadConversations = function() {
-                conversationsList.innerHTML = '<div class="admin-empty-state"><div style="display:flex;flex-direction:column;gap:8px;width:100%;"><div style="height:40px;border-radius:8px;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;"></div><div style="height:40px;border-radius:8px;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;animation-delay:0.1s;"></div><div style="height:40px;border-radius:8px;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;animation-delay:0.2s;"></div></div></div>';
-                return fetch('/api/admin/chat/conversations?username=' + encodeURIComponent(currentUsername))
-                    .then(function(r) { r = _handle401(r); if (!r) return []; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                    .then(function(convs) {
-                        conversationsData = convs || [];
-                        conversationsList.innerHTML = '';
-                        if (!convs || convs.length === 0) {
-                            conversationsList.innerHTML = '<div class="admin-empty-state">هیچ گفتگویی وجود ندارد</div>';
-                            return;
-                        }
-                        convs.forEach(function(c) {
-                            var div = document.createElement('div');
-                            div.className = 'admin-conversation-item';
-                            if (c.id === currentConversationId) div.classList.add('active');
-                            div.setAttribute('data-conv-id', c.id);
-                            var dateStr = c.lastTimestamp ? new Date(c.lastTimestamp).toLocaleDateString('fa-IR') : '';
-                            var preview = c.lastMessage && c.lastMessage.length > 30 ? c.lastMessage.substring(0, 30) + '...' : (c.lastMessage || 'گفتگوی جدید');
-                            div.innerHTML = '<div class="admin-conv-title" title="' + escapeHtml(c.lastMessage || '') + '">' + escapeHtml(preview) + '</div><div class="admin-conv-date">' + dateStr + '</div>';
-                            div.addEventListener('click', function() {
-                                currentConversationId = c.id;
-                                lastMessageId = null;
-                                loadMessages();
-                                highlightActiveConversation();
-                                if (window.innerWidth <= 768 && sidebar && sidebarToggle) {
-                                    sidebar.classList.add('collapsed');
-                                    sidebarToggle.querySelector('i').className = 'fas fa-comments';
-                                }
-                            });
-                            conversationsList.appendChild(div);
-                        });
-
-                        if (!currentConversationId && conversationsData.length > 0) {
-                            currentConversationId = conversationsData[0].id;
-                            highlightActiveConversation();
-                        }
-                    })
-                    .catch(function() {
-                        conversationsList.innerHTML = '<div class="admin-empty-state" style="color:red;">خطا در بارگذاری</div><div class="admin-empty-state"><button onclick="loadConversations()" style="padding:8px 20px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer;font-size:0.85rem;">تلاش مجدد</button></div>';
-                    });
-            }
-
-            function renderMessageEl(msg) {
-                var wrapper = document.createElement('div');
-                wrapper.className = 'message ' + (msg.role === 'admin' ? 'user' : 'support');
-                var bubble = document.createElement('div');
-                bubble.className = 'bubble';
-                bubble.textContent = msg.text;
-                wrapper.appendChild(bubble);
-                if (msg.attachments && msg.attachments.length > 0) {
-                    renderMessageAttachments(msg, wrapper);
-                }
-                wrapper.setAttribute('data-msg-id', msg.id || '');
-                return wrapper;
-            }
-
-            function prependOlderMessages() {
-                if (isLoadingMore || !hasMoreMessages || !currentConversationId) return;
-                isLoadingMore = true;
-                var sentinel = document.getElementById('loadOlderSentinel');
-                if (sentinel) sentinel.textContent = 'در حال بارگذاری...';
-                var url = '/api/admin/chat/conversation/' + currentConversationId + '?limit=' + PAGE_SIZE;
-                if (oldestLoadedId) url += '&before=' + encodeURIComponent(oldestLoadedId);
-                var prevScrollHeight = chatMessages.scrollHeight;
-                fetch(url)
-                    .then(function(r) { r = _handle401(r); if (!r) return null; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                    .then(function(data) {
-                        if (!data) return;
-                        var msgs = data.messages || [];
-                        hasMoreMessages = data.hasMore !== false && msgs.length === PAGE_SIZE;
-                        if (msgs.length > 0) {
-                            oldestLoadedId = msgs[0].id;
-                            var fragment = document.createDocumentFragment();
-                            msgs.forEach(function(msg) { fragment.appendChild(renderMessageEl(msg)); });
-                            chatMessages.insertBefore(fragment, chatMessages.firstChild);
-                            chatMessages.scrollTop = chatMessages.scrollHeight - prevScrollHeight;
-                            if (!hasMoreMessages && sentinel) sentinel.remove();
-                        } else {
-                            hasMoreMessages = false;
-                            if (sentinel) sentinel.remove();
-                        }
-                        isLoadingMore = false;
-                    })
-                    .catch(function() { isLoadingMore = false; });
-            }
-
-            function setupScrollSentinel() {
-                var old = document.getElementById('loadOlderSentinel');
-                if (old) old.remove();
-                if (!hasMoreMessages) return;
-                var sentinel = document.createElement('div');
-                sentinel.id = 'loadOlderSentinel';
-                sentinel.className = 'admin-empty-state';
-                sentinel.style.cssText = 'cursor:pointer;color:#667eea;padding:0.5rem;margin-bottom:0.5rem;min-height:30px;';
-                sentinel.textContent = 'بارگذاری پیام‌های قدیمی‌تر...';
-                chatMessages.insertBefore(sentinel, chatMessages.firstChild);
-                sentinel.addEventListener('click', prependOlderMessages);
-            }
-
-            window.loadMessages = function() {
-                if (!currentConversationId) {
-                    chatMessages.innerHTML = '<div class="admin-empty-state">یک گفتگو را انتخاب کنید</div>';
-                    return;
-                }
-                chatMessages.innerHTML = '<div class="admin-empty-state">در حال بارگذاری...</div>';
-                oldestLoadedId = null;
-                hasMoreMessages = true;
-                isLoadingMore = false;
-                fetch('/api/admin/chat/conversation/' + currentConversationId + '?limit=' + PAGE_SIZE)
-                    .then(function(r) { r = _handle401(r); if (!r) return; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                    .then(function(data) {
-                        var msgs = data.messages || [];
-                        hasMoreMessages = data.hasMore !== false && msgs.length === PAGE_SIZE;
-                        chatMessages.innerHTML = '';
-                        msgs.forEach(function(msg) { chatMessages.appendChild(renderMessageEl(msg)); });
-                        if (msgs.length > 0) {
-                            oldestLoadedId = msgs[0].id;
-                            lastMessageId = msgs[msgs.length - 1].id;
-                        }
-                        setupScrollSentinel();
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    })
-                    .catch(function() {
-                        chatMessages.innerHTML = '<div class="admin-empty-state" style="color:red;">خطا در بارگذاری پیام‌ها</div><div class="admin-empty-state"><button onclick="loadMessages()" style="padding:8px 20px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer;font-size:0.85rem;">تلاش مجدد</button></div>';
-                    });
-            }
-
-            var pollFailCount = 0;
-
-            function startPolling() {
-                if (conversationPolling) clearInterval(conversationPolling);
-                conversationPolling = setInterval(pollMessages, pollInterval);
-            }
-
-            function adjustPollInterval(hasNewMessages) {
-                if (hasNewMessages) {
-                    pollIdleCount = 0;
-                    pollInterval = pollBaseInterval;
-                } else {
-                    pollIdleCount++;
-                    if (pollIdleCount > pollMaxIdle) {
-                        pollInterval = Math.min(pollInterval + 1000, pollMaxInterval);
-                    }
-                }
-                startPolling();
-            }
-
-            function pollMessages() {
-                if (!currentConversationId) return;
-                fetch('/api/admin/chat/conversation/' + currentConversationId + '?limit=' + PAGE_SIZE)
-                    .then(function(r) { r = _handle401(r); if (!r) return; if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                    .then(function(data) {
-                        pollFailCount = 0;
-                        var msgs = data.messages || [];
-                        var newMessages = [];
-                        if (lastMessageId && msgs.length > 0) {
-                            for (var i = msgs.length - 1; i >= 0; i--) {
-                                if (msgs[i].id === lastMessageId) break;
-                                newMessages.unshift(msgs[i]);
-                            }
-                        } else if (!lastMessageId && msgs.length > 0) {
-                            lastMessageId = msgs[msgs.length - 1].id;
-                        }
-                        var hasNew = newMessages.length > 0;
-                        if (hasNew) {
-                            var wasAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 60;
-                            var emptyState = chatMessages.querySelector('.admin-empty-state');
-                            if (emptyState && !document.getElementById('loadOlderSentinel')) chatMessages.innerHTML = '';
-                            newMessages.forEach(function(msg) { chatMessages.appendChild(renderMessageEl(msg)); });
-                            lastMessageId = msgs[msgs.length - 1].id;
-                            if (wasAtBottom) chatMessages.scrollTop = chatMessages.scrollHeight;
-                        }
-                        adjustPollInterval(hasNew);
-                    })
-                    .catch(function() {
-                        pollFailCount++;
-                        if (pollFailCount >= 5) {
-                            clearInterval(conversationPolling);
-                            setTimeout(function() {
-                                pollFailCount = 0;
-                                pollInterval = pollBaseInterval;
-                                startPolling();
-                            }, 30000);
-                        }
-                    });
-            }
-
-            function sendMessage() {
-                var text = adminMessageInput.value.trim();
-                if (text.length > 5000) {
-                    ChillUtils.showAlert('متن پیام نمی‌تواند بیشتر از 5000 کاراکتر باشد.');
-                    return;
-                }
-                if (!text && adminCurrentAttachments.length === 0) return;
-                if (adminPendingReads > 0) return;
-                if (adminSendBtn && adminSendBtn.disabled) return;
-
-                var totalSize = 0;
-                adminCurrentAttachments.forEach(function(a) { totalSize += (a.dataUrl || '').length; });
-                if (totalSize > 12 * 1024 * 1024) {
-                    ChillUtils.showAlert('حجم فایل‌های پیوست زیاد است. لطفاً تصاویر کم‌حجم‌تری آپلود کنید.', 'error');
-                    return;
-                }
-
-                if (adminSendBtn) { adminSendBtn.disabled = true; }
-                fetch('/api/admin/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        text: text, 
-                        username: currentUsername, 
-                        conversationId: currentConversationId,
-                        attachments: adminCurrentAttachments 
-                    })
-                })
-                .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
-                .then(function(result) {
-                    if (!result.ok || !result.data.text) {
-                        ChillUtils.showAlert(result.data.error || 'خطا در ارسال پیام', 'error');
-                        if (adminSendBtn) { adminSendBtn.disabled = false; }
-                        return;
-                    }
-                    var msg = result.data;
-                    var emptyState = chatMessages.querySelector('.admin-empty-state');
-                    if (emptyState && !document.getElementById('loadOlderSentinel')) chatMessages.innerHTML = '';
-                    chatMessages.appendChild(renderMessageEl(msg));
-                    lastMessageId = msg.id;
-                    adminMessageInput.value = '';
-                    adminCurrentAttachments = [];
-                    if (adminAttachmentPreview) {
-                        adminAttachmentPreview.innerHTML = '';
-                        adminAttachmentPreview.classList.add('hidden');
-                    }
-                    autoResize();
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    if (adminSendBtn) { adminSendBtn.disabled = false; }
-                })
-                .catch(function () {
-                    ChillUtils.showAlert('خطا در ارتباط با سرور', 'error');
-                    if (adminSendBtn) { adminSendBtn.disabled = false; }
-                });
-            }
-
-            if (!document.getElementById('uploadProgressStyles')) {
-                var style = document.createElement('style');
-                style.id = 'uploadProgressStyles';
-                style.textContent = '.attachment-thumbnail.uploading{position:relative}.upload-progress-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.85);border-radius:6px;z-index:5}.upload-progress-ring{filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1))}.upload-progress-ring circle:first-child{stroke:#e5e7eb}.upload-progress-ring .upload-progress-circle{transition:stroke-dashoffset 0.15s ease-out;stroke:#667eea}.upload-progress-text{font-size:0.6rem;font-weight:700;color:#667eea;margin-top:2px}.upload-cancel-btn{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#e74c3c;color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.25);transition:transform 0.15s}.upload-cancel-btn:hover{transform:scale(1.15)}';
-                document.head.appendChild(style);
-            }
-
-            // Show skeleton UI immediately — don't wait for DB
-            chatMessages.innerHTML = '<div class="admin-empty-state"><div class="skeleton-loader" style="display:flex;flex-direction:column;gap:8px;width:100%;"><div class="skeleton-bubble" style="width:60%;height:36px;border-radius:12px;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;"></div><div class="skeleton-bubble" style="width:45%;height:36px;border-radius:12px;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;animation-delay:0.1s;align-self:flex-end;"></div><div class="skeleton-bubble" style="width:70%;height:36px;border-radius:12px;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;animation-delay:0.2s;"></div></div></div>';
-
-            loadConversations();
-
-            startPolling();
-
-            var sidebar = document.querySelector('.admin-sidebar');
-            var sidebarToggle = document.getElementById('sidebarToggle');
-            if (sidebarToggle && sidebar) {
-                sidebarToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('collapsed');
-                    var isCollapsed = sidebar.classList.contains('collapsed');
-                    sidebarToggle.querySelector('i').className = isCollapsed ? 'fas fa-comments' : 'fas fa-chevron-right';
-                    sidebarToggle.title = isCollapsed ? 'باز کردن لیست گفتگوها' : 'بستن لیست گفتگوها';
-                });
-            }
-
-            var sidebarOverlay = document.getElementById('sidebarOverlay');
-            if (sidebarOverlay && sidebar) {
-                sidebarOverlay.addEventListener('click', function() {
-                    sidebar.classList.add('collapsed');
-                    sidebarToggle.querySelector('i').className = 'fas fa-comments';
-                    sidebarToggle.title = 'باز کردن لیست گفتگوها';
-                });
-            }
-
-            if (window.innerWidth <= 768 && sidebar) {
-                sidebar.classList.add('collapsed');
-                sidebarToggle.querySelector('i').className = 'fas fa-comments';
-            }
-
-            adminSendBtn.addEventListener('click', sendMessage);
-            adminMessageInput.addEventListener('input', autoResize);
-
-            if (adminPinAttachment && adminAttachmentFile) {
-                adminPinAttachment.addEventListener('click', function() {
-                    adminAttachmentFile.click();
-                });
-
-                var FILE_MAX_BYTES = 3 * 1024 * 1024;
-
-                function compressImage(file, callback, onError) {
-                    ChillUtils.compressImageFile(file, {
-                        maxSizeMB: 2
-                    }).then(function(compressed) {
-                        callback(compressed);
-                    }).catch(function(e) {
-                        console.error('Compression error:', e);
-                        if (onError) onError();
-                    });
-                }
-
-                var _fileSizeModalCleanup = null;
-                function showFileSizeModal(file, onConfirm, onCancel) {
-                    if (_fileSizeModalCleanup) _fileSizeModalCleanup();
-                    var modal = document.getElementById('fileSizeModal');
-                    var text = document.getElementById('fileSizeModalText');
-                    var confirmBtn = document.getElementById('fileSizeModalConfirm');
-                    var cancelBtn = document.getElementById('fileSizeModalCancel');
-                    var sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-                    text.textContent = 'حجم فایل شما ' + sizeMB + ' مگابایت است. حجم مجاز ' + (FILE_MAX_BYTES / (1024 * 1024)) + ' مگابایت است. مایل هستید حجم فایل خودکار کم شود؟';
-                    modal.style.display = 'flex';
-                    function onConfirmClick() { hideModal(); if (onConfirm) onConfirm(); }
-                    function onCancelClick() { hideModal(); if (onCancel) onCancel(); }
-                    function hideModal() {
-                        modal.style.display = 'none';
-                        confirmBtn.removeEventListener('click', onConfirmClick);
-                        cancelBtn.removeEventListener('click', onCancelClick);
-                        _fileSizeModalCleanup = null;
-                    }
-                    _fileSizeModalCleanup = hideModal;
-                    confirmBtn.addEventListener('click', onConfirmClick);
-                    cancelBtn.addEventListener('click', onCancelClick);
-                }
-
-                adminAttachmentFile.addEventListener('change', function(e) {
-                    var files = Array.from(e.target.files || []);
-                    var remaining = 4 - adminCurrentAttachments.length - adminPendingReads;
-                    if (remaining <= 0) {
-                        showToast('فقط می توان چهار فایل آپلود کرد');
-                        adminAttachmentFile.value = '';
-                        return;
-                    }
-                    var toProcess = files.slice(0, remaining);
-                    var index = 0;
-                    function processNext() {
-                        if (index >= toProcess.length) return;
-                        var file = toProcess[index];
-                        index++;
-                        var isImg = isImageFile(file);
-                        if (isImg) {
-                            compressImage(file, function(compressed) {
-                                addAdminAttachmentFromFile(compressed);
-                                processNext();
-                            }, function() {
-                                if (file.size > 2 * 1024 * 1024) {
-                                    showToast('فرمت تصویر پشتیبانی نمی‌شود. لطفاً تصویر را به JPEG تبدیل کنید.');
-                                } else {
-                                    addAdminAttachmentFromFile(file);
-                                }
-                                processNext();
-                            });
-                        } else {
-                            addAdminAttachmentFromFile(file);
-                            processNext();
-                        }
-                    }
-                    processNext();
-                    adminAttachmentFile.value = '';
-                });
-            }
-
-            if (adminAttachmentPreview) {
-                adminAttachmentPreview.addEventListener('click', function(e) {
-                    var cancelBtn = e.target.closest('[data-cancel-reader]');
-                    if (cancelBtn) {
-                        var attId = cancelBtn.getAttribute('data-cancel-reader');
-                        if (adminActiveReaders[attId]) {
-                            adminActiveReaders[attId].abort();
-                            delete adminActiveReaders[attId];
-                            adminPendingReads--;
-                        }
-                        var thumb = adminAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
-                        if (thumb) thumb.remove();
-                        updateAdminSendButton();
-                    }
-                });
-            }
-
-            window.addEventListener('beforeunload', function () {
-                if (conversationPolling) clearInterval(conversationPolling);
+    function renderCRBtn(){
+        closeReopenBtn.innerHTML='';
+        if(!currentConvId){closeReopenBtn.style.display='none';return}
+        closeReopenBtn.style.display='inline-flex';
+        var btn=document.createElement('button');
+        btn.className=convClosed?'reopen-btn':'close-btn';
+        btn.innerHTML=convClosed?'<i class="fas fa-undo"></i>':'<i class="fas fa-times"></i>';
+        btn.title=convClosed?'بازگشایی':'بستن';
+        btn.addEventListener('click',function(){
+            var action=convClosed?'reopen':'close';
+            aPost('/api/admin/chat/conversation/'+currentConvId+'/'+action,{}).then(function(r){
+                if(r&&r.ok){convClosed=!convClosed;renderCRBtn();var c=convs.find(function(x){return x.id===currentConvId});if(c)c.status=convClosed?'closed':'open';renderList();U.showToast(convClosed?'گفتگو بسته شد':'گفتگو بازگشایی شد','success')}
             });
         });
-    </script>
+        closeReopenBtn.appendChild(btn);
+    }
+
+    convSubject.addEventListener('click',function(){
+        if(!currentConvId)return;var cur=convSubject.textContent||'',n=prompt('موضوع گفتگو:',cur);
+        if(n===null||n===cur)return;
+        aPost('/api/admin/chat/conversation/'+currentConvId+'/subject',{subject:n}).then(function(r){if(r&&r.ok){convSubject.textContent=n;convSubject.title=n||'موضوع تنظیم نشده';U.showToast('موضوع به‌روز شد','success')}});
+    });
+
+    searchToggle.addEventListener('click',function(){searchBar.classList.toggle('open');searchResults.classList.remove('open');if(searchBar.classList.contains('open'))searchInput.focus()});
+    searchClose.addEventListener('click',function(){searchBar.classList.remove('open');searchResults.classList.remove('open');searchInput.value=''});
+    searchBtn.addEventListener('click',doSearch);
+    searchInput.addEventListener('keydown',function(e){if(e.key==='Enter')doSearch()});
+    function doSearch(){
+        var q2=searchInput.value.trim();if(!q2||!currentConvId)return;
+        aGet('/api/chat/search?q='+encodeURIComponent(q2)+'&conversationId='+currentConvId).then(function(data){
+            var results=data?data.results||[]:[];searchResults.innerHTML='';
+            if(!results.length)searchResults.innerHTML='<div style="padding:8px;color:#999">نتیجه‌ای یافت نشد</div>';
+            results.forEach(function(r){var d=document.createElement('div');d.className='si';d.textContent=CC.truncate(r.text,60);d.addEventListener('click',function(){var el=messagesEl.querySelector('[data-msg-id="'+r.id+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='#fffde7';setTimeout(function(){el.style.background=''},2000)}});searchResults.appendChild(d)});
+            searchResults.classList.add('open');
+        });
+    }
+
+    notesToggle.addEventListener('click',function(){notesPanel.classList.toggle('open');notesToggle.classList.toggle('active')});
+    closeNotes.addEventListener('click',function(){notesPanel.classList.remove('open');notesToggle.classList.remove('active')});
+    function loadNotes(){
+        if(!currentConvId)return;
+        aGet('/api/admin/chat/conversation/'+currentConvId+'/notes').then(function(data){
+            var notes=data?data.notes||[]:[];notesBody.innerHTML='';
+            if(!notes.length){notesBody.innerHTML='<div class="empty-state" style="font-size:.8rem">یادداشتی وجود ندارد</div>';return}
+            notes.forEach(function(n){var d=document.createElement('div');d.className='note-item';d.innerHTML='<div class="nt">'+U.escapeHtml(n.text)+'</div><div class="nd">'+CC.formatDate(n.createdAt)+'</div><button class="nx" data-nid="'+n.id+'"><i class="fas fa-trash"></i></button>';notesBody.appendChild(d)});
+        });
+    }
+    addNoteBtn.addEventListener('click',addNote);
+    noteInput.addEventListener('keydown',function(e){if(e.key==='Enter')addNote()});
+    function addNote(){var t=noteInput.value.trim();if(!t||!currentConvId)return;aPost('/api/admin/chat/conversation/'+currentConvId+'/notes',{text:t}).then(function(r){if(r&&r.ok){noteInput.value='';loadNotes();U.showToast('یادداشت اضافه شد','success')}})}
+    notesBody.addEventListener('click',function(e){var b=e.target.closest('.nx');if(!b)return;var nid=b.getAttribute('data-nid');U.showConfirm('یادداشت حذف شود؟',function(){aDel('/api/admin/chat/note/'+nid).then(function(r){if(r&&r.ok){loadNotes();U.showToast('یادداشت حذف شد','success')}})})});
+
+    var cannedData=[];
+    function loadCanned(){aGet('/api/admin/chat/canned').then(function(d){cannedData=d?d.canned||d||[]:[]})}
+    function showCanned(){
+        if(!cannedData.length){loadCanned();return}
+        cannedDropdown.innerHTML='';
+        cannedData.forEach(function(c){var d=document.createElement('div');d.className='ci';d.textContent=c.title||c.text||c;d.addEventListener('click',function(){msgInput.value=c.text||c;cannedDropdown.classList.remove('open');autoResize();msgInput.focus()});cannedDropdown.appendChild(d)});
+        cannedDropdown.classList.toggle('open');
+    }
+    document.addEventListener('click',function(e){if(!e.target.closest('.canned-dropdown')&&!e.target.closest('#msgInput'))cannedDropdown.classList.remove('open')});
+
+    msgInput.addEventListener('input',function(){autoResize();if(currentConvId)CC.handleTyping(currentConvId,adminName)});
+    msgInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}if(e.key==='/'&&!msgInput.value){e.preventDefault();showCanned()}});
+    sendBtn.addEventListener('click',sendMessage);
+
+    sidebarToggle.addEventListener('click',function(){sidebar.classList.toggle('collapsed');var c=sidebar.classList.contains('collapsed');sidebarToggle.querySelector('i').className=c?'fas fa-comments':'fas fa-chevron-right'});
+    sidebarOverlay.addEventListener('click',function(){sidebar.classList.add('collapsed');sidebarToggle.querySelector('i').className='fas fa-comments'});
+    if(window.innerWidth<=768){sidebar.classList.add('collapsed');sidebarToggle.querySelector('i').className='fas fa-comments'}
+
+    messagesEl.addEventListener('scroll',function(){if(messagesEl.scrollTop<50&&hasMore&&!loadingMore&&currentConvId)loadOlder()});
+    if(window.visualViewport){var uvh=function(){document.documentElement.style.setProperty('--app-height',window.visualViewport.height+'px')};window.visualViewport.addEventListener('resize',uvh);uvh()}
+
+    loadConvs();loadCanned();initSocket();
+    window.addEventListener('beforeunload',function(){var s=CC.getSocket();if(s)s.disconnect()});
+});
+</script>
 </body>
 </html>

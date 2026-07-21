@@ -153,6 +153,28 @@ async function createTables(c) {
             transports TEXT,
             created_at TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS chat_read_status (
+            conversationId TEXT NOT NULL,
+            username TEXT NOT NULL,
+            lastReadAt TEXT,
+            PRIMARY KEY (conversationId, username)
+        );
+
+        CREATE TABLE IF NOT EXISTS chat_canned_responses (
+            id TEXT PRIMARY KEY,
+            text TEXT NOT NULL,
+            category TEXT DEFAULT '',
+            sortOrder INTEGER DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS chat_notes (
+            id TEXT PRIMARY KEY,
+            conversationId TEXT NOT NULL,
+            adminUsername TEXT NOT NULL,
+            text TEXT NOT NULL,
+            timestamp TEXT NOT NULL
+        );
     `);
 
     // Performance indexes
@@ -170,7 +192,24 @@ async function createTables(c) {
         CREATE INDEX IF NOT EXISTS idx_chat_conv_timestamp ON chat(conversationId, timestamp);
         CREATE INDEX IF NOT EXISTS idx_chat_conv_ts_desc ON chat(conversationId, timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_conv_username ON chat_conversations(username);
+        CREATE INDEX IF NOT EXISTS idx_read_status_conv ON chat_read_status(conversationId);
+        CREATE INDEX IF NOT EXISTS idx_read_status_user ON chat_read_status(username);
+        CREATE INDEX IF NOT EXISTS idx_notes_conv ON chat_notes(conversationId);
+        CREATE INDEX IF NOT EXISTS idx_canned_category ON chat_canned_responses(category);
     `);
+
+    // Migration: add new columns to existing tables (ignore errors if already exist)
+    const migrations = [
+        'ALTER TABLE chat ADD COLUMN seenAt TEXT',
+        'ALTER TABLE chat_conversations ADD COLUMN assignedTo TEXT',
+        'ALTER TABLE chat_conversations ADD COLUMN closedAt TEXT',
+        "ALTER TABLE chat_conversations ADD COLUMN subject TEXT DEFAULT ''",
+        'ALTER TABLE chat_conversations ADD COLUMN unreadCount INTEGER DEFAULT 0',
+        'ALTER TABLE chat_conversations ADD COLUMN lastMessageAt TEXT'
+    ];
+    for (const m of migrations) {
+        try { await c.execute(m); } catch (_) {}
+    }
 
     try {
         await c.execute('ANALYZE');
@@ -577,7 +616,8 @@ function rowToMessage(row) {
         text: row.text,
         timestamp: row.timestamp,
         conversationId: row.conversationId || null,
-        attachments
+        attachments,
+        seenAt: row.seenAt || null
     };
 }
 
@@ -692,7 +732,12 @@ function rowToConversation(row) {
         id: row.id,
         username: row.username,
         createdAt: row.createdAt,
-        status: row.status || 'open'
+        status: row.status || 'open',
+        assignedTo: row.assignedTo || null,
+        closedAt: row.closedAt || null,
+        subject: row.subject || '',
+        unreadCount: row.unreadCount || 0,
+        lastMessageAt: row.lastMessageAt || null
     };
 }
 
@@ -788,6 +833,220 @@ async function getUserConversationsWithLastMessage(username) {
             lastMessage: textMap[c.id] || null,
             lastTimestamp: tsMap[c.id] || null
         };
+    });
+}
+
+// ==================== CHAT READ STATUS ====================
+async function markConversationRead(conversationId, username) {
+    await client.execute({
+        sql: `INSERT INTO chat_read_status (conversationId, username, lastReadAt)
+              VALUES (?, ?, ?)
+              ON CONFLICT(conversationId, username)
+              DO UPDATE SET lastReadAt = excluded.lastReadAt`,
+        args: [conversationId, username, new Date().toISOString()]
+    });
+}
+
+async function getUnreadCount(conversationId, username) {
+    const r = await client.execute({
+        sql: `SELECT COUNT(*) as cnt FROM chat
+              WHERE conversationId = ? AND role != ? AND timestamp > COALESCE(
+                  (SELECT lastReadAt FROM chat_read_status WHERE conversationId = ? AND username = ?),
+                  '1970-01-01'
+              )`,
+        args: [conversationId, username, conversationId, username]
+    });
+    return r.rows[0] ? r.rows[0].cnt : 0;
+}
+
+async function getAllUnreadCounts(username) {
+    const r = await client.execute({
+        sql: `SELECT c.conversationId, COUNT(*) as cnt
+              FROM chat c
+              LEFT JOIN chat_read_status crs ON c.conversationId = crs.conversationId AND crs.username = ?
+              WHERE c.role != ? AND c.conversationId IS NOT NULL
+                AND c.timestamp > COALESCE(crs.lastReadAt, '1970-01-01')
+              GROUP BY c.conversationId`,
+        args: [username, username]
+    });
+    return Array.from(r.rows || []);
+}
+
+async function markMessageSeen(messageId) {
+    await client.execute({
+        sql: 'UPDATE chat SET seenAt = ? WHERE id = ? AND seenAt IS NULL',
+        args: [new Date().toISOString(), messageId]
+    });
+}
+
+async function markMessagesSeenByConversation(conversationId, role) {
+    await client.execute({
+        sql: 'UPDATE chat SET seenAt = ? WHERE conversationId = ? AND role = ? AND seenAt IS NULL',
+        args: [new Date().toISOString(), conversationId, role]
+    });
+}
+
+// ==================== CHAT CONVERSATION MANAGEMENT ====================
+async function closeConversation(conversationId) {
+    await client.execute({
+        sql: 'UPDATE chat_conversations SET status = ?, closedAt = ? WHERE id = ?',
+        args: ['closed', new Date().toISOString(), conversationId]
+    });
+}
+
+async function reopenConversation(conversationId) {
+    await client.execute({
+        sql: 'UPDATE chat_conversations SET status = ?, closedAt = NULL WHERE id = ?',
+        args: ['open', conversationId]
+    });
+}
+
+async function assignConversation(conversationId, adminUsername) {
+    await client.execute({
+        sql: 'UPDATE chat_conversations SET assignedTo = ? WHERE id = ?',
+        args: [adminUsername, conversationId]
+    });
+}
+
+async function updateConversationSubject(conversationId, subject) {
+    await client.execute({
+        sql: 'UPDATE chat_conversations SET subject = ? WHERE id = ?',
+        args: [subject, conversationId]
+    });
+}
+
+async function updateConversationLastMessageAt(conversationId) {
+    await client.execute({
+        sql: 'UPDATE chat_conversations SET lastMessageAt = ? WHERE id = ?',
+        args: [new Date().toISOString(), conversationId]
+    });
+}
+
+// ==================== CHAT NOTES ====================
+async function addConversationNote(data) {
+    await client.execute({
+        sql: 'INSERT INTO chat_notes (id, conversationId, adminUsername, text, timestamp) VALUES (?, ?, ?, ?, ?)',
+        args: [data.id, data.conversationId, data.adminUsername, data.text, data.timestamp]
+    });
+    return data;
+}
+
+async function getConversationNotes(conversationId) {
+    const r = await client.execute({
+        sql: 'SELECT * FROM chat_notes WHERE conversationId = ? ORDER BY timestamp ASC',
+        args: [conversationId]
+    });
+    return Array.from(r.rows || []).map(row => ({
+        id: row.id,
+        conversationId: row.conversationId,
+        adminUsername: row.adminUsername,
+        text: row.text,
+        timestamp: row.timestamp
+    }));
+}
+
+async function deleteConversationNote(noteId) {
+    await client.execute({ sql: 'DELETE FROM chat_notes WHERE id = ?', args: [noteId] });
+}
+
+// ==================== CHAT CANNED RESPONSES ====================
+async function getCannedResponses(category) {
+    let sql = 'SELECT * FROM chat_canned_responses';
+    const args = [];
+    if (category) {
+        sql += ' WHERE category = ?';
+        args.push(category);
+    }
+    sql += ' ORDER BY sortOrder ASC, id ASC';
+    const r = await client.execute({ sql, args });
+    return Array.from(r.rows || []).map(row => ({
+        id: row.id,
+        text: row.text,
+        category: row.category || '',
+        sortOrder: row.sortOrder || 0
+    }));
+}
+
+async function addCannedResponse(data) {
+    await client.execute({
+        sql: 'INSERT INTO chat_canned_responses (id, text, category, sortOrder) VALUES (?, ?, ?, ?)',
+        args: [data.id, data.text, data.category || '', data.sortOrder || 0]
+    });
+    return data;
+}
+
+async function updateCannedResponse(id, data) {
+    await client.execute({
+        sql: 'UPDATE chat_canned_responses SET text = ?, category = ?, sortOrder = ? WHERE id = ?',
+        args: [data.text, data.category || '', data.sortOrder || 0, id]
+    });
+}
+
+async function deleteCannedResponse(id) {
+    await client.execute({ sql: 'DELETE FROM chat_canned_responses WHERE id = ?', args: [id] });
+}
+
+// ==================== CHAT SEARCH ====================
+async function searchMessages(query, conversationId) {
+    let sql = 'SELECT * FROM chat WHERE text LIKE ?';
+    const args = ['%' + query + '%'];
+    if (conversationId) {
+        sql += ' AND conversationId = ?';
+        args.push(conversationId);
+    }
+    sql += ' ORDER BY timestamp DESC LIMIT 50';
+    const r = await client.execute({ sql, args });
+    return r.rows.map(rowToMessage);
+}
+
+// ==================== UNIFIED CONVERSATIONS LIST (for admin) ====================
+async function getAllConversationsWithLastMessage(assignedTo) {
+    let sql = `
+        SELECT 
+            cc.id, cc.username, cc.createdAt, cc.status, cc.assignedTo, cc.closedAt,
+            cc.subject, cc.unreadCount, cc.lastMessageAt,
+            latest.text as lastMessage, latest.timestamp as lastTimestamp,
+            latest.role as lastMessageRole, latest.id as lastMessageId,
+            mc.messageCount
+        FROM chat_conversations cc
+        LEFT JOIN (
+            SELECT conversationId, text, timestamp, role, id,
+                   ROW_NUMBER() OVER (PARTITION BY conversationId ORDER BY timestamp DESC) as rn
+            FROM chat
+        ) latest ON latest.conversationId = cc.id AND latest.rn = 1
+        LEFT JOIN (
+            SELECT conversationId, COUNT(*) as messageCount FROM chat GROUP BY conversationId
+        ) mc ON mc.conversationId = cc.id
+    `;
+    const args = [];
+    if (assignedTo) {
+        sql += ' WHERE cc.assignedTo = ?';
+        args.push(assignedTo);
+    }
+    sql += ' ORDER BY COALESCE(latest.timestamp, cc.createdAt) DESC';
+    const r = await client.execute({ sql, args });
+    return Array.from(r.rows || []).map(row => ({
+        id: row.id,
+        username: row.username,
+        createdAt: row.createdAt,
+        status: row.status || 'open',
+        assignedTo: row.assignedTo || null,
+        closedAt: row.closedAt || null,
+        subject: row.subject || '',
+        unreadCount: row.unreadCount || 0,
+        lastMessageAt: row.lastMessageAt || null,
+        lastMessage: row.lastMessage || null,
+        lastTimestamp: row.lastTimestamp || null,
+        lastMessageRole: row.lastMessageRole || null,
+        lastMessageId: row.lastMessageId || null,
+        messageCount: row.messageCount || 0
+    }));
+}
+
+async function updateConversationUnreadCount(conversationId, count) {
+    await client.execute({
+        sql: 'UPDATE chat_conversations SET unreadCount = ? WHERE id = ?',
+        args: [count, conversationId]
     });
 }
 
@@ -961,6 +1220,26 @@ module.exports = {
     getUserConversations,
     getUserConversationsWithLastMessage,
     getLastMessageAndCount,
+    markConversationRead,
+    getUnreadCount,
+    getAllUnreadCounts,
+    markMessageSeen,
+    markMessagesSeenByConversation,
+    closeConversation,
+    reopenConversation,
+    assignConversation,
+    updateConversationSubject,
+    updateConversationLastMessageAt,
+    addConversationNote,
+    getConversationNotes,
+    deleteConversationNote,
+    getCannedResponses,
+    addCannedResponse,
+    updateCannedResponse,
+    deleteCannedResponse,
+    searchMessages,
+    getAllConversationsWithLastMessage,
+    updateConversationUnreadCount,
     trackVisit,
     getVisitCount,
     getAllVisits,

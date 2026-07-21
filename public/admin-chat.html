@@ -4,145 +4,117 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="libs/utils.js"></script>
-    <script src="libs/notie.min.js"></script>
-    <script>
-        (function(){ if (!checkAdminAuth()) return; })();
-    </script>
+    <script src="libs/chat-core.js"></script>
+    <script>if (!checkAdminAuth()) throw new Error('Auth required');</script>
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="fonts/all.css">
     <link rel="stylesheet" href="libs/notie.min.css">
     <style>
-        .customer-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .customer-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1rem;
-            background: #fff;
-            border-radius: 12px;
-            border: 1px solid #e9ecef;
-            text-decoration: none;
-            color: inherit;
-            transition: background 0.2s;
-        }
-        .customer-item:hover {
-            background: #f5f7ff;
-        }
-        .avatar {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: #667eea;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1.1rem;
-            flex-shrink: 0;
-        }
-        .customer-info {
-            flex: 1;
-            min-width: 0;
-        }
-        .customer-name {
-            font-weight: 700;
-            font-size: 0.95rem;
-            margin-bottom: 0.15rem;
-        }
-        .customer-last-msg {
-            font-size: 0.85rem;
-            color: #666;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            direction: rtl;
-        }
-        .badge {
-            background: #e74c3c;
-            color: white;
-            font-size: 0.7rem;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 10px;
-            min-width: 22px;
-            text-align: center;
-        }
-        .empty-state {
-            text-align: center;
-            color: #999;
-            padding: 3rem 1rem;
-        }
+        .stats-bar{display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap}
+        .stat-card{flex:1;min-width:80px;background:#fff;border-radius:10px;padding:.75rem;text-align:center;border:1px solid #e9ecef}
+        .stat-num{font-size:1.4rem;font-weight:700;color:#667eea}.stat-lbl{font-size:.75rem;color:#888}
+        .filter-tabs{display:flex;gap:.5rem;margin-bottom:.75rem}
+        .filter-tab{flex:1;padding:.5rem;border:1px solid #e9ecef;border-radius:8px;background:#fff;text-align:center;cursor:pointer;font-size:.85rem;transition:.2s}
+        .filter-tab.active{background:#667eea;color:#fff;border-color:#667eea}
+        .search-box{width:100%;padding:.6rem 1rem;border:1px solid #e9ecef;border-radius:10px;font-size:.9rem;margin-bottom:.75rem;outline:none}
+        .search-box:focus{border-color:#667eea}
+        .customer-list{display:flex;flex-direction:column;gap:.5rem}
+        .customer-item{display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;background:#fff;border-radius:12px;border:1px solid #e9ecef;text-decoration:none;color:inherit;transition:.2s}
+        .customer-item:hover{background:#f5f7ff}
+        .avatar{width:42px;height:42px;border-radius:50%;background:#667eea;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0}
+        .customer-info{flex:1;min-width:0}
+        .customer-name{font-weight:700;font-size:.9rem;margin-bottom:.1rem}
+        .customer-last{font-size:.8rem;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .customer-meta{display:flex;flex-direction:column;align-items:flex-end;gap:.3rem;flex-shrink:0}
+        .customer-time{font-size:.7rem;color:#999}
+        .badge{background:#e74c3c;color:#fff;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:10px;min-width:22px;text-align:center}
+        .status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+        .status-open{background:#27ae60}.status-closed{background:#95a5a6}
+        .empty-state{text-align:center;color:#999;padding:3rem 1rem}
+        .back-link{display:inline-flex;align-items:center;gap:.4rem;text-decoration:none;color:#667eea;font-size:.9rem;margin-bottom:.75rem}
     </style>
 </head>
 <body>
-    <div class="container">
-        <main>
-            <div style="max-width:480px;margin:0 auto;display:flex;justify-content:flex-start;margin-bottom:0.5rem;">
-                <a class="btn btn-ghost back-link" href="admin.html">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
-                    <span>بازگشت</span>
-                </a>
+<div class="container">
+    <main>
+        <div style="max-width:500px;margin:0 auto">
+            <a class="back-link" href="admin.html">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                بازگشت
+            </a>
+            <div class="stats-bar" id="statsBar">
+                <div class="stat-card"><div class="stat-num" id="statTotal">-</div><div class="stat-lbl">کل گفتگوها</div></div>
+                <div class="stat-card"><div class="stat-num" id="statOpen">-</div><div class="stat-lbl">باز</div></div>
+                <div class="stat-card"><div class="stat-num" id="statUnread">-</div><div class="stat-lbl">خوانده نشده</div></div>
             </div>
-            <div class="form-card">
-                <div class="customer-list" id="customersList">
-                    <p class="empty-state">در حال بارگذاری...</p>
-                </div>
+            <input type="text" class="search-box" id="searchBox" placeholder="جستجوی نام کاربری...">
+            <div class="filter-tabs">
+                <div class="filter-tab active" data-filter="all">همه</div>
+                <div class="filter-tab" data-filter="open">باز</div>
+                <div class="filter-tab" data-filter="closed">بسته</div>
             </div>
-        </main>
-    </div>
-    <script src="libs/browser-image-compression.js"></script>
-    <script src="libs/utils.js"></script>
-    <script src="app.js"></script>
-    <script>
-        (function(){ if (!checkAdminAuth()) return; })();
-        document.addEventListener('DOMContentLoaded', function() {
-            var listEl = document.getElementById('customersList');
+            <div class="customer-list" id="customersList"><p class="empty-state">در حال بارگذاری...</p></div>
+        </div>
+    </main>
+</div>
+<script>
+(function(){
+    var allConvs=[], activeFilter='all', searchQuery='';
+    var listEl=document.getElementById('customersList'), searchBox=document.getElementById('searchBox');
+    var statTotal=document.getElementById('statTotal'), statOpen=document.getElementById('statOpen'), statUnread=document.getElementById('statUnread');
+    function getToken(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');return d&&d.token?d.token:null;}catch(e){return null;}}
+    function headers(){return{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'};}
+    function timeAgo(ts){if(!ts)return'';var s=Math.floor((Date.now()-new Date(ts).getTime())/1000);if(s<60)return'اکنون';if(s<3600)return Math.floor(s/60)+' دقیقه';if(s<86400)return Math.floor(s/3600)+' ساعت';return Math.floor(s/86400)+' روز';}
 
-            window.loadCustomers = function() {
-                listEl.innerHTML = '<p class="empty-state">در حال بارگذاری...</p>';
-                fetch('/api/admin/chat/customers')
-                    .then(function(r) {
-                        if (r.status === 401) { localStorage.removeItem('adminData'); window.location.href = 'login.html'; return; }
-                        if (!r.ok) throw new Error('HTTP ' + r.status);
-                        return r.json();
-                    })
-                    .then(function(customers) {
-                        listEl.innerHTML = '';
-                        if (!customers || customers.length === 0) {
-                            listEl.innerHTML = '<p class="empty-state">هیچ مشتری پیامی ندارد</p>';
-                            return;
-                        }
-                        customers.forEach(function(c) {
-                            var a = document.createElement('a');
-                            a.href = 'admin-chat-conversation.html?username=' + encodeURIComponent(c.username);
-                            a.className = 'customer-item';
-                            var initial = (c.username || '?')[0];
-                            a.innerHTML =
-                                '<div class="avatar">' + escapeHtml(initial) + '</div>' +
-                                '<div class="customer-info">' +
-                                    '<div class="customer-name">' + escapeHtml(c.username || 'مهمان') + '</div>' +
-                                    '<div class="customer-last-msg">' + escapeHtml(c.lastMessage || '') + '</div>' +
-                                '</div>' +
-                                (c.unread > 0 ? '<span class="badge">' + parseInt(c.unread, 10) + '</span>' : '');
-                            listEl.appendChild(a);
-                        });
-                    })
-                    .catch(function() {
-                        listEl.innerHTML = '<p class="empty-state" style="color:red;">خطا در بارگذاری</p><p class="empty-state"><button onclick="loadCustomers()" style="padding:8px 20px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer;font-size:0.9rem;">تلاش مجدد</button></p>';
-                    });
-            };
-
-            loadCustomers();
+    document.querySelectorAll('.filter-tab').forEach(function(tab){
+        tab.addEventListener('click',function(){
+            document.querySelector('.filter-tab.active').classList.remove('active');
+            tab.classList.add('active');activeFilter=tab.dataset.filter;render();
         });
-    </script>
+    });
+    searchBox.addEventListener('input',function(){searchQuery=searchBox.value.trim().toLowerCase();render();});
+
+    function render(){
+        var filtered=allConvs.filter(function(c){
+            if(activeFilter==='open'&&!c.isOpen)return false;
+            if(activeFilter==='closed'&&c.isOpen)return false;
+            if(searchQuery&&!(c.username||'').toLowerCase().includes(searchQuery))return false;
+            return true;
+        });
+        var totalOpen=0,totalUnread=0;
+        allConvs.forEach(function(c){if(c.isOpen)totalOpen++;totalUnread+=(c.unread||0);});
+        statTotal.textContent=allConvs.length;statOpen.textContent=totalOpen;statUnread.textContent=totalUnread;
+
+        if(!filtered.length){
+            listEl.innerHTML='<p class="empty-state">'+(allConvs.length?'نتیجه‌ای یافت نشد':'هیچ گفتگویی وجود ندارد')+'</p>';return;
+        }
+        var html='';
+        filtered.forEach(function(c){
+            var initial=escapeHtml((c.username||'?')[0]);
+            var name=escapeHtml(c.username||'مهمان');
+            var msg=escapeHtml(c.lastMessage||'');
+            var time=timeAgo(c.lastMessageAt||c.updatedAt);
+            var badge=(c.unread>0)?'<span class="badge">'+c.unread+'</span>':'';
+            var dot=c.isOpen?'status-open':'status-closed';
+            var href='admin-chat-conversation.html?username='+encodeURIComponent(c.username)+(c.conversationId?'&conv='+encodeURIComponent(c.conversationId):'');
+            html+='<a class="customer-item" href="'+href+'">'+
+                '<div class="avatar">'+initial+'</div>'+
+                '<div class="customer-info"><div class="customer-name">'+name+'</div><div class="customer-last">'+msg+'</div></div>'+
+                '<div class="customer-meta"><span class="customer-time">'+time+'</span><span class="status-dot '+dot+'"></span>'+badge+'</div></a>';
+        });
+        listEl.innerHTML=html;
+    }
+
+    function load(){
+        fetch('/api/admin/chat/conversations',{headers:headers()})
+        .then(function(r){if(r.status===401){localStorage.removeItem('adminData');window.location.href='login.html';return;}if(!r.ok)throw new Error(r.status);return r.json();})
+        .then(function(data){allConvs=data.conversations||data||[];render();})
+        .catch(function(){listEl.innerHTML='<p class="empty-state" style="color:red">خطا در بارگذاری</p><p class="empty-state"><button onclick="window._load()" style="padding:6px 18px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer">تلاش مجدد</button></p>';});
+    }
+    window._load=load;
+    load();
+    setInterval(load,30000);
+})();
+</script>
 </body>
 </html>
