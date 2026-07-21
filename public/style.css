@@ -609,6 +609,12 @@ main {
     display: none;
 }
 
+.compress-progress{display:none;padding:6px 1rem;background:#fff;border-top:1px solid #e9ecef;font-size:.8rem;color:#667eea;align-items:center;gap:8px}
+.compress-progress.active{display:flex}
+.compress-bar{flex:1;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden}
+.compress-bar-fill{height:100%;background:#667eea;border-radius:2px;transition:width .2s;width:0}
+.compress-text{white-space:nowrap;font-size:.75rem}
+
 .attachment-thumbnail {
     position: relative;
     width: 40px;
