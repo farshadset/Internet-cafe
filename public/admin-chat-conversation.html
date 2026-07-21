@@ -326,7 +326,7 @@ document.addEventListener('DOMContentLoaded',function(){
     function autoResize(){msgInput.style.height='auto';msgInput.style.height=Math.min(msgInput.scrollHeight,300)+'px';charCount.textContent=msgInput.value.length+'/5000';updateBtn()}
     function updateBtn(){sendBtn.disabled=(!msgInput.value.trim()&&!curAtts.length)||Object.keys(pendingReads).length>0}
 
-    function showCompressProgress(pct){compressProgress.classList.add('active');compressBarFill.style.width=Math.min(pct,100)+'%';compressText.textContent='در حال فشرده‌سازی... '+Math.round(Math.min(pct,100))+'%'}
+    function showCompressProgress(){compressProgress.classList.add('active');compressBarFill.style.width='30%';compressText.textContent='در حال فشرده‌سازی تصویر...';setTimeout(function(){compressBarFill.style.width='60%'},500);setTimeout(function(){compressBarFill.style.width='85%'},1500)}
     function hideCompressProgress(){compressProgress.classList.remove('active');compressBarFill.style.width='0%'}
 
     function addAtt(file){
@@ -336,16 +336,8 @@ document.addEventListener('DOMContentLoaded',function(){
             if(v.compressible&&typeof U.showConfirm==='function'){
                 U.showConfirm(v.error+'\nآیا می‌خواهید حجم تصویر بصورت خودکار کاهش یابد؟',function(ok){
                     if(ok){
-                        showCompressProgress(10);
-                        if(typeof window.imageCompression==='function'){
-                            window.imageCompression(file,{
-                                maxSizeMB:3,maxWidthOrHeight:1920,useWebWorker:true,maxIteration:10,
-                                exifOrientation:1,fileType:'image/jpeg',initialQuality:0.82,
-                               onProgress:function(p){showCompressProgress(p)}
-                            }).then(function(c){showCompressProgress(100);setTimeout(hideCompressProgress,300);addAtt(c)}).catch(function(){hideCompressProgress();U.showToast('خطا در فشرده‌سازی')});
-                        }else{
-                            CC.compressOversizedImage(file).then(function(c){hideCompressProgress();addAtt(c)}).catch(function(){hideCompressProgress();U.showToast('خطا در فشرده‌سازی')});
-                        }
+                        showCompressProgress();
+                        CC.compressOversizedImage(file).then(function(c){compressBarFill.style.width='100%';compressText.textContent='فشرده‌سازی کامل شد';setTimeout(hideCompressProgress,300);addAtt(c)}).catch(function(){hideCompressProgress();U.showToast('خطا در فشرده‌سازی')});
                     }
                 });
             }else{U.showToast(v.error)}
