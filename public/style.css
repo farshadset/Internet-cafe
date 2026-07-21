@@ -1156,16 +1156,6 @@ input[inputmode="numeric"] {
     position: relative;
 }
 
-.modal.active .close-btn {
-    font-size: 2rem;
-    margin-left: 1rem;
-    margin-top: 0.5rem;
-    flex-shrink: 0;
-    float: none;
-    align-self: flex-start;
-    padding: 0.5rem;
-}
-
 .modal.active .modal-content > h2 {
     margin: 0;
     padding: 1rem;
