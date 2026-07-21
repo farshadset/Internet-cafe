@@ -118,12 +118,12 @@ var ChillUtils = (function() {
                 text: message,
                 submitText: 'بله',
                 cancelText: 'خیر',
-                submitCallback: function() { notie.alertClose(); if (onConfirm) onConfirm(); }
+                submitCallback: function() { notie.alertClose(); if (onConfirm) onConfirm(true); }
             });
             return;
         }
         if (confirm(message)) {
-            if (onConfirm) onConfirm();
+            if (onConfirm) onConfirm(true);
         }
     }
 

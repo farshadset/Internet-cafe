@@ -526,9 +526,9 @@
         var style = document.createElement('style');
         style.id = 'chat-core-styles';
         style.textContent = `
-            .att-thumb{position:relative;display:inline-block;border-radius:8px;overflow:hidden;background:#f5f5f5;transition:transform 0.15s}
+            .att-thumb{position:relative;display:inline-block;border-radius:8px;overflow:hidden;background:#f5f5f5;transition:transform 0.15s;width:70px;height:70px;flex-shrink:0}
             .att-thumb:hover{transform:scale(1.03)}
-            .att-thumb img{width:100%;height:100%;object-fit:cover;border-radius:8px}
+            .att-thumb img{width:100%;height:100%;object-fit:cover;border-radius:8px;display:block}
             .att-thumb-file{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700}
             .att-thumb-file i{font-size:18px;margin-bottom:2px}
             .att-thumb-file span{font-size:0.5rem}
