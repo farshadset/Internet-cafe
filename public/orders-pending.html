@@ -21,7 +21,7 @@
             <div class="form-card" id="pendingOrders">
                 <p>بارگذاری...</p>
             </div>
-            <a href="profile.html" class="btn-next">بازگشت</a>
+            <a href="/profile" class="btn-next">بازگشت</a>
         </main>
     </div>
 
@@ -126,7 +126,7 @@ function renderOrders(orders) {
                          } else if (priceStatus === 'accepted') {
                              priceSection += '<strong style="color:#4caf50;">قیمت تایید شده: </strong><span>' + formatPrice(adminPrice || proposedPrice) + ' تومان</span><br>';
                             if (!order.paid) {
-                                priceSection += '<a href="order-detail.html?code=' + encodeURIComponent(order.trackingCode) + '" class="btn-confirm" style="background:#27ae60;color:white;border:none;padding:0.3rem 1rem;border-radius:4px;text-decoration:none;font-size:0.85rem;margin-top:0.5rem;display:inline-block;">پرداخت</a>';
+                                priceSection += '<a href="/order-detail?code=' + encodeURIComponent(order.trackingCode) + '" class="btn-confirm" style="background:#27ae60;color:white;border:none;padding:0.3rem 1rem;border-radius:4px;text-decoration:none;font-size:0.85rem;margin-top:0.5rem;display:inline-block;">پرداخت</a>';
                             }
                         }
                         
@@ -143,7 +143,7 @@ function renderOrders(orders) {
                         priceSection +
                         (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + escapeHtml(order.result) + '</span></div>' : '') +
                         '<div class="order-actions" style="text-align:center;">' +
-                        '<a href="order-detail.html?code=' + encodeURIComponent(order.trackingCode) + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
+                        '<a href="/order-detail?code=' + encodeURIComponent(order.trackingCode) + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
                     container.appendChild(div);
                 });
 

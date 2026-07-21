@@ -1,12 +1,12 @@
-const CACHE_NAME = 'chillinet-v2';
-const STATIC_CACHE = 'chillinet-static-v2';
-const DYNAMIC_CACHE = 'chillinet-dynamic-v2';
-const IMAGE_CACHE = 'chillinet-images-v2';
+const CACHE_NAME = 'chillinet-v3';
+const STATIC_CACHE = 'chillinet-static-v3';
+const DYNAMIC_CACHE = 'chillinet-dynamic-v3';
+const IMAGE_CACHE = 'chillinet-images-v3';
 
 const PRECACHE_URLS = [
     '/',
-    '/index.html',
-    '/login.html',
+    '/index',
+    '/login',
     '/style.css',
     '/libs/utils.js',
     '/libs/notie.min.js',
@@ -112,7 +112,7 @@ self.addEventListener('fetch', function(event) {
     }
 
     // Stale-while-revalidate for HTML pages
-    if (url.pathname.endsWith('.html') || url.pathname === '/') {
+    if (url.pathname === '/' || /^\/[\w-]+\/?$/.test(url.pathname)) {
         event.respondWith(
             caches.open(DYNAMIC_CACHE).then(function(cache) {
                 return cache.match(event.request).then(function(cached) {

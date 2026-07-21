@@ -21,7 +21,7 @@
             <div class="form-card" id="completedOrders">
                 <p>بارگذاری...</p>
             </div>
-            <a href="profile.html" class="btn-next">بازگشت</a>
+            <a href="/profile" class="btn-next">بازگشت</a>
         </main>
     </div>
     <script src="libs/browser-image-compression.js"></script>
@@ -78,7 +78,7 @@
                             '</div>' +
                             (order.result ? '<div style="margin-bottom:0.5rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + escapeHtml(order.result) + '</span></div>' : '') +
                             '<div class="order-actions">' +
-                            '<a href="order-detail.html?code=' + encodeURIComponent(order.trackingCode) + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
+                            '<a href="/order-detail?code=' + encodeURIComponent(order.trackingCode) + '" class="btn-view-detail">جزئیات سفارش</a>' + '</div>';
                         container.appendChild(div);
                     });
 

@@ -238,7 +238,7 @@ footer li a:hover{color:var(--firouzeh)}
     </a>
     <div class="header-cta">
       <a class="btn btn-ghost" href="#track">پیگیری سفارش</a>
-      <a class="btn btn-primary" href="form.html">ثبت درخواست</a>
+      <a class="btn btn-primary" href="/form">ثبت درخواست</a>
       <button class="menu-toggle" aria-label="باز و بسته کردن منو" aria-expanded="false" onclick="toggleMobile(this)">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
@@ -683,7 +683,7 @@ function resolveService(q){
 // redirect to the form page
 function goToForm(service, category){
   var cat = category || CATEGORY_OF[service] || 'درخواست سفارشی';
-  window.location.href = 'form.html?service=' + encodeURIComponent(service) + '&cat=' + encodeURIComponent(cat);
+  window.location.href = '/form?service=' + encodeURIComponent(service) + '&cat=' + encodeURIComponent(cat);
 }
 
 // --- wire every service link to the form page --------------------------

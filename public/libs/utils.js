@@ -149,16 +149,16 @@ var ChillUtils = (function() {
     function checkAdminAuth() {
         var d = null;
         try { d = JSON.parse(localStorage.getItem('adminData') || 'null'); } catch(e) {}
-        if (!d || !d.token) { window.location.href = 'login.html'; return false; }
-        if (isTokenExpired(d.token)) { localStorage.removeItem('adminData'); window.location.href = 'login.html'; return false; }
+        if (!d || !d.token) { window.location.href = '/login'; return false; }
+        if (isTokenExpired(d.token)) { localStorage.removeItem('adminData'); window.location.href = '/login'; return false; }
         return true;
     }
 
     function checkUserAuth() {
         var d = null;
         try { d = JSON.parse(localStorage.getItem('userData') || 'null'); } catch(e) {}
-        if (!d || !d.token) { window.location.href = 'login.html'; return false; }
-        if (isTokenExpired(d.token)) { localStorage.removeItem('userData'); window.location.href = 'login.html'; return false; }
+        if (!d || !d.token) { window.location.href = '/login'; return false; }
+        if (isTokenExpired(d.token)) { localStorage.removeItem('userData'); window.location.href = '/login'; return false; }
         return true;
     }
 
