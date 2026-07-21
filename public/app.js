@@ -1897,7 +1897,7 @@ document.addEventListener('DOMContentLoaded', () => {
             inlineAttachmentFile = document.createElement('input');
             inlineAttachmentFile.type = 'file';
             inlineAttachmentFile.id = 'inlineAttachmentFile';
-            inlineAttachmentFile.accept = 'image/*,.pdf';
+            inlineAttachmentFile.accept = 'image/*,.heic,.heif,.pdf';
             inlineAttachmentFile.style.display = 'none';
             inlineAttachmentFile.multiple = true;
             document.body.appendChild(inlineAttachmentFile);
@@ -2343,21 +2343,44 @@ if (pinAttachment && attachmentFile) {
                   return;
               }
 
-if (isImageFile(file)) {
-                   const reader = new FileReader();
-                   isReadingAttachment = true;
-                   reader.onload = function(event) {
-                       const attachment = createAttachment(file, event.target.result);
-                       currentAttachments.push(attachment);
-                       window.currentAttachments = [...currentAttachments];
-                       renderAttachmentPreview(attachment, event.target.result);
-                       isReadingAttachment = false;
-                   };
-                   reader.onerror = function() {
-                       isReadingAttachment = false;
-                   };
-                   reader.readAsDataURL(file);
-               } else if (file.type === 'application/pdf') {
+              if (isImageFile(file)) {
+                  isReadingAttachment = true;
+                  var processFile;
+                  if (typeof ChillUtils !== 'undefined' && typeof ChillUtils.compressImageFile === 'function') {
+                      processFile = ChillUtils.compressImageFile(file, { maxSizeMB: 5 });
+                  } else if (typeof ChatCore !== 'undefined' && typeof ChatCore.compressImage === 'function') {
+                      processFile = ChatCore.compressImage(file, 5);
+                  } else {
+                      processFile = Promise.resolve(file);
+                  }
+                  processFile.then(function(compressedFile) {
+                      var reader = new FileReader();
+                      reader.onload = function(event) {
+                          var attachment = createAttachment(compressedFile, event.target.result);
+                          currentAttachments.push(attachment);
+                          window.currentAttachments = [...currentAttachments];
+                          renderAttachmentPreview(attachment, event.target.result);
+                          isReadingAttachment = false;
+                      };
+                      reader.onerror = function() {
+                          isReadingAttachment = false;
+                      };
+                      reader.readAsDataURL(compressedFile);
+                  }).catch(function() {
+                      var reader = new FileReader();
+                      reader.onload = function(event) {
+                          var attachment = createAttachment(file, event.target.result);
+                          currentAttachments.push(attachment);
+                          window.currentAttachments = [...currentAttachments];
+                          renderAttachmentPreview(attachment, event.target.result);
+                          isReadingAttachment = false;
+                      };
+                      reader.onerror = function() {
+                          isReadingAttachment = false;
+                      };
+                      reader.readAsDataURL(file);
+                  });
+              } else if (file.type === 'application/pdf') {
                    const reader = new FileReader();
                    isReadingAttachment = true;
                    reader.onload = function(event) {
