@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var token=adminData?adminData.token:null,adminName=(adminData&&adminData.username)||'admin';
     var convs=[],currentConvId=null,lastMsgId=null,oldestId=null,hasMore=true,loadingMore=false;
     var curAtts=[],pendingReads={},activeReaders={};
-    var PAGE=30,typingTimer=null,convClosed=false;
+    var PAGE=20,typingTimer=null,convClosed=false,scrollObserver=null;
     CC.injectChatStyles();
 
     function hdr(extra){var h=extra||{};if(token)h['Authorization']='Bearer '+token;return h}
@@ -244,6 +244,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if(!currentConvId){messagesEl.innerHTML='<div class="empty-state">یک گفتگو را انتخاب کنید</div>';return}
         messagesEl.innerHTML='<div class="empty-state">در حال بارگذاری...</div>';
         oldestId=null;hasMore=true;loadingMore=false;
+        if(scrollObserver){scrollObserver.disconnect();scrollObserver=null}
         aGet('/api/admin/chat/conversation/'+currentConvId+'?limit='+PAGE).then(function(data){
             var msgs=data?data.messages||[]:[];
             hasMore=data?data.hasMore!==false&&msgs.length===PAGE:false;
@@ -261,8 +262,14 @@ document.addEventListener('DOMContentLoaded',function(){
         aGet('/api/admin/chat/conversation/'+currentConvId+'?limit='+PAGE+'&before='+encodeURIComponent(oldestId)).then(function(data){
             if(!data)return;var msgs=data.messages||[];
             hasMore=data.hasMore!==false&&msgs.length===PAGE;
-            if(msgs.length){oldestId=msgs[0].id;var f=document.createDocumentFragment();msgs.forEach(function(m){f.appendChild(CC.renderMessage(m,{showSeen:true}))});messagesEl.insertBefore(f,messagesEl.firstChild);messagesEl.scrollTop=messagesEl.scrollHeight-prevH;if(!hasMore&&s)s.remove()}
-            else{hasMore=false;if(s)s.remove()}
+            if(msgs.length){
+                oldestId=msgs[0].id;
+                var f=document.createDocumentFragment();
+                msgs.forEach(function(m){f.appendChild(CC.renderMessage(m,{showSeen:true}))});
+                messagesEl.insertBefore(f,messagesEl.firstChild);
+                requestAnimationFrame(function(){messagesEl.scrollTop=messagesEl.scrollHeight-prevH});
+                if(!hasMore&&s)s.remove();
+            } else {hasMore=false;if(s)s.remove()}
             loadingMore=false;
         }).catch(function(){loadingMore=false});
     }
@@ -273,9 +280,14 @@ document.addEventListener('DOMContentLoaded',function(){
         s.style.cssText='cursor:pointer;color:#667eea;padding:.5rem;font-size:.85rem';
         s.textContent='بارگذاری پیام‌های قدیمی‌تر';s.addEventListener('click',loadOlder);
         messagesEl.insertBefore(s,messagesEl.firstChild);
+        if(scrollObserver)scrollObserver.disconnect();
+        scrollObserver=new IntersectionObserver(function(entries){
+            if(entries[0].isIntersecting&&!loadingMore&&hasMore)loadOlder();
+        },{root:messagesEl,threshold:0});
+        scrollObserver.observe(s);
     }
 
-    function autoScroll(){var d=messagesEl.scrollHeight-messagesEl.scrollTop-messagesEl.clientHeight;if(d<80)messagesEl.scrollTop=messagesEl.scrollHeight}
+    function autoScroll(){requestAnimationFrame(function(){messagesEl.scrollTop=messagesEl.scrollHeight})}
     function markRead(){if(!currentConvId)return;aPost('/api/admin/chat/read',{conversationId:currentConvId}).catch(function(){});var c=convs.find(function(x){return x.id===currentConvId});if(c){c.unreadCount=0;renderList()}}
 
     function sendMessage(){
@@ -382,14 +394,13 @@ document.addEventListener('DOMContentLoaded',function(){
     sidebarOverlay.addEventListener('click',function(){sidebar.classList.add('collapsed');sidebarToggle.querySelector('i').className='fas fa-comments'});
     if(window.innerWidth<=768){sidebar.classList.add('collapsed');sidebarToggle.querySelector('i').className='fas fa-comments'}
 
-    messagesEl.addEventListener('scroll',function(){if(messagesEl.scrollTop<50&&hasMore&&!loadingMore&&currentConvId)loadOlder()});
     if(window.visualViewport){var uvh=function(){document.documentElement.style.setProperty('--app-height',window.visualViewport.height+'px')};window.visualViewport.addEventListener('resize',uvh);uvh()}
 
     function updateSidebarTitle(){var el=q('#sidebarTitle');if(targetUser)el.textContent='گفتگوهای '+targetUser;else el.textContent='گفتگوها'}
     updateSidebarTitle();
 
     loadConvs();loadCanned();initSocket();
-    window.addEventListener('beforeunload',function(){var s=CC.getSocket();if(s)s.disconnect()});
+    window.addEventListener('beforeunload',function(){if(scrollObserver)scrollObserver.disconnect();var s=CC.getSocket();if(s)s.disconnect()});
 });
 </script>
 </body>
