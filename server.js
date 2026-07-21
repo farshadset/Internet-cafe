@@ -504,12 +504,18 @@ app.use(function(req, res, next) {
 // Clean URLs: rewrite /login to /login.html
 app.use(function cleanUrls(req, res, next) {
     var url = req.url;
-    // Skip API, uploads, sockets, static files with extensions, admin paths with query
+    // Skip API, uploads, sockets
     if (url.indexOf('/api/') === 0 || url.indexOf('/uploads/') === 0 || url.indexOf('/socket.io/') === 0) return next();
     // If URL has .html extension, redirect to clean URL
     if (/\.html(\?|$)/.test(url)) {
         var clean = url.replace(/\.html(\?|$)/, '$1');
+        // /index.html → / (root)
+        if (clean === '/index') clean = '/';
         return res.redirect(301, clean);
+    }
+    // /index → / (root)
+    if (url === '/index' || url === '/index/') {
+        return res.redirect(301, '/');
     }
     // If URL has no extension and no trailing slash, try serving the .html file
     if (/^\/[\w-]+\/?$/.test(url) && url.indexOf('.') === -1) {

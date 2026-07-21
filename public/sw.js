@@ -5,7 +5,6 @@ const IMAGE_CACHE = 'chillinet-images-v3';
 
 const PRECACHE_URLS = [
     '/',
-    '/index',
     '/login',
     '/style.css',
     '/libs/utils.js',
