@@ -209,7 +209,8 @@ document.addEventListener('DOMContentLoaded',function(){
             onTyping:function(d){if(d.conversationId===currentConvId&&d.username!==adminName){typingBar.textContent=d.username+' در حال تایپ...';clearTimeout(typingBar._t);typingBar._t=setTimeout(function(){typingBar.textContent=''},3000)}},
             onStopTyping:function(d){if(d.conversationId===currentConvId)typingBar.textContent=''},
             onConversationClosed:function(d){if(d.conversationId===currentConvId){convClosed=true;renderCRBtn()}},
-            onConversationReopened:function(d){if(d.conversationId===currentConvId){convClosed=false;renderCRBtn()}}
+            onConversationReopened:function(d){if(d.conversationId===currentConvId){convClosed=false;renderCRBtn()}},
+            onMessageSeen:function(d){if(d.conversationId===currentConvId&&d.role==='customer'){var ticks=messagesEl.querySelectorAll('.msg-admin .msg-tick');ticks.forEach(function(t){var mid=t.getAttribute('data-msg-tick');if(mid&&t.classList.contains('msg-sent'))CC.updateMessageTick(mid,'seen')})}}
         });
         if(currentConvId)CC.joinConversation(currentConvId);
     }
@@ -304,15 +305,22 @@ document.addEventListener('DOMContentLoaded',function(){
         if(!text&&!curAtts.length)return;
         var totalSz=0;curAtts.forEach(function(a){totalSz+=(a.dataUrl||'').length});
         if(totalSz>CC.MAX_TOTAL_SIZE){U.showAlert('حجم فایل‌ها زیاد است','error');return}
+        var attsCopy=curAtts.slice();
+        var pendingMsg={id:'pending_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),role:'admin',text:text,timestamp:new Date().toISOString(),conversationId:currentConvId,attachments:attsCopy};
+        var empty=messagesEl.querySelector('.empty-state');
+        if(empty&&!q('#loadOlder'))messagesEl.innerHTML='';
+        messagesEl.appendChild(CC.renderMessage(pendingMsg,{pending:true}));autoScroll();
+        msgInput.value='';curAtts=[];attPreview.innerHTML='';attPreview.classList.add('hidden');
+        autoResize();updateBtn();CC.stopTyping(currentConvId,adminName);
         sendBtn.disabled=true;
-        aPost('/api/admin/chat',{text:text,conversationId:currentConvId,attachments:curAtts}).then(function(r){
-            if(!r||!r.ok){U.showAlert(r&&r.data&&r.data.error||'خطا در ارسال','error');sendBtn.disabled=false;return}
-            var msg=r.data,empty=messagesEl.querySelector('.empty-state');
-            if(empty&&!q('#loadOlder'))messagesEl.innerHTML='';
-            messagesEl.appendChild(CC.renderMessage(msg,{showSeen:true}));lastMsgId=msg.id;
-            msgInput.value='';curAtts=[];attPreview.innerHTML='';attPreview.classList.add('hidden');
-            autoResize();autoScroll();updateBtn();CC.stopTyping(currentConvId,adminName);
-        }).catch(function(){U.showAlert('خطا در ارتباط با سرور','error');sendBtn.disabled=false});
+        aPost('/api/admin/chat',{text:text,conversationId:currentConvId,attachments:attsCopy}).then(function(r){
+            sendBtn.disabled=false;
+            if(!r||!r.ok){U.showAlert(r&&r.data&&r.data.error||'خطا در ارسال','error');return}
+            var msg=r.data;
+            var pendingEl=messagesEl.querySelector('[data-msg-id="'+pendingMsg.id+'"]');
+            if(pendingEl){pendingEl.setAttribute('data-msg-id',msg.id);pendingEl.querySelector('[data-msg-tick="'+pendingMsg.id+'"]').setAttribute('data-msg-tick',msg.id)}
+            CC.updateMessageTick(msg.id,'sent');lastMsgId=msg.id;
+        }).catch(function(){sendBtn.disabled=false;U.showAlert('خطا در ارتباط با سرور','error')});
     }
 
     function autoResize(){msgInput.style.height='auto';msgInput.style.height=Math.min(msgInput.scrollHeight,300)+'px';charCount.textContent=msgInput.value.length+'/5000';updateBtn()}

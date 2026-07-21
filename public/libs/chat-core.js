@@ -348,17 +348,44 @@
             div.appendChild(attContainer);
         }
 
-        // Time
+        // Time + ticks
         var timeEl = document.createElement('div');
         timeEl.className = 'msg-time';
         timeEl.textContent = formatTime(msg.timestamp);
-        if (msg.seenAt && options.showSeen) {
-            timeEl.textContent += ' ✓✓';
-            timeEl.classList.add('msg-seen');
+
+        if (msg.role === 'admin') {
+            var tickEl = document.createElement('span');
+            tickEl.className = 'msg-tick';
+            tickEl.setAttribute('data-msg-tick', msg.id);
+            if (msg.seenAt) {
+                tickEl.textContent = ' ✓✓';
+                tickEl.classList.add('msg-seen');
+            } else if (options.pending) {
+                tickEl.textContent = '';
+                tickEl.classList.add('msg-pending');
+            } else {
+                tickEl.textContent = ' ✓';
+                tickEl.classList.add('msg-sent');
+            }
+            timeEl.appendChild(tickEl);
         }
+
         div.appendChild(timeEl);
 
         return div;
+    }
+
+    function updateMessageTick(msgId, status) {
+        var tickEl = document.querySelector('[data-msg-tick="' + msgId + '"]');
+        if (!tickEl) return;
+        tickEl.classList.remove('msg-pending', 'msg-sent', 'msg-seen');
+        if (status === 'sent') {
+            tickEl.textContent = ' ✓';
+            tickEl.classList.add('msg-sent');
+        } else if (status === 'seen') {
+            tickEl.textContent = ' ✓✓';
+            tickEl.classList.add('msg-seen');
+        }
     }
 
     // Download attachment
@@ -547,7 +574,11 @@
             .msg-bubble{padding:0.6rem 1rem;border-radius:16px;font-size:0.9rem;line-height:1.6;word-wrap:break-word;white-space:pre-wrap}
             .msg-admin .msg-bubble{background:#667eea;color:#fff;border-bottom-right-radius:4px}
             .msg-customer .msg-bubble{background:#f3f4f6;color:#111;border-bottom-left-radius:4px}
-            .msg-time{font-size:0.65rem;color:#999;margin-top:2px;padding:0 0.5rem}
+            .msg-time{font-size:0.65rem;color:#999;margin-top:2px;padding:0 0.5rem;display:flex;align-items:center;gap:4px}
+            .msg-seen{color:#667eea}
+            .msg-tick{font-size:0.7rem;letter-spacing:-2px}
+            .msg-pending{color:#bbb}
+            .msg-sent{color:#999}
             .msg-seen{color:#667eea}
             .msg-attachments{display:flex;flex-wrap:wrap;gap:8px;margin-top:0.5rem}
             .typing-indicator{display:flex;gap:4px;padding:8px 16px;align-items:center}
@@ -577,6 +608,7 @@
         renderAttachmentProgress: renderAttachmentProgress,
         updateProgress: updateProgress,
         renderMessage: renderMessage,
+        updateMessageTick: updateMessageTick,
         downloadAttachment: downloadAttachment,
         playNotificationSound: playNotificationSound,
         enqueueOffline: enqueueOffline,
