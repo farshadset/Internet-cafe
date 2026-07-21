@@ -1,18 +1,18 @@
-const CACHE_NAME = 'chillinet-v1';
-const STATIC_CACHE = 'chillinet-static-v1';
-const DYNAMIC_CACHE = 'chillinet-dynamic-v1';
-const IMAGE_CACHE = 'chillinet-images-v1';
+const CACHE_NAME = 'chillinet-v2';
+const STATIC_CACHE = 'chillinet-static-v2';
+const DYNAMIC_CACHE = 'chillinet-dynamic-v2';
+const IMAGE_CACHE = 'chillinet-images-v2';
 
 const PRECACHE_URLS = [
     '/',
     '/index.html',
     '/login.html',
-    '/css/style.css',
-    '/css/login.css',
+    '/style.css',
     '/libs/utils.js',
-    '/libs/app.js',
     '/libs/notie.min.js',
     '/libs/notie.min.css',
+    '/libs/chat-core.js',
+    '/libs/browser-image-compression.js',
 ];
 
 // Install: precache critical static assets
