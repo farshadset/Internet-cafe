@@ -118,7 +118,7 @@ body{margin:0;padding:0;font-family:'Vazirmatn',system-ui,sans-serif;background:
 <body>
 <div class="layout">
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-header"><i class="fas fa-comments" style="color:#667eea"></i><h3>گفتگوها</h3></div>
+        <div class="sidebar-header"><i class="fas fa-user" style="color:#667eea"></i><h3 id="sidebarTitle">گفتگوها</h3></div>
         <div class="conv-list" id="convList"><div class="empty-state">در حال بارگذاری...</div></div>
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -216,7 +216,8 @@ document.addEventListener('DOMContentLoaded',function(){
             var preview=CC.truncate(c.lastMessage||'گفتگوی جدید',35);
             var dateStr=c.lastTimestamp?CC.formatDate(c.lastTimestamp):'';
             var sc=c.status==='closed'?'closed':'open';
-            d.innerHTML='<div class="ct">'+U.escapeHtml(c.username)+'<span class="conv-status '+sc+'"></span></div><div class="cp">'+U.escapeHtml(preview)+'</div><div class="cd">'+dateStr+'</div>';
+            var label=c.subject||'گفتگوی '+dateStr;
+            d.innerHTML='<div class="ct">'+U.escapeHtml(label)+'<span class="conv-status '+sc+'"></span></div><div class="cp">'+U.escapeHtml(preview)+'</div><div class="cd">'+dateStr+'</div>';
             if(c.unreadCount>0)d.innerHTML+='<span class="conv-badge">'+c.unreadCount+'</span>';
             d.addEventListener('click',function(){selectConv(c.id)});
             convList.appendChild(d);
@@ -383,6 +384,9 @@ document.addEventListener('DOMContentLoaded',function(){
 
     messagesEl.addEventListener('scroll',function(){if(messagesEl.scrollTop<50&&hasMore&&!loadingMore&&currentConvId)loadOlder()});
     if(window.visualViewport){var uvh=function(){document.documentElement.style.setProperty('--app-height',window.visualViewport.height+'px')};window.visualViewport.addEventListener('resize',uvh);uvh()}
+
+    function updateSidebarTitle(){var el=q('#sidebarTitle');if(targetUser)el.textContent='گفتگوهای '+targetUser;else el.textContent='گفتگوها'}
+    updateSidebarTitle();
 
     loadConvs();loadCanned();initSocket();
     window.addEventListener('beforeunload',function(){var s=CC.getSocket();if(s)s.disconnect()});

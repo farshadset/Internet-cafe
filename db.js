@@ -1000,7 +1000,7 @@ async function searchMessages(query, conversationId) {
 }
 
 // ==================== UNIFIED CONVERSATIONS LIST (for admin) ====================
-async function getAllConversationsWithLastMessage(assignedTo) {
+async function getAllConversationsWithLastMessage(assignedTo, usernameFilter) {
     let sql = `
         SELECT 
             cc.id, cc.username, cc.createdAt, cc.status, cc.assignedTo, cc.closedAt,
@@ -1019,10 +1019,10 @@ async function getAllConversationsWithLastMessage(assignedTo) {
         ) mc ON mc.conversationId = cc.id
     `;
     const args = [];
-    if (assignedTo) {
-        sql += ' WHERE cc.assignedTo = ?';
-        args.push(assignedTo);
-    }
+    const where = [];
+    if (assignedTo) { where.push('cc.assignedTo = ?'); args.push(assignedTo); }
+    if (usernameFilter) { where.push('cc.username = ?'); args.push(usernameFilter); }
+    if (where.length) sql += ' WHERE ' + where.join(' AND ');
     sql += ' ORDER BY COALESCE(latest.timestamp, cc.createdAt) DESC';
     const r = await client.execute({ sql, args });
     return Array.from(r.rows || []).map(row => ({
