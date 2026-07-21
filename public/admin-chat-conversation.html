@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded',function(){
     function doSearch(){
         var q2=searchInput.value.trim();if(!q2||!currentConvId)return;
         aGet('/api/chat/search?q='+encodeURIComponent(q2)+'&conversationId='+currentConvId).then(function(data){
-            var results=data?data.results||[]:[];searchResults.innerHTML='';
+            var results=Array.isArray(data)?data:[];searchResults.innerHTML='';
             if(!results.length)searchResults.innerHTML='<div style="padding:8px;color:#999">نتیجه‌ای یافت نشد</div>';
             results.forEach(function(r){var d=document.createElement('div');d.className='si';d.textContent=CC.truncate(r.text,60);d.addEventListener('click',function(){var el=messagesEl.querySelector('[data-msg-id="'+r.id+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='#fffde7';setTimeout(function(){el.style.background=''},2000)}});searchResults.appendChild(d)});
             searchResults.classList.add('open');
@@ -353,9 +353,9 @@ document.addEventListener('DOMContentLoaded',function(){
     function loadNotes(){
         if(!currentConvId)return;
         aGet('/api/admin/chat/conversation/'+currentConvId+'/notes').then(function(data){
-            var notes=data?data.notes||[]:[];notesBody.innerHTML='';
+            var notes=Array.isArray(data)?data:[];notesBody.innerHTML='';
             if(!notes.length){notesBody.innerHTML='<div class="empty-state" style="font-size:.8rem">یادداشتی وجود ندارد</div>';return}
-            notes.forEach(function(n){var d=document.createElement('div');d.className='note-item';d.innerHTML='<div class="nt">'+U.escapeHtml(n.text)+'</div><div class="nd">'+CC.formatDate(n.createdAt)+'</div><button class="nx" data-nid="'+n.id+'"><i class="fas fa-trash"></i></button>';notesBody.appendChild(d)});
+            notes.forEach(function(n){var d=document.createElement('div');d.className='note-item';d.innerHTML='<div class="nt">'+U.escapeHtml(n.text)+'</div><div class="nd">'+CC.formatDate(n.timestamp)+'</div><button class="nx" data-nid="'+n.id+'"><i class="fas fa-trash"></i></button>';notesBody.appendChild(d)});
         });
     }
     addNoteBtn.addEventListener('click',addNote);
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded',function(){
     notesBody.addEventListener('click',function(e){var b=e.target.closest('.nx');if(!b)return;var nid=b.getAttribute('data-nid');U.showConfirm('یادداشت حذف شود؟',function(){aDel('/api/admin/chat/note/'+nid).then(function(r){if(r&&r.ok){loadNotes();U.showToast('یادداشت حذف شد','success')}})})});
 
     var cannedData=[];
-    function loadCanned(){aGet('/api/admin/chat/canned').then(function(d){cannedData=d?d.canned||d||[]:[]})}
+    function loadCanned(){aGet('/api/admin/chat/canned').then(function(d){cannedData=Array.isArray(d)?d:[]})}
     function showCanned(){
         if(!cannedData.length){loadCanned();return}
         cannedDropdown.innerHTML='';

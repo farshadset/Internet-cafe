@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="libs/utils.js"></script>
     <script src="libs/chat-core.js"></script>
-    <script>if (!checkAdminAuth()) throw new Error('Auth required');</script>
+    <script>if (!checkAdminAuth()) { window.location.href = 'login.html'; throw new Error('Auth required'); }</script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="fonts/all.css">
     <link rel="stylesheet" href="libs/notie.min.css">
@@ -76,13 +76,14 @@
 
     function render(){
         var filtered=allConvs.filter(function(c){
-            if(activeFilter==='open'&&!c.isOpen)return false;
-            if(activeFilter==='closed'&&c.isOpen)return false;
+            var isOpen=c.status==='open';
+            if(activeFilter==='open'&&!isOpen)return false;
+            if(activeFilter==='closed'&&isOpen)return false;
             if(searchQuery&&!(c.username||'').toLowerCase().includes(searchQuery))return false;
             return true;
         });
         var totalOpen=0,totalUnread=0;
-        allConvs.forEach(function(c){if(c.isOpen)totalOpen++;totalUnread+=(c.unread||0);});
+        allConvs.forEach(function(c){if(c.status==='open')totalOpen++;totalUnread+=(c.unreadCount||0);});
         statTotal.textContent=allConvs.length;statOpen.textContent=totalOpen;statUnread.textContent=totalUnread;
 
         if(!filtered.length){
@@ -90,13 +91,13 @@
         }
         var html='';
         filtered.forEach(function(c){
-            var initial=escapeHtml((c.username||'?')[0]);
-            var name=escapeHtml(c.username||'مهمان');
-            var msg=escapeHtml(c.lastMessage||'');
-            var time=timeAgo(c.lastMessageAt||c.updatedAt);
-            var badge=(c.unread>0)?'<span class="badge">'+c.unread+'</span>':'';
-            var dot=c.isOpen?'status-open':'status-closed';
-            var href='admin-chat-conversation.html?username='+encodeURIComponent(c.username)+(c.conversationId?'&conv='+encodeURIComponent(c.conversationId):'');
+            var initial=ChatCore.escapeHtml((c.username||'?')[0]);
+            var name=ChatCore.escapeHtml(c.username||'مهمان');
+            var msg=ChatCore.escapeHtml(c.lastMessage||'');
+            var time=timeAgo(c.lastMessageAt||c.lastTimestamp);
+            var badge=(c.unreadCount>0)?'<span class="badge">'+c.unreadCount+'</span>':'';
+            var dot=c.status==='open'?'status-open':'status-closed';
+            var href='admin-chat-conversation.html?username='+encodeURIComponent(c.username)+(c.id?'&conv='+encodeURIComponent(c.id):'');
             html+='<a class="customer-item" href="'+href+'">'+
                 '<div class="avatar">'+initial+'</div>'+
                 '<div class="customer-info"><div class="customer-name">'+name+'</div><div class="customer-last">'+msg+'</div></div>'+
