@@ -86,6 +86,23 @@
         return str.length > len ? str.substring(0, len) + '...' : str;
     }
 
+    // Compress oversized image to under MAX_FILE_SIZE
+    function compressOversizedImage(file) {
+        var targetMB = MAX_FILE_SIZE / (1024 * 1024);
+        if (typeof window.imageCompression === 'function') {
+            return window.imageCompression(file, {
+                maxSizeMB: targetMB,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true,
+                maxIteration: 10,
+                exifOrientation: 1,
+                fileType: 'image/jpeg',
+                initialQuality: 0.82
+            });
+        }
+        return compressImage(file, targetMB);
+    }
+
     // File compression using browser-image-compression (preferred) or canvas fallback
     function compressImage(file, maxMB) {
         maxMB = maxMB || 2;
@@ -167,7 +184,14 @@
     // Validate attachment
     function validateAttachment(file) {
         if (file.size > MAX_FILE_SIZE) {
-            return { valid: false, error: 'حجم فایل ' + (file.size / (1024 * 1024)).toFixed(1) + ' مگابایت است. حداکثر ' + (MAX_FILE_SIZE / (1024 * 1024)) + ' مگابایت مجاز است.' };
+            var isImg = isImageFile(file);
+            return {
+                valid: false,
+                compressible: isImg,
+                error: isImg
+                    ? 'حجم تصویر ' + (file.size / (1024 * 1024)).toFixed(1) + ' مگابایت است. حداکثر ' + (MAX_FILE_SIZE / (1024 * 1024)) + ' مگابایت مجاز است.'
+                    : 'حجم فایل ' + (file.size / (1024 * 1024)).toFixed(1) + ' مگابایت است. حداکثر ' + (MAX_FILE_SIZE / (1024 * 1024)) + ' مگابایت مجاز است.'
+            };
         }
         if (!isImageFile(file) && file.type !== 'application/pdf') {
             return { valid: false, error: 'فقط تصویر و PDF پشتیبانی می‌شود.' };
@@ -478,6 +502,7 @@
         formatDate: formatDate,
         truncate: truncate,
         compressImage: compressImage,
+        compressOversizedImage: compressOversizedImage,
         readFileAsDataURL: readFileAsDataURL,
         validateAttachment: validateAttachment,
         renderAttachmentThumb: renderAttachmentThumb,
