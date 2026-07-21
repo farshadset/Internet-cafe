@@ -1725,6 +1725,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentConversationId = c.id;
                 loadInlineMessages();
                 highlightActiveConversation();
+                if (typeof ChatCore !== 'undefined') ChatCore.joinConversation(c.id);
             });
             conversationsList.appendChild(div);
         });
@@ -1776,6 +1777,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .then(function(data) {
                     renderMessages((data && data.messages) || []);
+                    // Mark messages as read
+                    markConversationRead(currentConversationId, username);
                 })
                 .catch(function() {
                     if (inlineChatMessages.children.length === 0) {
@@ -1783,6 +1786,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
         }
+    }
+
+    function markConversationRead(convId, username) {
+        if (!convId) return;
+        var ud = JSON.parse(localStorage.getItem('userData') || 'null');
+        var token = ud ? ud.token : null;
+        if (!token) return;
+        fetch('/api/chat/conversation/' + convId + '/read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ username: username })
+        }).catch(function() {});
     }
 
     function renderMessages(messages) {
@@ -1993,9 +2008,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Socket.io ---
     function initChatSocket() {
         if (typeof ChatCore === 'undefined' || typeof io === 'undefined') return;
-        var adminData = JSON.parse(localStorage.getItem('adminData') || 'null');
-        var token = adminData ? adminData.token : null;
+        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+        var token = userData ? userData.token : null;
         if (!token) return;
+
+        var socket = ChatCore.initSocket(token);
+        if (!socket) return;
+
+        ChatCore.setSocketCallbacks({
+            currentRole: 'customer',
+            onNewMessage: function(d) {
+                if (d.conversationId === currentConversationId) {
+                    loadInlineMessages();
+                }
+                loadConversations();
+            },
+            onMessageSeen: function(d) {
+                if (d.conversationId === currentConversationId && d.role === 'admin') {
+                    // Admin saw my messages - update ticks on customer messages
+                    var ticks = inlineChatMessages.querySelectorAll('.msg-customer .msg-tick');
+                    ticks.forEach(function(t) {
+                        var mid = t.getAttribute('data-msg-tick');
+                        if (mid && t.classList.contains('msg-sent'))
+                            ChatCore.updateMessageTick(mid, 'seen');
+                    });
+                }
+            }
+        });
+
+        if (currentConversationId) {
+            ChatCore.joinConversation(currentConversationId);
+        }
     }
 
     // --- Initialize ---
@@ -2006,6 +2049,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initialized = true;
             if (!chatPanel) return Promise.resolve();
             chatPanel.style.display = '';
+            initChatSocket();
             return loadConversations().then(function() {
                 if (!currentConversationId && conversationsList) {
                     var firstConv = conversationsList.querySelector('.conversation-item');
@@ -2013,9 +2057,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentConversationId = firstConv.getAttribute('data-conv-id');
                         loadInlineMessages();
                         highlightActiveConversation();
+                        if (typeof ChatCore !== 'undefined') ChatCore.joinConversation(currentConversationId);
                     }
                 } else if (currentConversationId) {
                     loadInlineMessages();
+                    if (typeof ChatCore !== 'undefined') ChatCore.joinConversation(currentConversationId);
                 }
             });
         };
