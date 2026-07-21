@@ -819,11 +819,35 @@ async function getPricing() {
     return r.rows.map(row => ({ service: row.service, price: row.price !== null && row.price !== '' ? Number(row.price) : null }));
 }
 
+function _normalizePrice(price) {
+    var n = Math.trunc(Number(price));
+    if (!isFinite(n) || n < 0) n = 0;
+    return String(n);
+}
+
 async function upsertPricing(service, price) {
+    var p = _normalizePrice(price);
     await client.execute({
         sql: 'INSERT INTO pricing (service, price) VALUES (?, ?) ON CONFLICT(service) DO UPDATE SET price = ?',
-        args: [service, price, price]
+        args: [service, p, p]
     });
+}
+
+async function upsertPricingBulk(items) {
+    var tx = await client.transaction('write');
+    try {
+        for (var i = 0; i < items.length; i++) {
+            var p = _normalizePrice(items[i].price);
+            await tx.execute({
+                sql: 'INSERT INTO pricing (service, price) VALUES (?, ?) ON CONFLICT(service) DO UPDATE SET price = ?',
+                args: [items[i].service, p, p]
+            });
+        }
+        await tx.commit();
+    } catch (e) {
+        try { await tx.rollback(); } catch (_) {}
+        throw e;
+    }
 }
 
 // ==================== WEBAUTHN ====================
@@ -942,6 +966,7 @@ module.exports = {
     getAllVisits,
     getPricing,
     upsertPricing,
+    upsertPricingBulk,
     createWebAuthnCredential,
     getWebAuthnCredentialByCredentialId,
     getWebAuthnCredentialsByUsername,

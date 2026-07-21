@@ -30,338 +30,82 @@
             </div>
         </main>
     </div>
-    <div class="popup-overlay" id="pricePopup">
-        <div class="popup-content">
-            <h3>ثبت قیمت سرویس</h3>
-            <div style="margin-bottom:1rem;">
-                <label style="display:block;margin-bottom:0.5rem;font-weight:700;color:#333;">نام سرویس:</label>
-                <input type="text" id="serviceNameInput" readonly style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:8px;" dir="auto">
-            </div>
-            <div style="margin-bottom:1rem;">
-                <label style="display:block;margin-bottom:0.5rem;font-weight:700;color:#333;">قیمت (تومان):</label>
-                <input type="text" id="servicePriceInput" inputmode="numeric" placeholder="0" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:8px;" dir="ltr">
-            </div>
-            <div class="form-actions" style="justify-content:flex-end;">
-                <button class="btn-next" id="savePriceBtn">ذخیره</button>
-                <button class="btn-next" id="closePricePopup" style="background:#999;margin-right:0.5rem;">انصراف</button>
-            </div>
-        </div>
+
+    <div class="pricing-save-bar" id="saveBar">
+        <span class="save-count"><strong id="dirtyCount">0</strong> تغییر ذخیره نشده</span>
+        <button class="btn-cancel-changes" id="cancelBtn">انصراف</button>
+        <button class="btn-save-all" id="saveAllBtn">ذخیره همه تغییرات</button>
     </div>
-     <script src="libs/browser-image-compression.js"></script>
+
+    <script src="libs/pricing-catalog.js"></script>
     <script src="libs/utils.js"></script>
     <script src="app.js"></script>
     <script>
         (function(){ if (!checkAdminAuth()) return; })();
         var formatPrice = ChillUtils.formatPrice;
+        var escapeHtml = ChillUtils.escapeHtml;
+        var Catalog = PricingCatalog;
+        var CATALOG = Catalog.CATALOG;
 
-        var currentServiceKey = null;
         document.addEventListener('DOMContentLoaded', function() {
             var container = document.getElementById('pricingContainer');
-            
-            var PRICING_DATA = {
-                'خدمات هویتی و قضایی': {
-                    icon: 'fa-id-card',
-                    services: {
-                        'کارت ملی و شناسنامه': {
-                            key: 'smartCard', title: 'کارت ملی هوشمند',
-                            subServices: {
-                                'کارت ملی هوشمند': 'smartCard',
-                                'المثنی کارت ملی': 'smartCardDuplicate',
-                                'تغییر نشانی': 'addressChange',
-                                'شناسنامه المثنی': 'idDuplicate',
-                                'اصلاح مشخصات': 'infoCorrection'
-                            }
-                        },
-                        'گذرنامه و مهاجرت': {
-                            key: 'passportRegistration', title: 'ثبت نام گذرنامه', adminOnly: true,
-                            subServices: {
-                                'ثبت نام گذرنامه': 'passportRegistration',
-                                'تمدید پاسپورت': 'passportRenewal',
-                                'المثنی گذرنامه': 'passportDuplicate',
-                                'فرم مهاجرت': 'migrationForm'
-                            }
-                        },
-                        'سامانه ثنا و قضایی': {
-                            key: 'sanaRegister', title: 'خدمات قضایی', adminOnly: true,
-                            subServices: {
-                                'ثبت نام ثنا': 'sanaRegister',
-                                'بازیابی رمز ثنا': 'judicialPasswordRecovery',
-                                'ابلاغ الکترونیک': 'electronicNotice',
-                                'پیگیری پرونده': 'caseTracking',
-                                'نوبت‌دهی قضایی': 'judicialAppointment'
-                            }
-                        },
-                        'سوء پیشینه و استعلام‌ها': {
-                            key: 'criminalRecord', title: 'صدور گواهی عدم سوء پیشینه',
-                            subServices: {
-                                'گواهی عدم سوء پیشینه': 'criminalRecord',
-                                'استعلام کد ملی': 'nationalIdInquiry',
-                                'استعلام شناسنامه': 'idInquiry',
-                                'استعلام محکومیت': 'criminalInquiry'
-                            }
-                        }
-                    }
-                },
-                'خدمات بانکی، مالی و بورسی': {
-                    icon: 'fa-wallet',
-                    services: {
-                        'وام و تسهیلات': {
-                            key: 'marriageLoan', title: 'وام ازدواج',
-                            subServices: {
-                                'وام ازدواج': 'marriageLoan',
-                                'وام ودیعه مسکن': 'rentalDeposit',
-                                'وام ضروری': 'urgentLoan',
-                                'تسهیلات خرید مسکن': 'housingPurchaseLoan'
-                            }
-                        },
-                        'یارانه و سهام عدالت': {
-                            key: 'subsidyRegistration', title: 'ثبت‌نام یارانه معیشتی',
-                            subServices: {
-                                'یارانه معیشتی': 'subsidyRegistration',
-                                'اعتراض یارانه': 'subsidyAppeal',
-                                'سهام عدالت': 'justiceStocks',
-                                'فروش سهام': 'stockSale'
-                            }
-                        },
-                        'بورس و سجام': {
-                            key: 'sjamRegistration', title: 'سجام',
-                            subServices: {
-                                'ثبت سجام': 'sjamRegistration',
-                                'احراز هویت بورسی': 'stockAuth',
-                                'افتتاح کد بورسی': 'stockRegistration'
-                            }
-                        },
-                        'خدمات بانکی': {
-                            key: 'bankAccountOpening', title: 'افتتاح حساب',
-                            subServices: {
-                                'افتتاح حساب': 'bankAccountOpening',
-                                'احراز هویت بانک': 'bankAuth',
-                                'اعتبارسنجی مرآت': 'meratValidation',
-                                'پرداخت آنلاین': 'onlinePayment'
-                            }
-                        }
-                    }
-                },
-                'خودرو و حمل و نقل': {
-                    icon: 'fa-car',
-                    services: {
-                        'کارت سوخت': {
-                            key: 'fuelCardIssue', title: 'ثبت نام کارت سوخت',
-                            subServices: {
-                                'صدور کارت سوخت': 'fuelCardIssue',
-                                'المثنی کارت سوخت': 'fuelCardDuplicate',
-                                'انتقال کارت سوخت': 'fuelCardTransfer'
-                            }
-                        },
-                        'تعویض پلاک و خودرو': {
-                            key: 'plateExchangeAppointment', title: 'نقل و انتقال خودرو',
-                            subServices: {
-                                'نوبت تعویض پلاک': 'plateExchangeAppointment',
-                                'نقل و انتقال خودرو': 'vehicleTransfer',
-                                'مالیات نقل و انتقال': 'vehicleTransferTax'
-                            }
-                        },
-                        'جریمه و معاینه فنی': {
-                            key: 'finePayment', title: 'پرداخت آنلاین جریمه',
-                            subServices: {
-                                'استعلام خلافی': 'fineInquiry',
-                                'پرداخت جریمه': 'finePayment',
-                                'اعتراض جریمه': 'fineAppeal',
-                                'نوبت معاینه فنی': 'technicalInspectionAppointment'
-                            }
-                        },
-                        'ثبت نام خودرو': {
-                            key: 'iranKhodroRegistration', title: 'ثبت نام خودرو',
-                            subServices: {
-                                'ایران خودرو': 'iranKhodroRegistration',
-                                'سایپا': 'saipaRegistration',
-                                'سامانه یکپارچه': 'integratedVehicleRegistration',
-                                'انتخاب خودرو': 'vehicleSelection'
-                            }
-                        },
-                        'خدمات شهری': {
-                            key: 'tehranMan', title: 'خدمات شهری',
-                            subServices: {
-                                'تهران من': 'tehranMan',
-                                'یارانه سوخت وانت': 'vanFuelSubsidy'
-                            }
-                        }
-                    }
-                },
-                'آموزش، دانشگاه و آزمون‌ها': {
-                    icon: 'fa-graduation-cap',
-                    services: {
-                        'مدارس': {
-                            key: 'schoolPreRegistration', title: 'پیش ثبت نام مدارس',
-                            subServices: {
-                                'پیش ثبت نام مدارس': 'schoolPreRegistration',
-                                'مدارس شاهد': 'witnessSchools',
-                                'مدارس تیزهوشان': 'giftedSchools',
-                                'مدارس غیردولتی': 'nonGovSchools'
-                            }
-                        },
-                        'دانشگاه‌ها': {
-                            key: 'azadUniversityRegistration', title: 'ثبت نام دانشگاه‌ها',
-                            subServices: {
-                                'دانشگاه آزاد': 'azadUniversityRegistration',
-                                'پیام نور': 'payamNoorRegistration',
-                                'علمی کاربردی': 'appliedScienceRegistration',
-                                'ثبت نام غیرحضوری': 'nonAttendeeRegistration'
-                            }
-                        },
-                        'کنکور و آزمون‌ها': {
-                            key: 'konkurSarasari', title: 'ثبت‌نام کنکور سراسری',
-                            subServices: {
-                                'کنکور سراسری': 'konkurSarasari',
-                                'ارشد': 'mastersExam',
-                                'دکتری': 'doctorateExam'
-                            }
-                        },
-                        'آزمون‌های استخدامی': {
-                            key: 'employmentEducation', title: 'ثبت نام آزمون استخدامی',
-                            subServices: {
-                                'آموزش و پرورش': 'employmentEducation',
-                                'بانک‌ها': 'bankEmploymentExam',
-                                'دستگاه‌های دولتی': 'governmentEmploymentExam'
-                            }
-                        },
-                        'خدمات دانشجویی': {
-                            key: 'studentPortal', title: 'خدمات دانشجویی',
-                            subServices: {
-                                'سامانه‌های آموزشی': 'studentPortal',
-                                'وام دانشجویی': 'studentLoan'
-                            }
-                        },
-                        'آزمون‌های بین‌المللی': {
-                            key: 'ieltsToeflRegistration', title: 'ثبت‌نام تافل و آیلتس',
-                            subServices: {
-                                'تافل و آیلتس': 'ieltsToeflRegistration'
-                            }
-                        }
-                    }
-                },
-                'مالیات، مجوز و کسب‌وکار': {
-                    icon: 'fa-briefcase',
-                    services: {
-                        'مالیات': {
-                            key: 'taxReturn', title: 'اظهارنامه مالیاتی',
-                            subServices: {
-                                'اظهارنامه مالیاتی': 'taxReturn',
-                                'تبصره ۱۰۰': 'tabssore100',
-                                'ارزش افزوده': 'vatTax',
-                                'اعتراض مالیاتی': 'taxAppeal',
-                                'کد اقتصادی': 'economicCode'
-                            }
-                        },
-                        'ثبت و تغییرات شرکت': {
-                            key: 'companyRegistration', title: 'ثبت شرکت',
-                            subServices: {
-                                'ثبت شرکت': 'companyRegistration',
-                                'ثبت برند': 'brandRegistration',
-                                'تغییرات شرکت': 'companyChanges'
-                            }
-                        },
-                        'مجوزها': {
-                            key: 'nationalPermitSystem', title: 'مجوزها',
-                            subServices: {
-                                'سامانه ملی مجوزها': 'nationalPermitSystem',
-                                'جواز کسب': 'businessPermitLicense',
-                                'مجوز صنفی': 'professionalPermit',
-                                'مجوز تولیدی': 'productionPermit'
-                            }
-                        },
-                        'اصناف و اماکن': {
-                            key: 'novinAsnaf', title: 'اصناف و اماکن',
-                            subServices: {
-                                'نوین اصناف': 'novinAsnaf',
-                                'بازدید اماکن': 'locationInspection',
-                                'صلاحیت بهداشتی': 'healthQualification',
-                                'گواهی مالیاتی ۱۸۶': 'taxCertificate186'
-                            }
-                        }
-                    }
-                },
-                'سامانه‌های دولتی': {
-                    icon: 'fa-landmark',
-                    services: {
-                        'سامانه‌های عمومی': {
-                            key: 'mikhak', title: 'سامانه‌های عمومی',
-                            subServices: {
-                                'میخک': 'mikhak',
-                                'سخا': 'sakha',
-                                'شمس': 'shams',
-                                'ستاد ایران': 'setadIran'
-                            }
-                        },
-                        'املاک و اسکان': {
-                            key: 'realEstateHousingRegistration', title: 'املاک و اسکان',
-                            subServices: {
-                                'ثبت‌نام املاک و اسکان': 'realEstateHousingRegistration',
-                                'خودنویس': 'khodnevis',
-                                'ثبت سند ملکی': 'propertyDeedRegistration'
-                            }
-                        },
-                        'تأمین اجتماعی و بیمه': {
-                            key: 'employerRegistration', title: 'تأمین اجتماعی و بیمه',
-                            subServices: {
-                                'نام نویسی کارفرما': 'employerRegistration',
-                                'ثبت نیروی کار': 'workforceRegistration',
-                                'ارسال لیست بیمه': 'insuranceListSubmission',
-                                'بیمه با سابقه': 'experiencedInsurance',
-                                'کمیسیون پزشکی': 'medicalCommission',
-                                'کمک هزینه عینک': 'glassesAid',
-                                'کمک هزینه سمعک': 'hearingAid'
-                            }
-                        },
-                        'خدمات توکن': {
-                            key: 'tokenSetup', title: 'خدمات توکن',
-                            subServices: {
-                                'راه‌اندازی توکن': 'tokenSetup',
-                                'امضا در ثبت من': 'thabtemSign',
-                                'امضای نرم‌افزاری': 'softwareSignature'
-                            }
-                        },
-                        'خدمات انتخاباتی': {
-                            key: 'firstVoters', title: 'خدمات انتخاباتی',
-                            adminOnly: true,
-                            subServices: {
-                                'رأی اولی‌ها': 'firstVoters',
-                                'تعیین شعبه': 'branchDetermination',
-                                'تأیید صلاحیت': 'qualificationApproval'
-                            }
-                        }
-                    }
-                }
-            };
-            
-            var pricePopup = document.getElementById('pricePopup');
-            var serviceNameInput = document.getElementById('serviceNameInput');
-            var servicePriceInput = document.getElementById('servicePriceInput');
-            var savePriceBtn = document.getElementById('savePriceBtn');
-            var closePricePopup = document.getElementById('closePricePopup');
+            var saveBar = document.getElementById('saveBar');
+            var dirtyCountEl = document.getElementById('dirtyCount');
+            var saveAllBtn = document.getElementById('saveAllBtn');
+            var cancelBtn = document.getElementById('cancelBtn');
 
-            function stripCommas(str) { return str.replace(/,/g, ''); }
+            var state = { expandedCategories: {}, expandedGroups: {} };
+            var pricingMap = {};
+            var originals = {};
+            var dirty = {};
+
+            function stripCommas(s) { return s.replace(/,/g, ''); }
+
             function formatInputNumber(val) {
                 var raw = stripCommas(val);
-                if (!/^\d*$/.test(raw)) return servicePriceInput.value;
+                if (!/^\d*$/.test(raw)) return '';
                 if (raw === '') return '';
                 return parseInt(raw, 10).toLocaleString('en');
             }
-            servicePriceInput.addEventListener('input', function() {
-                var pos = this.selectionStart;
-                var oldLen = this.value.length;
-                this.value = formatInputNumber(this.value);
-                var diff = this.value.length - oldLen;
-                this.setSelectionRange(pos + diff, pos + diff);
-            });
 
-            var state = { expandedCategories: {}, expandedGroups: {} };
+            function countPriced(subServices) {
+                var n = 0;
+                Object.keys(subServices).forEach(function(k) {
+                    if (pricingMap[subServices[k]] !== undefined) n++;
+                });
+                return n;
+            }
 
-            var escapeHtml = ChillUtils.escapeHtml;
+            function sumPrices(subServices) {
+                var s = 0;
+                Object.keys(subServices).forEach(function(k) {
+                    s += (pricingMap[subServices[k]] || 0);
+                });
+                return s;
+            }
 
-            function renderPricing(pricingMap) {
+            function updateSaveBar() {
+                var count = Object.keys(dirty).length;
+                dirtyCountEl.textContent = count;
+                saveBar.classList.toggle('visible', count > 0);
+            }
+
+            function markDirty(key, input) {
+                var orig = originals[key];
+                var current = stripCommas(input.value);
+                if (current === orig) {
+                    delete dirty[key];
+                    input.classList.remove('dirty');
+                } else {
+                    dirty[key] = current;
+                    input.classList.add('dirty');
+                }
+                updateSaveBar();
+            }
+
+            function renderPricing() {
                 container.innerHTML = '';
-                Object.keys(PRICING_DATA).forEach(function(category) {
+                Object.keys(CATALOG).forEach(function(category) {
                     var catExpanded = !!state.expandedCategories[category];
                     var catDiv = document.createElement('div');
                     catDiv.className = 'pricing-category';
@@ -371,92 +115,90 @@
                         '<i class="fas fa-chevron-left" style="transform:' + (catExpanded ? 'rotate(-90deg)' : '') + ';"></i>';
                     header.addEventListener('click', function() {
                         state.expandedCategories[category] = !state.expandedCategories[category];
-                        renderPricing(pricingMap);
+                        renderPricing();
                     });
                     catDiv.appendChild(header);
+
                     if (catExpanded) {
                         var body = document.createElement('div');
                         body.className = 'category-body';
-                        var services = PRICING_DATA[category].services || {};
+                        var services = CATALOG[category].services || {};
                         Object.keys(services).forEach(function(serviceName) {
                             var service = services[serviceName];
                             var groupKey = category + '||' + serviceName;
                             var grpExpanded = !!state.expandedGroups[groupKey];
+
                             var groupDiv = document.createElement('div');
                             groupDiv.className = 'pricing-group';
+
                             var groupHeader = document.createElement('div');
                             groupHeader.className = 'group-header';
-                            var priceText = '';
+
+                            var priceText = '-';
                             if (service.subServices) {
-                                var prices = {};
-                                Object.keys(service.subServices).forEach(function(subName) {
-                                    var subKey = service.subServices[subName];
-                                    if (pricingMap[subKey] !== undefined) {
-                                        prices[subKey] = pricingMap[subKey];
-                                    }
-                                });
-                                var count = Object.keys(prices).length;
-                                var total = Object.values(prices).reduce(function(a, b) { return a + (b || 0); }, 0);
-                                priceText = count > 0
-                                    ? count + ' خدمته (' + formatPrice(total) + ' تومان)'
+                                var pricedCount = countPriced(service.subServices);
+                                var total = sumPrices(service.subServices);
+                                priceText = pricedCount > 0
+                                    ? pricedCount + ' خدمته (' + formatPrice(total) + ' تومان)'
                                     : '-';
-                            } else if (pricingMap[service.key] !== undefined) {
-                                priceText = formatPrice(pricingMap[service.key]) + ' تومان';
-                            } else {
-                                priceText = '-';
                             }
+
                             groupHeader.innerHTML = '<span>' + serviceName + '</span>' +
                                 '<span style="font-weight:400;font-size:0.9rem;color:#666;margin-left:0.5rem;">' + priceText + '</span>' +
                                 '<i class="fas fa-chevron-left" style="transform:' + (grpExpanded ? 'rotate(-90deg)' : '') + ';"></i>';
                             groupHeader.addEventListener('click', function(e) {
                                 e.stopPropagation();
                                 state.expandedGroups[groupKey] = !state.expandedGroups[groupKey];
-                                renderPricing(pricingMap);
+                                renderPricing();
                             });
                             groupDiv.appendChild(groupHeader);
-                            if (grpExpanded) {
-                                if (service.subServices) {
-                                    Object.keys(service.subServices).forEach(function(subName) {
-                                        var subKey = service.subServices[subName];
-                                        var subPrice = pricingMap[subKey];
-                                        var serviceDiv = document.createElement('div');
-                                        serviceDiv.className = 'pricing-service-item';
-                                        serviceDiv.innerHTML = '<div class="service-info">' +
+
+                            if (grpExpanded && service.subServices) {
+                                Object.keys(service.subServices).forEach(function(subName) {
+                                    var subKey = service.subServices[subName];
+                                    var currentPrice = pricingMap[subKey];
+
+                                    var serviceDiv = document.createElement('div');
+                                    serviceDiv.className = 'pricing-service-item';
+
+                                    var inputId = 'price-' + subKey;
+                                    var displayVal = (currentPrice !== undefined && currentPrice !== null)
+                                        ? formatInputNumber(String(currentPrice)) : '';
+
+                                    serviceDiv.innerHTML =
+                                        '<div class="service-info">' +
                                             '<span class="service-title">' + escapeHtml(subName) + '</span>' +
-                                            '<span class="service-price ' + (typeof subPrice === 'number' ? 'has-price' : '') + '">' +
-                                            (typeof subPrice === 'number' ? formatPrice(subPrice) + ' تومان' : 'قیمت تعیین نشده') +
-                                            '</span></div>' +
-                                            '<button class="set-price-btn" data-service="' + escapeHtml(subKey) + '" data-title="' + escapeHtml(subName) + '" data-price="' + (subPrice || '') + '">' +
-                                            '<i class="fas fa-edit"></i></button>';
-                                        serviceDiv.querySelector('.set-price-btn').addEventListener('click', function(e) {
-                                            e.stopPropagation();
-                                            currentServiceKey = this.getAttribute('data-service');
-                                            serviceNameInput.value = this.getAttribute('data-title');
-                                            servicePriceInput.value = this.getAttribute('data-price') ? formatInputNumber(this.getAttribute('data-price')) : '';
-                                            pricePopup.classList.add('active');
-                                        });
-                                        groupDiv.appendChild(serviceDiv);
+                                            '<span class="service-price' + (currentPrice ? ' has-price' : '') + '">' +
+                                                (currentPrice ? formatPrice(currentPrice) + ' تومان' : '<span class="price-empty">قیمت تعیین نشده</span>') +
+                                            '</span>' +
+                                        '</div>' +
+                                        '<input type="text" class="pricing-input" inputmode="numeric" ' +
+                                            'placeholder="' + (currentPrice || 0) + '" ' +
+                                            'value="' + displayVal + '" ' +
+                                            'data-key="' + subKey + '" id="' + inputId + '">';
+
+                                    var input = serviceDiv.querySelector('.pricing-input');
+
+                                    originals[subKey] = stripCommas(displayVal);
+                                    if (dirty[subKey] !== undefined) {
+                                        input.classList.add('dirty');
+                                    } else {
+                                        delete dirty[subKey];
+                                    }
+
+                                    input.addEventListener('input', function() {
+                                        var pos = this.selectionStart;
+                                        var oldLen = this.value.length;
+                                        this.value = formatInputNumber(this.value);
+                                        if (this.value !== oldLen) {
+                                            var diff = this.value.length - oldLen;
+                                            this.setSelectionRange(pos + diff, pos + diff);
+                                        }
+                                        markDirty(subKey, this);
                                     });
-                                } else {
-                                    var price = pricingMap[service.key];
-                                    var singleDiv = document.createElement('div');
-                                    singleDiv.className = 'pricing-service-item';
-                                    singleDiv.innerHTML = '<div class="service-info">' +
-                                        '<span class="service-title">' + escapeHtml(service.title) + '</span>' +
-                                        '<span class="service-price ' + (typeof price === 'number' ? 'has-price' : '') + '">' +
-                                        (typeof price === 'number' ? formatPrice(price) + ' تومان' : 'قیمت تعیین نشده') +
-                                        '</span></div>' +
-                                        '<button class="set-price-btn" data-service="' + escapeHtml(service.key) + '" data-title="' + escapeHtml(service.title) + '" data-price="' + (price || '') + '">' +
-                                        '<i class="fas fa-edit"></i></button>';
-                                    singleDiv.querySelector('.set-price-btn').addEventListener('click', function(e) {
-                                        e.stopPropagation();
-                                        currentServiceKey = this.getAttribute('data-service');
-                                        serviceNameInput.value = this.getAttribute('data-title');
-                                        servicePriceInput.value = this.getAttribute('data-price') ? formatInputNumber(this.getAttribute('data-price')) : '';
-                                        pricePopup.classList.add('active');
-                                    });
-                                    groupDiv.appendChild(singleDiv);
-                                }
+
+                                    groupDiv.appendChild(serviceDiv);
+                                });
                             }
                             body.appendChild(groupDiv);
                         });
@@ -464,54 +206,59 @@
                     }
                     container.appendChild(catDiv);
                 });
+                updateSaveBar();
             }
 
-            var pricingMap = {};
+            saveAllBtn.addEventListener('click', function() {
+                var keys = Object.keys(dirty);
+                if (keys.length === 0) return;
+                saveAllBtn.disabled = true;
 
-            fetch('/api/pricing')
-                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                .then(function(pricing) {
-                    pricing.forEach(function(p) { pricingMap[p.service] = p.price; });
-                    renderPricing(pricingMap);
-                })
-                .catch(function() {
-                    container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری قیمت‌ها.</p>';
+                var items = keys.map(function(key) {
+                    return { service: key, price: parseInt(stripCommas(dirty[key])) || 0 };
                 });
 
-            savePriceBtn.addEventListener('click', function() {
-                var price = parseInt(stripCommas(servicePriceInput.value)) || 0;
-                if (!currentServiceKey) return;
-                if (savePriceBtn.disabled) return;
-                savePriceBtn.disabled = true;
-                fetch('/api/pricing', {
+                fetch('/api/pricing/bulk', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ service: currentServiceKey, price: price })
+                    body: JSON.stringify(items)
                 })
                 .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
                 .then(function(result) {
                     if (result.ok && result.data.success) {
-                        pricingMap[currentServiceKey] = price;
-                        pricePopup.classList.remove('active');
-                        renderPricing(pricingMap);
+                        keys.forEach(function(key) {
+                            pricingMap[key] = parseInt(stripCommas(dirty[key])) || 0;
+                        });
+                        dirty = {};
+                        originals = {};
+                        renderPricing();
+                        ChillUtils.showAlert(result.data.count + ' قیمت با موفقیت ذخیره شد', 'success');
                     } else {
-                        ChillUtils.showAlert(result.data.error || 'خطا در ذخیره قیمت', 'error');
-                        savePriceBtn.disabled = false;
+                        ChillUtils.showAlert(result.data.error || 'خطا در ذخیره قیمت‌ها', 'error');
                     }
+                    saveAllBtn.disabled = false;
                 })
                 .catch(function() {
                     ChillUtils.showAlert('خطا در ارتباط با سرور.', 'error');
-                    savePriceBtn.disabled = false;
+                    saveAllBtn.disabled = false;
                 });
             });
 
-            closePricePopup.addEventListener('click', function() {
-                pricePopup.classList.remove('active');
+            cancelBtn.addEventListener('click', function() {
+                dirty = {};
+                originals = {};
+                renderPricing();
             });
 
-            pricePopup.addEventListener('click', function(e) {
-                if (e.target === pricePopup) pricePopup.classList.remove('active');
-            });
+            fetch('/api/pricing?t=' + Date.now())
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(function(pricing) {
+                    pricing.forEach(function(p) { pricingMap[p.service] = p.price; });
+                    renderPricing();
+                })
+                .catch(function() {
+                    container.innerHTML = '<p style="text-align:center;color:red;">خطا در بارگذاری قیمت‌ها.</p>';
+                });
         });
     </script>
 </body>
