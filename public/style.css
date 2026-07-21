@@ -1146,7 +1146,6 @@ input[inputmode="numeric"] {
     display: flex;
     min-height: 0;
     gap: 0;
-    position: relative;
 }
 
 .modal.active .support-main {
@@ -1274,25 +1273,20 @@ input[inputmode="numeric"] {
     margin-top: 2px;
 }
 .sidebar-toggle-btn {
-    position: absolute;
-    top: 50%;
-    right: 0;
-    transform: translateY(-50%);
-    z-index: 100;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px 0 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     border: 1px solid #e9ecef;
-    border-right: none;
     background: #fff;
     color: #667eea;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    box-shadow: -2px 2px 8px rgba(0,0,0,.08);
+    font-size: .9rem;
     transition: all .2s;
+    flex-shrink: 0;
+    vertical-align: middle;
 }
 .sidebar-toggle-btn:hover {
     background: #f0f2ff;
@@ -1300,9 +1294,6 @@ input[inputmode="numeric"] {
 }
 .sidebar-toggle-btn i {
     transition: transform .2s;
-}
-.support-sidebar.expanded ~ .sidebar-toggle-btn {
-    right: 280px;
 }
 
 .modal.active .admin-chat-main {
