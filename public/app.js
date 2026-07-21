@@ -1661,52 +1661,86 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const supportBtn = document.getElementById('supportBtn');
-    const supportModal = document.getElementById('supportModal');
-    const chatPanel = document.getElementById('chatPanel');
-    const inlineChatMessages = document.getElementById('inlineChatMessages');
-    const inlineMessageInput = document.getElementById('inlineMessageInput');
-    const inlineSendBtn = document.getElementById('inlineSendBtn');
-    const newConversationBtn = document.getElementById('newConversationBtn');
-    const conversationsList = document.getElementById('conversationsList');
-    let currentConversationId = null;
-    let inlinePolling = null;
-    let conversationsData = [];
-    let inlineAttachments = [];
+
+    // ==================== CHAT v2 (using ChatCore) ====================
+    var supportBtn = document.getElementById('supportBtn');
+    var supportModal = document.getElementById('supportModal');
+    var chatPanel = document.getElementById('chatPanel');
+    var inlineChatMessages = document.getElementById('inlineChatMessages');
+    var inlineMessageInput = document.getElementById('inlineMessageInput');
+    var inlineSendBtn = document.getElementById('inlineSendBtn');
+    var newConversationBtn = document.getElementById('newConversationBtn');
+    var conversationsList = document.getElementById('conversationsList');
+    var currentConversationId = null;
+    var inlinePolling = null;
+    var conversationsData = [];
+    var inlineAttachments = [];
     var pendingReads = 0;
     var activeReaders = {};
-    let inlineAttachmentPreview = null;
-    let inlinePinAttachment = null;
-    let inlineAttachmentFile = null;
-    var INLINE_PAGE_SIZE = 30;
-    var inlineOldestId = null;
-    var inlineHasMore = true;
-    var inlineIsLoadingMore = false;
+    var inlineAttachmentPreview = null;
+    var inlinePinAttachment = null;
+    var inlineAttachmentFile = null;
+    var _typingDebounce = null;
+    var _socket = null;
 
-    var showToast = ChillUtils.showToast;
+    if (typeof ChatCore !== 'undefined') {
+        ChatCore.injectChatStyles();
+    }
 
-    function initializeChat() {
-        if (!chatPanel) return Promise.resolve();
-        chatPanel.style.display = '';
-        return loadConversations().then(function() {
-            if (!currentConversationId && conversationsList) {
-                var firstConv = conversationsList.querySelector('.conversation-item');
-                if (!firstConv) {
-                    return createNewConversation().then(function() {
-                        loadInlineMessages();
-                        highlightActiveConversation();
-                    });
-                } else {
-                    currentConversationId = firstConv.getAttribute('data-conv-id');
-                    loadInlineMessages();
-                    highlightActiveConversation();
-                }
-            } else {
+    // --- Conversations List ---
+    function loadConversations() {
+        if (!conversationsList) return Promise.resolve();
+        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+        var username = userData ? userData.username : 'مهمان';
+        return fetch('/api/chat/conversations?username=' + encodeURIComponent(username))
+            .then(function(r) {
+                if (r.status === 404 || !r.ok) return [];
+                return r.json().catch(function() { return []; });
+            })
+            .then(function(convs) {
+                conversationsData = convs || [];
+                renderConversationsList();
+            })
+            .catch(function() {
+                conversationsList.innerHTML = '<div style="color:#e74c3c;font-size:0.85rem;text-align:center;padding:1rem;">خطا در بارگذاری گفتگوها</div>';
+            });
+    }
+
+    function renderConversationsList() {
+        if (!conversationsList) return;
+        conversationsList.innerHTML = '';
+        if (conversationsData.length === 0) {
+            conversationsList.innerHTML = '<div style="color:#999;font-size:0.85rem;text-align:center;padding:1rem;">هیچ گفتگویی وجود ندارد</div>';
+            return;
+        }
+        conversationsData.forEach(function(c) {
+            var div = document.createElement('div');
+            div.className = 'conversation-item';
+            if (c.id === currentConversationId) div.classList.add('active');
+            div.setAttribute('data-conv-id', c.id);
+            var dateStr = c.lastTimestamp ? new Date(c.lastTimestamp).toLocaleDateString('fa-IR') : '';
+            var preview = ChatCore.truncate(c.lastMessage || 'گفتگوی جدید', 30);
+            div.innerHTML = '<div class="conv-title" title="' + ChatCore.escapeHtml(c.lastMessage || '') + '">' + ChatCore.escapeHtml(preview) + '</div><div class="conv-date">' + dateStr + '</div>';
+            div.addEventListener('click', function() {
+                currentConversationId = c.id;
                 loadInlineMessages();
+                highlightActiveConversation();
+            });
+            conversationsList.appendChild(div);
+        });
+    }
+
+    function highlightActiveConversation() {
+        if (!conversationsList) return;
+        conversationsList.querySelectorAll('.conversation-item').forEach(function(item) {
+            item.classList.remove('active');
+            if (item.getAttribute('data-conv-id') === currentConversationId) {
+                item.classList.add('active');
             }
         });
     }
 
+    // --- Create Conversation ---
     function createNewConversation() {
         var userData = JSON.parse(localStorage.getItem('userData') || 'null');
         var username = userData ? userData.username : 'مهمان';
@@ -1715,13 +1749,11 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: username })
         })
-        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
-        .then(function(result) {
-            if (!result.ok || !result.data.id) {
-                throw new Error('خطا در ایجاد گفتگو');
-            }
-            currentConversationId = result.data.id;
-            return result.data;
+        .then(function(r) { return r.json(); })
+        .then(function(conv) {
+            if (!conv || !conv.id) throw new Error('خطا در ایجاد گفتگو');
+            currentConversationId = conv.id;
+            return conv;
         })
         .catch(function(err) {
             console.error('خطا در ایجاد گفتگو:', err);
@@ -1730,62 +1762,113 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function loadConversations() {
-        if (!conversationsList) return Promise.resolve();
+    // --- Messages ---
+    function loadInlineMessages() {
+        if (!inlineChatMessages) return;
         var userData = JSON.parse(localStorage.getItem('userData') || 'null');
         var username = userData ? userData.username : 'مهمان';
-        return fetch('/api/chat/conversations?username=' + encodeURIComponent(username))
-            .then(function(r) {
-                if (r.status === 404 || !r.ok) return [];
-                return r.json().catch(function(){ return []; });
-            })
-            .then(function(convs) {
-                conversationsData = convs || [];
-                conversationsList.innerHTML = '';
-                if (convs.length === 0) {
-                    conversationsList.innerHTML = '<div style="color:#999;font-size:0.85rem;text-align:center;padding:1rem;">هیچ گفتگویی وجود ندارد</div>';
-                    return;
-                }
-                convs.forEach(function(c) {
-                    var div = document.createElement('div');
-                    div.className = 'conversation-item';
-                    if (c.id === currentConversationId) div.classList.add('active');
-                    div.setAttribute('data-conv-id', c.id);
-                    var dateStr = c.lastTimestamp ? new Date(c.lastTimestamp).toLocaleDateString('fa-IR') : '';
-                    var preview = c.lastMessage && c.lastMessage.length > 30 ? c.lastMessage.substring(0, 30) + '...' : (c.lastMessage || 'گفتگوی جدید');
-                    div.innerHTML = '<div class="conv-title" title="' + escapeHtml(c.lastMessage || '') + '">' + escapeHtml(preview) + '</div><div class="conv-date">' + dateStr + '</div>';
-                    div.addEventListener('click', function() {
-                        currentConversationId = c.id;
-                        loadInlineMessages();
-                        highlightActiveConversation();
-                    });
-                    conversationsList.appendChild(div);
+
+        if (currentConversationId) {
+            fetch('/api/chat/conversation/' + currentConversationId + '?username=' + encodeURIComponent(username) + '&limit=30')
+                .then(function(r) {
+                    if (r.status === 404 || !r.ok) return { messages: [] };
+                    return r.json().catch(function() { return { messages: [] }; });
+                })
+                .then(function(data) {
+                    renderMessages((data && data.messages) || []);
+                })
+                .catch(function() {
+                    if (inlineChatMessages.children.length === 0) {
+                        inlineChatMessages.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:1rem;">خطا در بارگذاری پیام‌ها</div>';
+                    }
                 });
-            })
-            .catch(function() {
-                conversationsList.innerHTML = '<div style="color:#e74c3c;font-size:0.85rem;text-align:center;padding:1rem;">خطا در بارگذاری گفتگوها</div>';
-            });
-    }
-
-    function highlightActiveConversation() {
-        if (!conversationsList) return;
-        var items = conversationsList.querySelectorAll('.conversation-item');
-        items.forEach(function(item) {
-            item.classList.remove('active');
-            if (item.getAttribute('data-conv-id') === currentConversationId) {
-                item.classList.add('active');
-            }
-        });
-    }
-
-    function updateInlineSendButton() {
-        if (inlineSendBtn) {
-            var hasText = inlineMessageInput && inlineMessageInput.value.trim();
-            var hasAttachments = inlineAttachments.length > 0;
-            inlineSendBtn.disabled = (!hasText && !hasAttachments) || pendingReads > 0;
         }
     }
 
+    function renderMessages(messages) {
+        if (!inlineChatMessages) return;
+        inlineChatMessages.innerHTML = '';
+        if (!messages || messages.length === 0) {
+            inlineChatMessages.innerHTML = '<div style="text-align:center;color:#999;padding:1rem;">هیچ پیامی وجود ندارد</div>';
+            return;
+        }
+        messages.forEach(function(msg) {
+            var el = ChatCore.renderMessage(msg, { showSeen: true });
+            inlineChatMessages.appendChild(el);
+        });
+        inlineChatMessages.scrollTop = inlineChatMessages.scrollHeight;
+    }
+
+    // --- Send Message ---
+    function sendInlineMessage() {
+        if (!inlineMessageInput) return;
+        var text = inlineMessageInput.value.trim();
+        if (!text && inlineAttachments.length === 0) return;
+        if (pendingReads > 0) return;
+        if (inlineSendBtn && inlineSendBtn.disabled) return;
+
+        var totalSize = 0;
+        inlineAttachments.forEach(function(a) { totalSize += (a.dataUrl || '').length; });
+        if (totalSize > ChatCore.MAX_TOTAL_SIZE) {
+            ChillUtils.showAlert('حجم فایل‌های پیوست زیاد است.', 'error');
+            return;
+        }
+
+        function doSend(convId) {
+            var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+            var username = userData ? userData.username : 'مهمان';
+            if (inlineSendBtn) inlineSendBtn.disabled = true;
+            
+            if (typeof ChatCore !== 'undefined') {
+                ChatCore.stopTyping(convId, username);
+            }
+            
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: text,
+                    conversationId: convId,
+                    attachments: inlineAttachments
+                })
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(result) {
+                if (!result.ok) {
+                    if (typeof ChatCore !== 'undefined') {
+                        ChatCore.enqueueOffline({ text: text, conversationId: convId, attachments: inlineAttachments });
+                    }
+                    ChillUtils.showAlert(result.data.error || 'خطا در ارسال پیام', 'error');
+                }
+                inlineMessageInput.value = '';
+                inlineAttachments = [];
+                if (inlineAttachmentPreview) {
+                    inlineAttachmentPreview.innerHTML = '';
+                    inlineAttachmentPreview.classList.add('hidden');
+                }
+                if (inlineSendBtn) inlineSendBtn.disabled = false;
+                loadInlineMessages();
+                loadConversations();
+            })
+            .catch(function(err) {
+                if (typeof ChatCore !== 'undefined') {
+                    ChatCore.enqueueOffline({ text: text, conversationId: convId, attachments: inlineAttachments });
+                    ChillUtils.showToast('پیام در صف ارسال قرار گرفت');
+                } else {
+                    ChillUtils.showAlert('خطا در ارسال پیام', 'error');
+                }
+                if (inlineSendBtn) inlineSendBtn.disabled = false;
+            });
+        }
+
+        if (!currentConversationId) {
+            createNewConversation().then(function(conv) { doSend(conv.id); });
+        } else {
+            doSend(currentConversationId);
+        }
+    }
+
+    // --- Attachments ---
     function setupInlineAttachments() {
         if (!inlineChatMessages) return;
         var chatInput = inlineChatMessages.parentElement.querySelector('.admin-chat-input-area');
@@ -1797,13 +1880,6 @@ document.addEventListener('DOMContentLoaded', () => {
             inlineAttachmentPreview.className = 'attachment-preview hidden';
             inlineAttachmentPreview.id = 'inlineAttachmentPreview';
             chatInput.insertBefore(inlineAttachmentPreview, chatInput.firstChild);
-        }
-
-        if (!document.getElementById('uploadProgressStyles')) {
-            var style = document.createElement('style');
-            style.id = 'uploadProgressStyles';
-            style.textContent = '.attachment-thumbnail.uploading{position:relative}.upload-progress-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.85);border-radius:6px;z-index:5}.upload-progress-ring{filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1))}.upload-progress-ring circle:first-child{stroke:#e5e7eb}.upload-progress-ring .upload-progress-circle{transition:stroke-dashoffset 0.15s ease-out;stroke:#667eea}.upload-progress-text{font-size:0.6rem;font-weight:700;color:#667eea;margin-top:2px}.upload-cancel-btn{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#e74c3c;color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.25);transition:transform 0.15s}.upload-cancel-btn:hover{transform:scale(1.15)}';
-            document.head.appendChild(style);
         }
 
         inlinePinAttachment = document.getElementById('inlinePinAttachment') || inlinePinAttachment;
@@ -1827,126 +1903,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(inlineAttachmentFile);
         }
 
-        inlinePinAttachment.addEventListener('click', function() {
-            inlineAttachmentFile.click();
-        });
+        inlinePinAttachment.onclick = function() { inlineAttachmentFile.click(); };
 
-        var INLINE_FILE_MAX_BYTES = 3 * 1024 * 1024;
-
-        function inlineCompressImage(file, callback, onError) {
-            ChillUtils.compressImageFile(file, {
-                maxSizeMB: 2
-            }).then(function(compressed) {
-                callback(compressed);
-            }).catch(function(e) {
-                console.error('Compression error:', e);
-                if (onError) onError();
-            });
-        }
-
-        var _inlineFileSizeModalCleanup = null;
-        function showInlineFileSizeModal(file, onConfirm, onCancel) {
-            if (_inlineFileSizeModalCleanup) _inlineFileSizeModalCleanup();
-            if (!document.getElementById('inlineFileSizeModal')) {
-                var div = document.createElement('div');
-                div.id = 'inlineFileSizeModal';
-                div.className = 'file-size-modal-overlay';
-                div.style.display = 'none';
-                div.innerHTML = '<div class="file-size-modal"><div class="file-size-modal-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="file-size-modal-title">حجم فایل زیاد است</div><div class="file-size-modal-text" id="inlineFileSizeModalText"></div><div class="file-size-modal-actions"><button class="file-size-modal-btn confirm" id="inlineFileSizeModalConfirm">بله، کم کن</button><button class="file-size-modal-btn cancel" id="inlineFileSizeModalCancel">لغو</button></div></div>';
-                document.body.appendChild(div);
-                var style = document.createElement('style');
-                style.textContent = '.file-size-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center}.file-size-modal{background:#fff;border-radius:16px;padding:1.5rem;width:90%;max-width:340px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2)}.file-size-modal-icon{width:48px;height:48px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;color:#d97706}.file-size-modal-title{font-size:1rem;font-weight:700;color:#111827;margin-bottom:0.5rem}.file-size-modal-text{font-size:0.85rem;color:#6b7280;line-height:1.6;margin-bottom:1.2rem}.file-size-modal-actions{display:flex;gap:0.5rem;justify-content:center}.file-size-modal-btn{flex:1;padding:0.6rem 1rem;border-radius:10px;border:none;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.15s}.file-size-modal-btn.confirm{background:#667eea;color:#fff}.file-size-modal-btn.confirm:hover{background:#5568d3}.file-size-modal-btn.cancel{background:#f3f4f6;color:#374151}.file-size-modal-btn.cancel:hover{background:#e5e7eb}';
-                document.head.appendChild(style);
-            }
-            var modal = document.getElementById('inlineFileSizeModal');
-            var text = document.getElementById('inlineFileSizeModalText');
-            var confirmBtn = document.getElementById('inlineFileSizeModalConfirm');
-            var cancelBtn = document.getElementById('inlineFileSizeModalCancel');
-            var sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-            text.textContent = 'حجم فایل شما ' + sizeMB + ' مگابایت است. حجم مجاز ' + (INLINE_FILE_MAX_BYTES / (1024 * 1024)) + ' مگابایت است. مایل هستید حجم فایل خودکار کم شود؟';
-            modal.style.display = 'flex';
-            function onConfirmClick() { hideModal(); if (onConfirm) onConfirm(); }
-            function onCancelClick() { hideModal(); if (onCancel) onCancel(); }
-            function hideModal() {
-                modal.style.display = 'none';
-                confirmBtn.removeEventListener('click', onConfirmClick);
-                cancelBtn.removeEventListener('click', onCancelClick);
-                _inlineFileSizeModalCleanup = null;
-            }
-            _inlineFileSizeModalCleanup = hideModal;
-            confirmBtn.addEventListener('click', onConfirmClick);
-            cancelBtn.addEventListener('click', onCancelClick);
-        }
-
-        function addInlineAttachmentFile(file) {
-            var attId = ChillUtils.generateId('att_');
-            var isImage = isImageFile(file);
-
-            var html = '<div class="attachment-thumbnail uploading" data-attachment-id="' + escapeHtml(attId) + '">';
-            if (isImage) {
-                html += '<img src="" alt="' + escapeHtml(file.name) + '" style="opacity:0.3">';
-            } else {
-                var ext = (file.name || '').split('.').pop().toUpperCase() || 'FILE';
-                html += '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;opacity:0.3;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
-            }
-            html += '<div class="upload-progress-overlay"><svg class="upload-progress-ring" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle class="upload-progress-circle" data-progress-ring="' + attId + '" cx="18" cy="18" r="14" fill="none" stroke="#667eea" stroke-width="3" stroke-dasharray="87.96" stroke-dashoffset="87.96" transform="rotate(-90 18 18)" stroke-linecap="round"/></svg><span class="upload-progress-text" data-progress-text="' + attId + '">0%</span></div>';
-            html += '<button type="button" class="remove-attachment upload-cancel-btn" data-cancel-reader="' + attId + '"><i class="fas fa-times"></i></button>';
-            html += '</div>';
-            inlineAttachmentPreview.insertAdjacentHTML('beforeend', html);
-            inlineAttachmentPreview.classList.remove('hidden');
-
-            pendingReads++;
-            updateInlineSendButton();
-
-            var processFile = isImage ? ChillUtils.compressImageFile(file, { maxSizeMB: 2 }) : Promise.resolve(file);
-            processFile.then(function(finalFile) {
-                var reader = new FileReader();
-                activeReaders[attId] = reader;
-
-                reader.onprogress = function(ev) {
-                    if (ev.lengthComputable) {
-                        var pct = Math.round((ev.loaded / ev.total) * 100);
-                        var circle = document.querySelector('[data-progress-ring="' + attId + '"]');
-                        var text = document.querySelector('[data-progress-text="' + attId + '"]');
-                        if (circle) circle.style.strokeDashoffset = (87.96 * (1 - pct / 100));
-                        if (text) text.textContent = pct + '%';
-                    }
-                };
-
-                reader.onload = function(ev) {
-                    var att = {
-                        id: attId,
-                        name: finalFile.name,
-                        type: finalFile.type,
-                        size: finalFile.size,
-                        dataUrl: ev.target.result,
-                        uploadedAt: new Date().toISOString()
-                    };
-                    inlineAttachments.push(att);
-                    var thumb = inlineAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
-                    if (thumb) thumb.remove();
-                    renderInlineAttachmentPreview(att, ev.target.result);
-                    delete activeReaders[attId];
-                    pendingReads--;
-                    updateInlineSendButton();
-                };
-
-                reader.onerror = function() {
-                    var thumb = inlineAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
-                    if (thumb) thumb.remove();
-                    delete activeReaders[attId];
-                    pendingReads--;
-                    updateInlineSendButton();
-                    showToast('خطا در خواندن فایل');
-                };
-
-                reader.readAsDataURL(finalFile);
-            });
-        }
-
-        inlineAttachmentFile.addEventListener('change', function(e) {
+        inlineAttachmentFile.onchange = function(e) {
             var files = Array.from(e.target.files || []);
-            var remaining = 4 - inlineAttachments.length - pendingReads;
+            var remaining = (typeof ChatCore !== 'undefined' ? ChatCore.MAX_ATTACHMENTS : 4) - inlineAttachments.length - pendingReads;
             if (remaining <= 0) {
                 ChillUtils.showAlert('فقط می توان چهار فایل آپلود کرد');
                 inlineAttachmentFile.value = '';
@@ -1958,287 +1919,97 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (index >= toProcess.length) return;
                 var file = toProcess[index];
                 index++;
-                var isImg = isImageFile(file);
-                if (isImg) {
-                    inlineCompressImage(file, function(compressed) {
-                        addInlineAttachmentFile(compressed);
-                        processNext();
-                    }, function() {
-                        if (file.size > 2 * 1024 * 1024) {
-                            ChillUtils.showToast('فرمت تصویر پشتیبانی نمی‌شود. لطفاً تصویر را به JPEG تبدیل کنید.');
-                        } else {
-                            addInlineAttachmentFile(file);
-                        }
-                        processNext();
-                    });
-                } else {
-                    addInlineAttachmentFile(file);
+                var validation = (typeof ChatCore !== 'undefined') ? ChatCore.validateAttachment(file) : { valid: true };
+                if (!validation.valid) {
+                    ChillUtils.showToast(validation.error);
                     processNext();
+                    return;
                 }
+                var processFile = (typeof ChatCore !== 'undefined' && ChatCore.isImageFile(file)) ? ChatCore.compressImage(file) : Promise.resolve(file);
+                processFile.then(function(finalFile) {
+                    var attId = (typeof ChatCore !== 'undefined') ? ChatCore.generateId('att_') : Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+                    var isImg = (typeof ChatCore !== 'undefined') ? ChatCore.isImageFile(file) : false;
+                    
+                    if (inlineAttachmentPreview) {
+                        inlineAttachmentPreview.insertAdjacentHTML('beforeend', 
+                            (typeof ChatCore !== 'undefined') ? ChatCore.renderAttachmentProgress(attId, file.name, isImg) : '');
+                        inlineAttachmentPreview.classList.remove('hidden');
+                    }
+                    
+                    pendingReads++;
+                    updateInlineSendButton();
+
+                    if (typeof ChatCore !== 'undefined') {
+                        ChatCore.readFileAsDataURL(finalFile, function(pct) { ChatCore.updateProgress(attId, pct); })
+                            .then(function(att) {
+                                inlineAttachments.push(att);
+                                var thumb = inlineAttachmentPreview.querySelector('[data-att-id="' + attId + '"]');
+                                if (thumb) thumb.remove();
+                                inlineAttachmentPreview.insertAdjacentHTML('beforeend', ChatCore.renderAttachmentThumb(att, att.dataUrl));
+                                pendingReads--;
+                                updateInlineSendButton();
+                            })
+                            .catch(function() {
+                                var thumb = inlineAttachmentPreview.querySelector('[data-att-id="' + attId + '"]');
+                                if (thumb) thumb.remove();
+                                pendingReads--;
+                                updateInlineSendButton();
+                                ChillUtils.showToast('خطا در خواندن فایل');
+                            });
+                    }
+                    processNext();
+                });
             }
             processNext();
             inlineAttachmentFile.value = '';
-        });
-
-        inlineAttachmentPreview.addEventListener('click', function(e) {
-            var cancelBtn = e.target.closest('[data-cancel-reader]');
-            if (cancelBtn) {
-                var attId = cancelBtn.getAttribute('data-cancel-reader');
-                if (activeReaders[attId]) {
-                    activeReaders[attId].abort();
-                    delete activeReaders[attId];
-                }
-                var thumb = inlineAttachmentPreview.querySelector('[data-attachment-id="' + attId + '"]');
-                if (thumb) thumb.remove();
-                pendingReads--;
-                updateInlineSendButton();
-            }
-        });
+        };
     }
 
-    function renderInlineAttachmentPreview(attachment, dataUrl) {
-        if (!inlineAttachmentPreview) return;
-        var isImage = isImageFile(attachment);
-        var html = '<div class="attachment-thumbnail" data-attachment-id="' + escapeHtml(attachment.id) + '">';
-        if (isImage) {
-            html += '<img src="' + escapeHtml(dataUrl || attachment.dataUrl) + '" alt="' + escapeHtml(attachment.name) + '" loading="lazy" decoding="async">';
-        } else {
-            var ext = (attachment.name || '').split('.').pop().toUpperCase() || 'FILE';
-            html += '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;"><i class="fas fa-file" style="font-size:18px;margin-bottom:2px;"></i><span style="font-size:0.5rem;">' + escapeHtml(ext) + '</span></div>';
+    function updateInlineSendButton() {
+        if (inlineSendBtn) {
+            var hasText = inlineMessageInput && inlineMessageInput.value.trim();
+            var hasAttachments = inlineAttachments.length > 0;
+            inlineSendBtn.disabled = (!hasText && !hasAttachments) || pendingReads > 0;
         }
-        html += '<span class="upload-status"><i class="fas fa-check"></i></span>';
-        html += '<button type="button" class="remove-attachment" onclick="window.removeInlineAttachment(this)"><i class="fas fa-times"></i></button>';
-        html += '</div>';
-        inlineAttachmentPreview.insertAdjacentHTML('beforeend', html);
-        inlineAttachmentPreview.classList.remove('hidden');
     }
 
-    window.removeInlineAttachment = function(button) {
-        var thumbnail = button.closest('.attachment-thumbnail');
-        if (thumbnail) {
-            var attachmentId = thumbnail.getAttribute('data-attachment-id');
-            if (activeReaders[attachmentId]) {
-                activeReaders[attachmentId].abort();
-                delete activeReaders[attachmentId];
-                pendingReads--;
-            }
-            inlineAttachments = inlineAttachments.filter(function(a) {
-                return a.id !== attachmentId;
-            });
-            thumbnail.remove();
-            updateInlineSendButton();
-        }
-        if (inlineAttachmentPreview && inlineAttachmentPreview.querySelectorAll('.attachment-thumbnail').length === 0) {
-            inlineAttachmentPreview.classList.add('hidden');
-        }
-    };
-
-    window.downloadInlineAttachment = function(attachmentId) {
-        var attachment = inlineAttachments.find(function(a) { return a.id === attachmentId; });
-        if (!attachment) return;
-        ChillUtils.downloadAttachment(attachment.dataUrl, attachment.name);
-    };
-
-    var INLINE_MAX_VISIBLE = 100;
-
-    function inlineRenderMessageEl(msg) {
-        var div = document.createElement('div');
-        div.className = 'message ' + (msg.role === 'admin' ? 'support' : 'user');
-        var bubble = document.createElement('div');
-        bubble.className = 'bubble';
-        bubble.textContent = msg.text;
-        div.appendChild(bubble);
-        if (msg.attachments && msg.attachments.length > 0) {
-            var attContainer = document.createElement('div');
-            attContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem;';
-            msg.attachments.forEach(function(att) {
-                var isImg = isImageFile(att);
-                var thumb = document.createElement('div');
-                thumb.className = 'attachment-thumbnail';
-                thumb.style.cssText = 'width: 80px; height: 80px; cursor: pointer; border-radius: 8px; overflow: hidden;';
-                if (isImg && (att.dataUrl || att.url)) {
-                    var img = document.createElement('img');
-                    img.src = att.dataUrl || att.url || '';
-                    img.alt = att.name;
-                    img.loading = 'lazy';
-                    img.decoding = 'async';
-                    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 8px;';
-                    thumb.appendChild(img);
-                } else {
-                    var ext = (att.name || '').split('.').pop().toUpperCase() || 'FILE';
-                    thumb.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;color:#667eea;font-weight:700;border-radius:8px;"><i class="fas fa-file" style="font-size:20px;margin-bottom:3px;"></i><span style="font-size:0.55rem;">' + escapeHtml(ext) + '</span></div>';
-                }
-                thumb.addEventListener('click', function() {
-                    ChillUtils.downloadAttachment(att.dataUrl || att.url, att.name);
-                });
-                attContainer.appendChild(thumb);
-            });
-            div.appendChild(attContainer);
-        }
-        return div;
+    // --- Socket.io ---
+    function initChatSocket() {
+        if (typeof ChatCore === 'undefined' || typeof io === 'undefined') return;
+        var adminData = JSON.parse(localStorage.getItem('adminData') || 'null');
+        var token = adminData ? adminData.token : null;
+        if (!token) return;
     }
 
-    function inlinePrependOlder() {
-        if (inlineIsLoadingMore || !inlineHasMore || !currentConversationId) return;
-        inlineIsLoadingMore = true;
-        var oldScroll = inlineChatMessages.scrollHeight;
-        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
-        var username = userData ? userData.username : 'مهمان';
-        var url = '/api/chat/conversation/' + currentConversationId + '?username=' + encodeURIComponent(username) + '&limit=' + INLINE_PAGE_SIZE;
-        if (inlineOldestId) url += '&before=' + encodeURIComponent(inlineOldestId);
-        fetch(url)
-            .then(function(r) { if (r.status === 404 || !r.ok) return { messages: [] }; return r.json().catch(function(){ return { messages: [] }; }); })
-            .then(function(data) {
-                var msgs = (data && data.messages) || [];
-                inlineHasMore = msgs.length === INLINE_PAGE_SIZE;
-                if (msgs.length > 0) {
-                    inlineOldestId = msgs[0].id;
-                    var fragment = document.createDocumentFragment();
-                    msgs.forEach(function(msg) { fragment.appendChild(inlineRenderMessageEl(msg)); });
-                    inlineChatMessages.insertBefore(fragment, inlineChatMessages.firstChild);
-                    inlineChatMessages.scrollTop = inlineChatMessages.scrollHeight - oldScroll;
-                } else {
-                    inlineHasMore = false;
-                }
-                inlineIsLoadingMore = false;
-            })
-            .catch(function() { inlineIsLoadingMore = false; });
-    }
-
-    function loadInlineMessages() {
-        if (!inlineChatMessages) return;
-        var userData = JSON.parse(localStorage.getItem('userData') || 'null');
-        var username = userData ? userData.username : 'مهمان';
-        inlineOldestId = null;
-        inlineHasMore = true;
-        inlineIsLoadingMore = false;
-
-        function renderMessages(messages) {
-            if (!messages || messages.length === 0) {
-                messages = [];
-            }
-            inlineChatMessages.innerHTML = '';
-            messages.forEach(function(msg) { inlineChatMessages.appendChild(inlineRenderMessageEl(msg)); });
-            inlineChatMessages.scrollTop = inlineChatMessages.scrollHeight;
-            if (messages.length === 0) {
-                var emptyDiv = document.createElement('div');
-                emptyDiv.style.cssText = 'text-align:center;color:#999;padding:1rem;';
-                emptyDiv.textContent = 'هیچ پیامی وجود ندارد';
-                inlineChatMessages.appendChild(emptyDiv);
-            }
-            if (inlineHasMore && messages.length > 0) {
-                var sentinel = document.createElement('div');
-                sentinel.style.cssText = 'text-align:center;color:#667eea;padding:0.5rem;cursor:pointer;font-size:0.8rem;';
-                sentinel.textContent = 'بارگذاری پیام‌های قدیمی‌تر';
-                sentinel.addEventListener('click', inlinePrependOlder);
-                inlineChatMessages.insertBefore(sentinel, inlineChatMessages.firstChild);
-            }
-        }
-
-        if (currentConversationId) {
-            fetch('/api/chat/conversation/' + currentConversationId + '?username=' + encodeURIComponent(username) + '&limit=' + INLINE_PAGE_SIZE)
-                .then(function(r) {
-                    if (r.status === 404 || !r.ok) return { messages: [] };
-                    return r.json().catch(function(){ return { messages: [] }; });
-                })
-                .then(function(data) {
-                    var msgs = (data && data.messages) || [];
-                    inlineHasMore = msgs.length === INLINE_PAGE_SIZE;
-                    if (msgs.length > 0) inlineOldestId = msgs[0].id;
-                    renderMessages(msgs);
-                })
-                .catch(function(err) {
-                    console.error('خطا در بارگذاری پیام‌ها:', err);
-                    if (inlineChatMessages && inlineChatMessages.children.length === 0) {
-                        var errDiv = document.createElement('div');
-                        errDiv.style.cssText = 'text-align:center;color:#e74c3c;padding:1rem;';
-                        errDiv.textContent = 'خطا در بارگذاری پیام‌ها';
-                        inlineChatMessages.appendChild(errDiv);
+    // --- Initialize ---
+    var initializeChat = (function() {
+        var initialized = false;
+        return function() {
+            if (initialized) return Promise.resolve();
+            initialized = true;
+            if (!chatPanel) return Promise.resolve();
+            chatPanel.style.display = '';
+            return loadConversations().then(function() {
+                if (!currentConversationId && conversationsList) {
+                    var firstConv = conversationsList.querySelector('.conversation-item');
+                    if (firstConv) {
+                        currentConversationId = firstConv.getAttribute('data-conv-id');
+                        loadInlineMessages();
+                        highlightActiveConversation();
                     }
-                });
-        } else {
-            fetch('/api/chat?username=' + encodeURIComponent(username))
-                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                .then(function(messages) {
-                    renderMessages(messages);
-                })
-                .catch(function(err) {
-                    console.error('خطا در بارگذاری پیام‌ها:', err);
-                    if (inlineChatMessages && inlineChatMessages.children.length === 0) {
-                        var errDiv = document.createElement('div');
-                        errDiv.style.cssText = 'text-align:center;color:#e74c3c;padding:1rem;';
-                        errDiv.textContent = 'خطا در بارگذاری پیام‌ها';
-                        inlineChatMessages.appendChild(errDiv);
-                    }
-                });
-        }
-    }
-
-    function sendInlineMessage() {
-        if (!inlineMessageInput) return;
-        var text = inlineMessageInput.value.trim();
-        if (!text && inlineAttachments.length === 0) return;
-        if (pendingReads > 0) return;
-        if (inlineSendBtn && inlineSendBtn.disabled) return;
-
-        var totalSize = 0;
-        inlineAttachments.forEach(function(a) { totalSize += (a.dataUrl || '').length; });
-        if (totalSize > 12 * 1024 * 1024) {
-            ChillUtils.showAlert('حجم فایل‌های پیوست زیاد است. لطفاً تصاویر کم‌حجم‌تری آپلود کنید.', 'error');
-            return;
-        }
-
-        function doSend(conversationId) {
-            var userData = JSON.parse(localStorage.getItem('userData') || 'null');
-            var username = userData ? userData.username : 'مهمان';
-            if (inlineSendBtn) { inlineSendBtn.disabled = true; }
-            fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: username,
-                    text: text,
-                    conversationId: conversationId,
-                    attachments: inlineAttachments
-                })
-            }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
-              .then(function(result) {
-                  if (!result.ok) {
-                      ChillUtils.showAlert(result.data.error || 'خطا در ارسال پیام', 'error');
-                      if (inlineSendBtn) { inlineSendBtn.disabled = false; }
-                      return;
-                  }
-                  inlineMessageInput.value = '';
-                  inlineAttachments = [];
-                  if (inlineAttachmentPreview) {
-                      inlineAttachmentPreview.innerHTML = '';
-                      inlineAttachmentPreview.classList.add('hidden');
-                  }
-                  if (inlineSendBtn) { inlineSendBtn.disabled = false; }
-                  loadInlineMessages();
-                  loadConversations();
-              })
-              .catch(function(err) {
-                  console.error('خطا در ارسال پیام:', err);
-                  ChillUtils.showAlert('خطا در ارسال پیام', 'error');
-                  if (inlineSendBtn) { inlineSendBtn.disabled = false; }
-              });
-        }
-
-        if (!currentConversationId) {
-            createNewConversation().then(function(conv) {
-                doSend(conv.id);
+                } else if (currentConversationId) {
+                    loadInlineMessages();
+                }
             });
-        } else {
-            doSend(currentConversationId);
-        }
-    }
+        };
+    })();
 
+    // --- Event Listeners ---
     if (supportBtn && supportModal) {
-        supportBtn.addEventListener('click', e => {
+        supportBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            if (!isAuthenticated()) {
-                redirectToLogin();
+            if (typeof isAuthenticated === 'function' && !isAuthenticated()) {
+                if (typeof redirectToLogin === 'function') redirectToLogin();
                 return;
             }
             supportModal.classList.add('active');
@@ -2254,8 +2025,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (btn) {
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    if (!isAuthenticated()) {
-                        redirectToLogin();
+                    if (typeof isAuthenticated === 'function' && !isAuthenticated()) {
+                        if (typeof redirectToLogin === 'function') redirectToLogin();
                         return;
                     }
                     supportModal.classList.add('active');
@@ -2267,13 +2038,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (newConversationBtn) {
             newConversationBtn.addEventListener('click', function() {
-                if (currentConversationId && conversationsData.some(function(c) { 
-                    return c.id === currentConversationId && c.messageCount === 0; 
-                })) {
-                    loadInlineMessages();
-                    highlightActiveConversation();
-                    return;
-                }
                 createNewConversation().then(function() {
                     loadConversations().then(function() {
                         loadInlineMessages();
@@ -2290,52 +2054,50 @@ document.addEventListener('DOMContentLoaded', () => {
             inlineMessageInput.addEventListener('input', function() {
                 var len = inlineMessageInput.value.length;
                 var charCounter = document.getElementById('charCounter');
-                if (charCounter) {
-                    charCounter.textContent = '5000/' + len;
-                }
+                if (charCounter) charCounter.textContent = '5000/' + len;
                 inlineMessageInput.style.height = 'auto';
                 inlineMessageInput.style.height = Math.min(inlineMessageInput.scrollHeight, 300) + 'px';
-                if (inlineSendBtn) {
-                    inlineSendBtn.disabled = !inlineMessageInput.value.trim() && inlineAttachments.length === 0;
+                updateInlineSendButton();
+                
+                if (currentConversationId && typeof ChatCore !== 'undefined') {
+                    var userData = JSON.parse(localStorage.getItem('userData') || 'null');
+                    var username = userData ? userData.username : 'مهمان';
+                    ChatCore.handleTyping(currentConversationId, username);
+                }
+            });
+            inlineMessageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendInlineMessage();
                 }
             });
         }
 
-        const closeBtn = supportModal.querySelector('.close-btn');
+        var closeBtn = supportModal.querySelector('.close-btn');
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
+            closeBtn.addEventListener('click', function() {
                 supportModal.classList.remove('active');
                 currentConversationId = null;
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
             });
         }
-
-        supportModal.addEventListener('click', e => {
+        supportModal.addEventListener('click', function(e) {
             if (e.target === supportModal) {
                 supportModal.classList.remove('active');
                 currentConversationId = null;
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
             }
         });
-
         supportModal.addEventListener('transitionend', function() {
             if (!supportModal.classList.contains('active')) {
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
                 currentConversationId = null;
             } else {
                 if (chatPanel && chatPanel.style.display !== 'none' && !inlinePolling) {
-                    inlinePolling = setInterval(loadInlineMessages, 8000);
+                    inlinePolling = setInterval(loadInlineMessages, ChatCore ? ChatCore.POLL_INTERVAL : 8000);
                 }
             }
         });
-
-        if (chatPanel && !inlinePolling) {
-            chatPanel.addEventListener('transitionend', function() {
-                if (chatPanel.style.display !== 'none' && !inlinePolling) {
-                    inlinePolling = setInterval(loadInlineMessages, 8000);
-                }
-            });
-        }
 
         if (window.visualViewport) {
             var updateAppHeight = function() {
@@ -2345,26 +2107,6 @@ document.addEventListener('DOMContentLoaded', () => {
             window.visualViewport.addEventListener('resize', updateAppHeight);
             window.visualViewport.addEventListener('scroll', updateAppHeight);
             updateAppHeight();
-        }
-
-        if (inlineMessageInput && supportModal) {
-            inlineMessageInput.addEventListener('focus', function() {
-                if (!window.visualViewport) return;
-                var scrollIntoViewKeyboard = function() {
-                    if (!supportModal.classList.contains('active')) return;
-                    var inputArea = supportModal.querySelector('.admin-chat-input-area');
-                    if (inputArea) {
-                        inputArea.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                    }
-                };
-                setTimeout(scrollIntoViewKeyboard, 300);
-                window.visualViewport.addEventListener('resize', scrollIntoViewKeyboard);
-            });
-            inlineMessageInput.addEventListener('blur', function() {
-                if (window.visualViewport) {
-                    window.visualViewport.removeEventListener('resize', function() {});
-                }
-            });
         }
     }
 

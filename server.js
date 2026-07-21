@@ -29,6 +29,16 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 
 const isVercel = !!process.env.VERCEL;
 
+const UPLOAD_DIR = isVercel ? '/tmp/chat_uploads' : path.join(__dirname, 'public', 'chat_uploads');
+const MAX_UPLOAD_SIZE = 3 * 1024 * 1024; // 3MB
+const PAGE_SIZE = 30;
+const MAX_MESSAGE_LENGTH = 5000;
+
+// Ensure upload directory exists (non-Vercel only)
+if (!isVercel) {
+    try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch(e) {}
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-dev-secret-do-not-use-in-production';
 if (!process.env.JWT_SECRET) {
     console.warn('WARNING: JWT_SECRET not set. Using fallback secret. Set JWT_SECRET in Vercel dashboard for production.');
@@ -1265,16 +1275,108 @@ app.put('/api/banner/:id', requireAdmin, writeRateLimit, asyncHandler(async (req
     res.json({ success: true });
 }));
 
-// ==================== CHAT ROUTES ====================
-app.get('/api/chat', requireUser, asyncHandler(async (req, res) => {
+// ==================== CHAT v2 (Conversation-based) ====================
+
+// --- File Upload ---
+app.post('/api/chat/upload', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    const { file, conversationId } = req.body;
+    if (!file || !file.dataUrl || !file.name) {
+        return res.status(400).json({ error: 'فایل الزامی است' });
+    }
+    // Validate size
+    const dataUrlLen = (file.dataUrl || '').length;
+    const approxBytes = Math.round(dataUrlLen * 3 / 4);
+    if (approxBytes > MAX_UPLOAD_SIZE) {
+        return res.status(413).json({ error: 'حجم فایل بیش از حد مجاز است' });
+    }
+    // Validate type
+    const isImage = (file.type || '').indexOf('image/') === 0;
+    const isPdf = file.type === 'application/pdf';
+    if (!isImage && !isPdf) {
+        return res.status(400).json({ error: 'فقط تصویر و PDF پشتیبانی می‌شود' });
+    }
+    const id = crypto.randomBytes(12).toString('hex');
+    const upload = {
+        id: id,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        dataUrl: file.dataUrl,
+        uploadedBy: req.user.username,
+        conversationId: conversationId || null,
+        createdAt: new Date().toISOString()
+    };
+    // Store metadata only (data stays in response, not duplicated in DB for Vercel)
+    res.json({ id: id, name: file.name, type: file.type, size: file.size, dataUrl: file.dataUrl });
+}));
+
+// --- Customer: Create conversation ---
+app.post('/api/chat/conversation', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    const { username, subject } = req.body;
+    if (!username || username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
+    // Check for existing open conversation
+    const existing = await db.getUserConversations(username);
+    const openConv = existing.find(function(c) { return c.status === 'open'; });
+    if (openConv) {
+        return res.json(openConv);
+    }
+    const conv = await db.createConversation(username);
+    if (subject) await db.updateConversationSubject(conv.id, subject);
+    res.json(conv);
+}));
+
+// --- Customer: Get conversations ---
+app.get('/api/chat/conversations', requireUser, asyncHandler(async (req, res) => {
     const { username } = req.query;
     if (!username || username !== req.user.username) {
         return res.status(403).json({ error: 'دسترسی غیرمجاز' });
     }
-    const messages = await db.getChatMessages(username, 500);
-    res.json(messages);
+    var convs = await db.getUserConversations(username);
+    // Get last message + count in single query per conversation
+    var result = [];
+    for (var i = 0; i < convs.length; i++) {
+        var info = await db.getLastMessageAndCount(convs[i].id);
+        if (!info.lastMsg) continue;
+        result.push({
+            id: convs[i].id,
+            username: convs[i].username,
+            createdAt: convs[i].createdAt,
+            status: convs[i].status,
+            subject: convs[i].subject || '',
+            lastMessage: info.lastMsg.text,
+            lastTimestamp: info.lastMsg.timestamp,
+            messageCount: info.count
+        });
+    }
+    result.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
+    res.json(result);
 }));
 
+// --- Customer: Get messages (paginated) ---
+app.get('/api/chat/conversation/:id', requireUser, asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { username, limit, before } = req.query;
+    if (!username || username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
+    const pageSize = Math.min(parseInt(limit) || PAGE_SIZE, 100);
+    const messages = await db.getChatMessagesPaginated(id, pageSize + 1, before || null);
+    const hasMore = messages.length > pageSize;
+    const sliced = hasMore ? messages.slice(0, pageSize) : messages;
+    // Filter to only customer's own messages + admin messages
+    const filtered = sliced.filter(function(m) {
+        return (m.role === 'customer' && m.username === username) || m.role === 'admin';
+    });
+    res.json({
+        messages: filtered,
+        hasMore: hasMore,
+        oldestId: filtered.length > 0 ? filtered[0].id : null
+    });
+}));
+
+// --- Customer: Send message ---
 app.post('/api/chat', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
     const { text, conversationId, attachments } = req.body;
     var msgText = (text || '').trim();
@@ -1282,46 +1384,118 @@ app.post('/api/chat', requireUser, writeRateLimit, asyncHandler(async (req, res)
     if (!msgText && !hasAttachments) {
         return res.status(400).json({ error: 'متن پیام یا فایل پیوست الزامی است' });
     }
-    if (msgText.length > 5000) {
-        return res.status(400).json({ error: 'متن پیام نباید بیش از ۵۰۰۰ کاراکتر باشد' });
+    if (msgText.length > MAX_MESSAGE_LENGTH) {
+        return res.status(400).json({ error: 'متن پیام نباید بیش از ' + MAX_MESSAGE_LENGTH + ' کاراکتر باشد' });
     }
+    if (hasAttachments && attachments.length > 4) {
+        return res.status(400).json({ error: 'حداکثر ۴ فایل پیوست مجاز است' });
+    }
+    
+    // Ensure conversation exists
+    let convId = conversationId;
+    if (!convId) {
+        // Check for existing open conversation
+        const existing = await db.getUserConversations(req.user.username);
+        const openConv = existing.find(function(c) { return c.status === 'open'; });
+        if (openConv) {
+            convId = openConv.id;
+        } else {
+            const conv = await db.createConversation(req.user.username);
+            convId = conv.id;
+        }
+    } else {
+        // Verify conversation belongs to user
+        const conv = await db.getConversation(convId);
+        if (!conv || conv.username !== req.user.username) {
+            return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+        }
+        if (conv.status === 'closed') {
+            return res.status(400).json({ error: 'این گفتگو بسته شده است. گفتگوی جدید ایجاد کنید.' });
+        }
+    }
+    
     const message = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: 'customer',
         username: req.user.username,
         text: msgText,
         timestamp: new Date().toISOString(),
-        conversationId: conversationId || null,
+        conversationId: convId,
         attachments: hasAttachments ? attachments.slice(0, 4) : []
     };
     await db.addChatMessage(message);
+    await db.updateConversationLastMessageAt(convId);
+    
+    // Emit via Socket.io
+    emitChatEvent(req.app.get('io'), 'new-message', {
+        ...message,
+        conversationId: convId
+    });
+    
     res.json(message);
 }));
 
-app.get('/api/admin/chat', requireAdmin, asyncHandler(async (req, res) => {
-    const { messages, lastReadAt } = await db.getAdminChatData();
-    // Limit to last 200 messages for performance
-    const limitedMessages = messages.length > 200 ? messages.slice(-200) : messages;
-    res.json({ messages: limitedMessages, lastReadAt });
-}));
-
-app.post('/api/admin/chat/read', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
-    const { lastReadAt } = req.body;
-    if (lastReadAt) {
-        await db.setChatMeta('lastReadAt', lastReadAt);
+// --- Customer: Mark conversation as read ---
+app.post('/api/chat/conversation/:id/read', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { username } = req.body;
+    if (!username || username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
     }
+    await db.markConversationRead(id, username);
+    // Mark admin messages as seen
+    await db.markMessagesSeenByConversation(id, 'admin');
+    // Emit seen event
+    emitChatEvent(req.app.get('io'), 'message-seen', { conversationId: id, username: username, role: 'customer' });
     res.json({ success: true });
 }));
 
+// --- Admin: Get all conversations (unified) ---
+app.get('/api/admin/chat/conversations', requireAdmin, asyncHandler(async (req, res) => {
+    const { assignedTo, status } = req.query;
+    var convs = await db.getAllConversationsWithLastMessage(assignedTo || null);
+    // Filter by status if provided
+    if (status) {
+        convs = convs.filter(function(c) { return c.status === status; });
+    }
+    // Get unread counts for admin
+    var unreadCounts = await db.getAllUnreadCounts('admin');
+    var unreadMap = {};
+    unreadCounts.forEach(function(u) { unreadMap[u.conversationId] = u.cnt; });
+    // Enrich with unread
+    convs = convs.map(function(c) {
+        return { ...c, unreadCount: unreadMap[c.id] || 0 };
+    });
+    res.json(convs);
+}));
+
+// --- Admin: Get messages for conversation ---
+app.get('/api/admin/chat/conversation/:id', requireAdmin, asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const limit = Math.min(parseInt(req.query.limit) || PAGE_SIZE, 100);
+    const before = req.query.before || null;
+    if (id === '_legacy') {
+        const allMsgs = await db.getAllChatMessages(500);
+        const legacy = allMsgs.filter(function(m) { return !m.conversationId || m.conversationId === '_legacy'; });
+        res.json({ messages: legacy, hasMore: false, oldestId: null });
+    } else {
+        const messages = await db.getChatMessagesPaginated(id, limit + 1, before);
+        const hasMore = messages.length > limit;
+        const oldestId = messages.length > 0 ? messages[0].id : null;
+        res.json({ messages: messages.slice(0, limit), hasMore, oldestId });
+    }
+}));
+
+// --- Admin: Send message ---
 app.post('/api/admin/chat', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
-    const { text, username, conversationId, attachments } = req.body;
+    const { text, conversationId, attachments, username } = req.body;
     var msgText = (text || '').trim();
     var hasAttachments = Array.isArray(attachments) && attachments.length > 0;
     if (!msgText && !hasAttachments) {
         return res.status(400).json({ error: 'متن پیام یا فایل پیوست الزامی است' });
     }
-    if (msgText.length > 5000) {
-        return res.status(400).json({ error: 'متن پیام نباید بیش از ۵۰۰۰ کاراکتر باشد' });
+    if (msgText.length > MAX_MESSAGE_LENGTH) {
+        return res.status(400).json({ error: 'متن پیام نباید بیش از ' + MAX_MESSAGE_LENGTH + ' کاراکتر باشد' });
     }
     const message = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
@@ -1333,132 +1507,153 @@ app.post('/api/admin/chat', requireAdmin, writeRateLimit, asyncHandler(async (re
         attachments: hasAttachments ? attachments.slice(0, 4) : []
     };
     await db.addChatMessage(message);
+    if (conversationId) {
+        await db.updateConversationLastMessageAt(conversationId);
+        // Reset unread for admin viewing this conversation
+        await db.markConversationRead(conversationId, 'admin');
+    }
+    
+    // Emit via Socket.io
+    emitChatEvent(req.app.get('io'), 'new-message', message);
+    
     res.json(message);
 }));
 
-app.get('/api/admin/chat/conversation', requireAdmin, asyncHandler(async (req, res) => {
-    const { username } = req.query;
-    if (!username) {
-        return res.status(400).json({ error: 'نام کاربری الزامی است' });
+// --- Admin: Mark as read ---
+app.post('/api/admin/chat/read', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    const { conversationId } = req.body;
+    if (conversationId) {
+        await db.markConversationRead(conversationId, 'admin');
+        await db.markMessagesSeenByConversation(conversationId, 'customer');
+        emitChatEvent(req.app.get('io'), 'message-seen', { conversationId: conversationId, role: 'admin' });
     }
-    var allMessages = await db.getChatMessages(username, 500);
-    res.json(allMessages);
+    res.json({ success: true });
 }));
 
-app.get('/api/admin/chat/conversations', requireAdmin, asyncHandler(async (req, res) => {
-    const { username } = req.query;
-    if (!username) {
-        return res.status(400).json({ error: 'نام کاربری الزامی است' });
+// --- Admin: Close/Reopen conversation ---
+app.post('/api/admin/chat/conversation/:id/close', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    await db.closeConversation(req.params.id);
+    emitChatEvent(req.app.get('io'), 'conversation-closed', { conversationId: req.params.id });
+    res.json({ success: true });
+}));
+
+app.post('/api/admin/chat/conversation/:id/reopen', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    await db.reopenConversation(req.params.id);
+    emitChatEvent(req.app.get('io'), 'conversation-reopened', { conversationId: req.params.id });
+    res.json({ success: true });
+}));
+
+// --- Admin: Assign conversation ---
+app.post('/api/admin/chat/conversation/:id/assign', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    const { assignedTo } = req.body;
+    await db.assignConversation(req.params.id, assignedTo || null);
+    res.json({ success: true });
+}));
+
+// --- Admin: Update subject ---
+app.post('/api/admin/chat/conversation/:id/subject', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    const { subject } = req.body;
+    await db.updateConversationSubject(req.params.id, subject || '');
+    res.json({ success: true });
+}));
+
+// --- Search messages ---
+app.get('/api/chat/search', requireAdmin, asyncHandler(async (req, res) => {
+    const { q, conversationId } = req.query;
+    if (!q || q.trim().length < 2) {
+        return res.status(400).json({ error: 'عبارت جستجو حداقل ۲ حرف باشد' });
     }
-    var items = await db.getUserConversationsWithLastMessage(username);
-    var result = items.filter(function(c) { return c.lastMessage; }).map(function(c) {
-        return {
-            id: c.id,
-            username: c.username,
-            createdAt: c.createdAt,
-            lastMessage: c.lastMessage,
-            lastTimestamp: c.lastTimestamp,
-            messageCount: null
-        };
+    const messages = await db.searchMessages(q.trim(), conversationId || null);
+    res.json(messages);
+}));
+
+// --- Canned Responses ---
+app.get('/api/admin/chat/canned', requireAdmin, asyncHandler(async (req, res) => {
+    const { category } = req.query;
+    const items = await db.getCannedResponses(category || null);
+    res.json(items);
+}));
+
+app.post('/api/admin/chat/canned', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    const { text, category, sortOrder } = req.body;
+    if (!text || !text.trim()) {
+        return res.status(400).json({ error: 'متن پاسخ الزامی است' });
+    }
+    const item = await db.addCannedResponse({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        text: text.trim(),
+        category: category || '',
+        sortOrder: sortOrder || 0
     });
-    result.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
-    res.json(result);
+    res.json(item);
 }));
 
-app.get('/api/admin/chat/conversation/:id', requireAdmin, asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
-    const before = req.query.before || null;
-    if (id === '_legacy') {
-        const allMsgs = await db.getAllChatMessages(500);
-        const legacy = allMsgs.filter(function(m) { return !m.conversationId || m.conversationId === '_legacy'; });
-        res.json(legacy);
-    } else {
-        const messages = await db.getChatMessagesPaginated(id, limit, before);
-        const fetchLimit = limit + 1;
-        const hasMore = messages.length >= limit;
-        const oldestId = messages.length > 0 ? messages[0].id : null;
-        res.json({ messages: messages.slice(0, limit), hasMore, oldestId });
+app.put('/api/admin/chat/canned/:id', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    const { text, category, sortOrder } = req.body;
+    await db.updateCannedResponse(req.params.id, { text, category, sortOrder });
+    res.json({ success: true });
+}));
+
+app.delete('/api/admin/chat/canned/:id', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    await db.deleteCannedResponse(req.params.id);
+    res.json({ success: true });
+}));
+
+// --- Notes ---
+app.get('/api/admin/chat/conversation/:id/notes', requireAdmin, asyncHandler(async (req, res) => {
+    const notes = await db.getConversationNotes(req.params.id);
+    res.json(notes);
+}));
+
+app.post('/api/admin/chat/conversation/:id/notes', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    const { text } = req.body;
+    if (!text || !text.trim()) {
+        return res.status(400).json({ error: 'متن یادداشت الزامی است' });
     }
+    const note = await db.addConversationNote({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        conversationId: req.params.id,
+        adminUsername: req.user.username,
+        text: text.trim(),
+        timestamp: new Date().toISOString()
+    });
+    res.json(note);
+}));
+
+app.delete('/api/admin/chat/note/:id', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    await db.deleteConversationNote(req.params.id);
+    res.json({ success: true });
+}));
+
+// --- Legacy endpoints (kept for backward compat, to be removed) ---
+app.get('/api/chat/legacy', requireUser, asyncHandler(async (req, res) => {
+    const { username } = req.query;
+    if (!username || username !== req.user.username) {
+        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
+    const messages = await db.getChatMessages(username, 500);
+    res.json(messages);
 }));
 
 app.get('/api/admin/chat/customers', requireAdmin, asyncHandler(async (req, res) => {
-    var latestCustomerMsgs = await db.getLatestCustomerMessages();
-    var customers = {};
-    (Array.isArray(latestCustomerMsgs) ? latestCustomerMsgs : []).forEach(function(m) {
-        customers[m.username] = { username: m.username, lastMessage: m.text, lastTimestamp: m.timestamp, unread: 0 };
-    });
-    var lastAdminMsgs = [];
-    var lastAdminGlobal = null;
-    lastAdminMsgs = await db.getLastAdminMessagesPerUser();
-    lastAdminGlobal = await db.getChatMeta('lastReadAt');
-    if (!Array.isArray(lastAdminMsgs)) lastAdminMsgs = [];
-    var lastAdminByUser = {};
-    lastAdminMsgs.forEach(function(m) {
-        lastAdminByUser[m.username] = m.timestamp;
-    });
-    Object.keys(customers).forEach(function(key) {
-        var customer = customers[key];
-        var lastAdminTs = lastAdminByUser[customer.username] || lastAdminGlobal;
-        if (!lastAdminTs || customer.lastTimestamp > lastAdminTs) {
-            customer.unread = 1;
+    var convs = await db.getAllConversationsWithLastMessage();
+    // Group by username, get latest conversation per user
+    var users = {};
+    convs.forEach(function(c) {
+        if (!users[c.username] || new Date(c.lastTimestamp || 0) > new Date(users[c.username].lastTimestamp || 0)) {
+            users[c.username] = c;
         }
     });
-    var list = Object.keys(customers).map(function(k) { return customers[k]; });
-    list.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
+    var list = Object.values(users).map(function(c) {
+        return {
+            username: c.username,
+            lastMessage: c.lastMessage,
+            lastTimestamp: c.lastTimestamp,
+            unread: c.unreadCount || 0
+        };
+    });
+    list.sort(function(a, b) { return new Date(b.lastTimestamp || 0) - new Date(a.lastTimestamp || 0); });
     res.json(list);
-}));
-
-app.post('/api/chat/conversation', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
-    const { username } = req.body;
-    if (!username || username !== req.user.username) {
-        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
-    }
-    const conv = await db.createConversation(username);
-    res.json(conv);
-}));
-
-app.get('/api/chat/conversation/:id', requireUser, asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { username } = req.query;
-    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
-    const before = req.query.before || null;
-    if (!username || username !== req.user.username) {
-        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
-    }
-    const messages = await db.getChatMessagesPaginated(id, limit, before);
-    const filtered = messages.filter(function(m) {
-        return (m.role === 'customer' && m.username === username) || (m.role === 'admin');
-    });
-    const total = filtered.length;
-    const hasMore = filtered.length > 0 && filtered[0].id !== messages[0]?.id;
-    res.json({ messages: filtered, total, hasMore, oldestId: filtered.length > 0 ? filtered[0].id : null });
-}));
-
-app.get('/api/chat/conversations', requireUser, asyncHandler(async (req, res) => {
-    const { username } = req.query;
-    if (!username || username !== req.user.username) {
-        return res.status(403).json({ error: 'دسترسی غیرمجاز' });
-    }
-    var convs = await db.getUserConversations(username);
-    var result = [];
-    var promises = convs.map(function(c) {
-        return db.getLastMessageAndCount(c.id).then(function(info) {
-            if (!info.lastMsg) return null;
-            return {
-                id: c.id,
-                username: c.username,
-                createdAt: c.createdAt,
-                lastMessage: info.lastMsg.text,
-                lastTimestamp: info.lastMsg.timestamp,
-                messageCount: info.count
-            };
-        });
-    });
-    var items = await Promise.all(promises);
-    result = items.filter(Boolean);
-    result.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
-    res.json(result);
 }));
 
 // ==================== IMAGE OPTIMIZATION (sharp) ====================
@@ -1859,11 +2054,39 @@ if (!isVercel && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
                 socket.join('admin-room');
             }
         });
-        socket.on('customer-typing', (data) => {
-            socket.to('admin-room').emit('customer-typing', data);
+        socket.on('join-conversation', (data) => {
+            if (data && data.conversationId) {
+                socket.join('conv:' + data.conversationId);
+            }
         });
-        socket.on('customer-stop-typing', (data) => {
-            socket.to('admin-room').emit('customer-stop-typing', data);
+        socket.on('leave-conversation', (data) => {
+            if (data && data.conversationId) {
+                socket.leave('conv:' + data.conversationId);
+            }
+        });
+        socket.on('typing', (data) => {
+            if (data && data.conversationId) {
+                if (socket.user && socket.user.isAdmin) {
+                    socket.to('conv:' + data.conversationId).emit('admin-typing', data);
+                } else {
+                    socket.to('admin-room').emit('customer-typing', data);
+                    if (data.conversationId) {
+                        socket.to('conv:' + data.conversationId).emit('admin-typing', data);
+                    }
+                }
+            }
+        });
+        socket.on('stop-typing', (data) => {
+            if (data && data.conversationId) {
+                if (socket.user && socket.user.isAdmin) {
+                    socket.to('conv:' + data.conversationId).emit('admin-stop-typing', data);
+                } else {
+                    socket.to('admin-room').emit('customer-stop-typing', data);
+                    if (data.conversationId) {
+                        socket.to('conv:' + data.conversationId).emit('admin-stop-typing', data);
+                    }
+                }
+            }
         });
     });
 
@@ -1880,6 +2103,9 @@ function emitChatEvent(io, event, data) {
     try {
         if (io && typeof io.to === 'function') {
             io.to('admin-room').emit(event, data);
+            if (data && data.conversationId) {
+                io.to('conv:' + data.conversationId).emit(event, data);
+            }
         }
     } catch (e) {}
 }
