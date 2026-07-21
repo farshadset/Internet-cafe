@@ -353,7 +353,8 @@
         timeEl.className = 'msg-time';
         timeEl.textContent = formatTime(msg.timestamp);
 
-        if (msg.role === 'admin') {
+        var tickRole = options.tickRole || 'admin';
+        if (msg.role === tickRole) {
             var tickEl = document.createElement('span');
             tickEl.className = 'msg-tick';
             tickEl.setAttribute('data-msg-tick', msg.id);
