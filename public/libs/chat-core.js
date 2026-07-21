@@ -86,13 +86,32 @@
         return str.length > len ? str.substring(0, len) + '...' : str;
     }
 
-    // File compression using canvas
+    // File compression using browser-image-compression (preferred) or canvas fallback
     function compressImage(file, maxMB) {
         maxMB = maxMB || 2;
         return new Promise(function(resolve, reject) {
             if (!isImageFile(file)) { resolve(file); return; }
             if (file.size <= maxMB * 1024 * 1024) { resolve(file); return; }
-            
+
+            // Prefer browser-image-compression library if available
+            if (typeof window.imageCompression === 'function') {
+                window.imageCompression(file, {
+                    maxSizeMB: maxMB,
+                    maxWidthOrHeight: 1920,
+                    useWebWorker: true,
+                    maxIteration: 10,
+                    exifOrientation: 1,
+                    fileType: 'image/jpeg',
+                    initialQuality: 0.82
+                }).then(function(compressed) {
+                    resolve(compressed);
+                }).catch(function() {
+                    resolve(file);
+                });
+                return;
+            }
+
+            // Canvas fallback
             var reader = new FileReader();
             reader.onload = function(e) {
                 var img = new Image();
@@ -111,10 +130,10 @@
                         }
                     }, 'image/jpeg', 0.85);
                 };
-                img.onerror = function() { reject(new Error('Cannot load image')); };
+                img.onerror = function() { resolve(file); };
                 img.src = e.target.result;
             };
-            reader.onerror = function() { reject(new Error('Cannot read file')); };
+            reader.onerror = function() { resolve(file); };
             reader.readAsDataURL(file);
         });
     }
