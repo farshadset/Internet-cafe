@@ -313,7 +313,18 @@ document.addEventListener('DOMContentLoaded',function(){
 
     function addAtt(file){
         if(curAtts.length>=CC.MAX_ATTACHMENTS){U.showToast('فقط چهار فایل مجاز');return}
-        var v=CC.validateAttachment(file);if(!v.valid){U.showToast(v.error);return}
+        var v=CC.validateAttachment(file);
+        if(!v.valid){
+            if(v.compressible&&typeof U.showConfirm==='function'){
+                U.showConfirm(v.error+'\nآیا می‌خواهید حجم تصویر بصورت خودکار کاهش یابد؟',function(ok){
+                    if(ok){
+                        U.showToast('در حال فشرده‌سازی تصویر...','info');
+                        CC.compressOversizedImage(file).then(function(c){addAtt(c)}).catch(function(){U.showToast('خطا در فشرده‌سازی')});
+                    }
+                });
+            }else{U.showToast(v.error)}
+            return;
+        }
         var aid=CC.generateId('att_'),isImg=CC.isImageFile(file);
         attPreview.insertAdjacentHTML('beforeend',CC.renderAttachmentProgress(aid,file.name,isImg));
         attPreview.classList.remove('hidden');pendingReads[aid]=true;updateBtn();

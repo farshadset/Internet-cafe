@@ -1915,50 +1915,64 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             var toProcess = files.slice(0, remaining);
             var index = 0;
+            function processFileAttachment(file) {
+                var attId = (typeof ChatCore !== 'undefined') ? ChatCore.generateId('att_') : Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+                var isImg = (typeof ChatCore !== 'undefined') ? ChatCore.isImageFile(file) : false;
+
+                if (inlineAttachmentPreview) {
+                    inlineAttachmentPreview.insertAdjacentHTML('beforeend',
+                        (typeof ChatCore !== 'undefined') ? ChatCore.renderAttachmentProgress(attId, file.name, isImg) : '');
+                    inlineAttachmentPreview.classList.remove('hidden');
+                }
+
+                pendingReads++;
+                updateInlineSendButton();
+
+                if (typeof ChatCore !== 'undefined') {
+                    ChatCore.readFileAsDataURL(file, function(pct) { ChatCore.updateProgress(attId, pct); })
+                        .then(function(att) {
+                            inlineAttachments.push(att);
+                            var thumb = inlineAttachmentPreview.querySelector('[data-att-id="' + attId + '"]');
+                            if (thumb) thumb.remove();
+                            inlineAttachmentPreview.insertAdjacentHTML('beforeend', ChatCore.renderAttachmentThumb(att, att.dataUrl));
+                            pendingReads--;
+                            updateInlineSendButton();
+                        })
+                        .catch(function() {
+                            var thumb = inlineAttachmentPreview.querySelector('[data-att-id="' + attId + '"]');
+                            if (thumb) thumb.remove();
+                            pendingReads--;
+                            updateInlineSendButton();
+                            ChillUtils.showToast('خطا در خواندن فایل');
+                        });
+                }
+                processNext();
+            }
             function processNext() {
                 if (index >= toProcess.length) return;
                 var file = toProcess[index];
                 index++;
                 var validation = (typeof ChatCore !== 'undefined') ? ChatCore.validateAttachment(file) : { valid: true };
                 if (!validation.valid) {
-                    ChillUtils.showToast(validation.error);
-                    processNext();
+                    if (validation.compressible && typeof ChillUtils.showConfirm === 'function') {
+                        ChillUtils.showConfirm(validation.error + '\nآیا می‌خواهید حجم تصویر بصورت خودکار کاهش یابد؟', function(confirmed) {
+                            if (confirmed) {
+                                ChillUtils.showToast('در حال فشرده‌سازی تصویر...', 'info');
+                                (typeof ChatCore !== 'undefined' ? ChatCore.compressOversizedImage(file) : Promise.resolve(file))
+                                    .then(function(compressed) { processFileAttachment(compressed); })
+                                    .catch(function() { ChillUtils.showToast('خطا در فشرده‌سازی'); processNext(); });
+                            } else {
+                                processNext();
+                            }
+                        });
+                    } else {
+                        ChillUtils.showToast(validation.error);
+                        processNext();
+                    }
                     return;
                 }
                 var processFile = (typeof ChatCore !== 'undefined' && ChatCore.isImageFile(file)) ? ChatCore.compressImage(file) : Promise.resolve(file);
-                processFile.then(function(finalFile) {
-                    var attId = (typeof ChatCore !== 'undefined') ? ChatCore.generateId('att_') : Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-                    var isImg = (typeof ChatCore !== 'undefined') ? ChatCore.isImageFile(file) : false;
-                    
-                    if (inlineAttachmentPreview) {
-                        inlineAttachmentPreview.insertAdjacentHTML('beforeend', 
-                            (typeof ChatCore !== 'undefined') ? ChatCore.renderAttachmentProgress(attId, file.name, isImg) : '');
-                        inlineAttachmentPreview.classList.remove('hidden');
-                    }
-                    
-                    pendingReads++;
-                    updateInlineSendButton();
-
-                    if (typeof ChatCore !== 'undefined') {
-                        ChatCore.readFileAsDataURL(finalFile, function(pct) { ChatCore.updateProgress(attId, pct); })
-                            .then(function(att) {
-                                inlineAttachments.push(att);
-                                var thumb = inlineAttachmentPreview.querySelector('[data-att-id="' + attId + '"]');
-                                if (thumb) thumb.remove();
-                                inlineAttachmentPreview.insertAdjacentHTML('beforeend', ChatCore.renderAttachmentThumb(att, att.dataUrl));
-                                pendingReads--;
-                                updateInlineSendButton();
-                            })
-                            .catch(function() {
-                                var thumb = inlineAttachmentPreview.querySelector('[data-att-id="' + attId + '"]');
-                                if (thumb) thumb.remove();
-                                pendingReads--;
-                                updateInlineSendButton();
-                                ChillUtils.showToast('خطا در خواندن فایل');
-                            });
-                    }
-                    processNext();
-                });
+                processFile.then(function(finalFile) { processFileAttachment(finalFile); });
             }
             processNext();
             inlineAttachmentFile.value = '';
