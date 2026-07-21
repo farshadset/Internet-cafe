@@ -1718,9 +1718,9 @@ document.addEventListener('DOMContentLoaded', () => {
             div.className = 'conversation-item';
             if (c.id === currentConversationId) div.classList.add('active');
             div.setAttribute('data-conv-id', c.id);
-            var dateStr = c.lastTimestamp ? new Date(c.lastTimestamp).toLocaleDateString('fa-IR') : '';
-            var preview = ChatCore.truncate(c.lastMessage || 'گفتگوی جدید', 30);
-            div.innerHTML = '<div class="conv-title" title="' + ChatCore.escapeHtml(c.lastMessage || '') + '">' + ChatCore.escapeHtml(preview) + '</div><div class="conv-date">' + dateStr + '</div>';
+            var dateStr = c.lastTimestamp ? ChatCore.formatDate(c.lastTimestamp) : '';
+            var preview = ChatCore.truncate(c.lastMessage || 'گفتگوی جدید', 35);
+            div.innerHTML = '<div class="conv-title">' + ChatCore.escapeHtml(preview) + '</div><div class="conv-preview">' + ChatCore.escapeHtml(preview) + '</div><div class="conv-date">' + dateStr + '</div>';
             div.addEventListener('click', function() {
                 currentConversationId = c.id;
                 loadInlineMessages();
