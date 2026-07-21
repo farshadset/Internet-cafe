@@ -12,7 +12,7 @@
 <body>
     <header class="site">
         <div class="container header-row">
-            <a class="btn btn-ghost back-link" href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='index.html'">
+            <a class="btn btn-ghost back-link" href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='/'">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 <span>بازگشت به صفحه اصلی</span>
             </a>
@@ -204,7 +204,7 @@
                             await window.saveAttachmentsForTrackingCode(result.trackingCode, uploadAttachments);
                         }
                         saveRegistrationData(data, result.trackingCode);
-                        window.location.href = 'success.html';
+                        window.location.href='/success';
                     } catch (error) {
                         ChillUtils.showAlert('خطا در اتصال به سرور', 'error');
                         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ثبت سفارش'; }

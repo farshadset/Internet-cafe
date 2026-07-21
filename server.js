@@ -494,9 +494,30 @@ const staticOptions = {
 };
 app.use(function(req, res, next) {
     var p = req.path;
-    if (p === '/admin.html' || p === '/admin' || /^\/admin-[\w-]+\.html$/.test(p)) {
+    if (p === '/admin' || p === '/admin.html' || /^\/admin-[\w-]+(\.html)?$/.test(p)) {
         var payload = verifyJWT(getToken(req));
-        if (!payload || !payload.isAdmin) return res.redirect('/login.html');
+        if (!payload || !payload.isAdmin) return res.redirect('/login');
+    }
+    next();
+});
+
+// Clean URLs: rewrite /login to /login.html
+app.use(function cleanUrls(req, res, next) {
+    var url = req.url;
+    // Skip API, uploads, sockets, static files with extensions, admin paths with query
+    if (url.indexOf('/api/') === 0 || url.indexOf('/uploads/') === 0 || url.indexOf('/socket.io/') === 0) return next();
+    // If URL has .html extension, redirect to clean URL
+    if (/\.html(\?|$)/.test(url)) {
+        var clean = url.replace(/\.html(\?|$)/, '$1');
+        return res.redirect(301, clean);
+    }
+    // If URL has no extension and no trailing slash, try serving the .html file
+    if (/^\/[\w-]+\/?$/.test(url) && url.indexOf('.') === -1) {
+        var filePath = path.join(rootDir, 'public', url.replace(/\/$/, '') + '.html');
+        return fs.promises.access(filePath).then(function() {
+            req.url = url.replace(/\/$/, '') + '.html';
+            next();
+        }).catch(function() { next(); });
     }
     next();
 });

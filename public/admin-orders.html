@@ -22,7 +22,7 @@
 
  <main>
              <div style="max-width:480px;margin:0 auto;display:flex;justify-content:flex-end;margin-bottom:0.5rem;">
-                  <a class="btn btn-ghost back-link" href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='admin.html'">
+                  <a class="btn btn-ghost back-link" href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='/admin'">
                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
                      <span>بازگشت</span>
                  </a>
@@ -159,7 +159,7 @@
                         '</div>' +
                         (order.result ? '<div style="margin-bottom:0.25rem;text-align:center;direction:rtl;"><strong style="color:#27ae60;">نتیجه: </strong><span>' + escapeHtml(order.result) + '</span></div>' : '') +
                         '<div style="margin-bottom:0.25rem;text-align:center;">' +
-                        '<a href="order-detail.html?code=' + encodeURIComponent(order.trackingCode) + '" title="جزئیات سفارش" style="color:#667eea;font-size:1rem;text-decoration:none;margin-left:0.5rem;"><i class="fas fa-eye"></i></a>' +
+                        '<a href="/order-detail?code=' + encodeURIComponent(order.trackingCode) + '" title="جزئیات سفارش" style="color:#667eea;font-size:1rem;text-decoration:none;margin-left:0.5rem;"><i class="fas fa-eye"></i></a>' +
                         '<button class="edit-result-btn" data-code="' + escapeHtml(order.trackingCode) + '" title="ثبت نتیجه" style="color:#667eea;font-size:1rem;background:none;border:none;cursor:pointer;"><i class="fas fa-edit"></i></button>' +
                         '</div>' +
                         '<div class="status-btns" title="تغییر وضعیت سفارش">' +

@@ -47,7 +47,7 @@
                 </div>
             </form>
             <p style="margin-top: 1rem;">
-                <a href="auth.html">ثبت نام</a>
+                <a href="/auth">ثبت نام</a>
                 | حساب کاربری ندارید؟
             </p>
         </main>
@@ -70,7 +70,7 @@
                 <div class="support-panel" id="chatPanel">
                     <div class="admin-chat-main">
                         <div class="admin-chat-header">
-                            <a href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='index.html'" class="back-link">
+                            <a href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='/'" class="back-link">
                                 <i class="fas fa-arrow-right"></i>
                                 <span>بازگشت</span>
                             </a>
@@ -130,10 +130,10 @@
                 WebAuthnClient.authenticate(username).then(function(result) {
                     if (result.isAdmin) {
                         localStorage.setItem('adminData', JSON.stringify({ username: username, token: result.token }));
-                        window.location.href = 'admin.html';
+                        window.location.href='/admin';
                     } else {
                         localStorage.setItem('userData', JSON.stringify({ username: username, token: result.token }));
-                        window.location.href = 'index.html';
+                        window.location.href='/';
                     }
                 }).catch(function(e) {
                     biometricBtn.disabled = false;

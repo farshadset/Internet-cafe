@@ -6,7 +6,7 @@
     <script src="libs/utils.js"></script>
     <script src="libs/browser-image-compression.js"></script>
     <script src="libs/chat-core.js"></script>
-    <script>if (!checkAdminAuth()) { window.location.href = 'login.html'; throw new Error('Auth required'); }</script>
+    <script>if (!checkAdminAuth()) { window.location.href='/login'; throw new Error('Auth required'); }</script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="fonts/all.css">
     <link rel="stylesheet" href="libs/notie.min.css">
@@ -35,7 +35,7 @@
 <div class="container">
     <main>
         <div style="max-width:500px;margin:0 auto">
-            <a class="back-link" href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='admin.html'">
+            <a class="back-link" href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='/admin'">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 بازگشت
             </a>
@@ -105,7 +105,7 @@
             var time=timeAgo(u.lastTimestamp);
             var badge=u.unread>0?'<span class="badge">'+u.unread+'</span>':'';
             var countBadge=u.convCount>1?'<span class="conv-count">'+u.convCount+' گفتگو</span>':'';
-            var href='admin-chat-conversation.html?username='+encodeURIComponent(u.username);
+            var href='/admin-chat-conversation?username='+encodeURIComponent(u.username);
             html+='<a class="customer-item" href="'+href+'">'+
                 '<div class="avatar">'+initial+'</div>'+
                 '<div class="customer-info"><div class="customer-name">'+name+'</div><div class="customer-last">'+msg+'</div></div>'+
@@ -116,7 +116,7 @@
 
     function load(){
         fetch('/api/admin/chat/conversations',{headers:headers()})
-        .then(function(r){if(r.status===401){localStorage.removeItem('adminData');window.location.href='login.html';return;}if(!r.ok)throw new Error(r.status);return r.json();})
+        .then(function(r){if(r.status===401){localStorage.removeItem('adminData');window.location.href='/login';return;}if(!r.ok)throw new Error(r.status);return r.json();})
         .then(function(data){allConvs=Array.isArray(data)?data:[];render();})
         .catch(function(){listEl.innerHTML='<p class="empty-state" style="color:red">خطا در بارگذاری</p><p class="empty-state"><button onclick="window._load()" style="padding:6px 18px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer">تلاش مجدد</button></p>';});
     }
