@@ -1146,6 +1146,7 @@ input[inputmode="numeric"] {
     display: flex;
     min-height: 0;
     gap: 0;
+    position: relative;
 }
 
 .modal.active .support-main {
@@ -1174,16 +1175,16 @@ input[inputmode="numeric"] {
 }
 
 .modal.active .support-sidebar {
-    width: 100px;
-    min-width: 100px;
+    width: 0;
+    min-width: 0;
     background: #f8f9fa;
     border-left: 1px solid #e9ecef;
     display: flex;
     flex-direction: column;
-    padding: 0.5rem 0;
+    padding: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    transition: width .15s ease, min-width .15s ease, padding .15s ease;
+    transition: width .2s ease, min-width .2s ease, padding .2s ease;
     align-items: center;
 }
 .modal.active .support-sidebar.expanded {
@@ -1193,6 +1194,9 @@ input[inputmode="numeric"] {
     align-items: stretch;
 }
 .modal.active .support-sidebar .sidebar-header {
+    display: none;
+}
+.modal.active .support-sidebar.expanded .sidebar-header {
     display: flex;
     flex-direction: row-reverse;
     align-items: center;
@@ -1270,30 +1274,35 @@ input[inputmode="numeric"] {
     margin-top: 2px;
 }
 .sidebar-toggle-btn {
-    display: inline-flex;
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 100;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px 0 0 10px;
+    border: 1px solid #e9ecef;
+    border-right: none;
+    background: #fff;
+    color: #667eea;
+    cursor: pointer;
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    border: none;
-    background: #e9ecef;
-    cursor: pointer;
-    font-size: 12px;
-    color: #333;
-    transition: background .15s;
-    flex-shrink: 0;
-    margin-right: 8px;
-    vertical-align: middle;
+    font-size: 1rem;
+    box-shadow: -2px 2px 8px rgba(0,0,0,.08);
+    transition: all .2s;
 }
 .sidebar-toggle-btn:hover {
-    background: #dee2e6;
+    background: #f0f2ff;
+    border-color: #667eea;
 }
 .sidebar-toggle-btn i {
-    transition: transform .15s;
+    transition: transform .2s;
 }
-.support-sidebar.expanded .sidebar-toggle-btn i {
-    transform: rotate(180deg);
+.support-sidebar.expanded ~ .sidebar-toggle-btn {
+    right: 280px;
 }
 
 .modal.active .admin-chat-main {
