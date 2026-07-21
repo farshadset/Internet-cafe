@@ -58,7 +58,65 @@
         if (!file) return false;
         var type = file.type || '';
         var name = file.name || '';
-        return type.indexOf('image/') === 0 || /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(name);
+        return type.indexOf('image/') === 0 || /\.(jpe?g|png|gif|webp|bmp|svg|tiff|tif|avif|heic|heif)$/i.test(name);
+    }
+
+    function isHeicFile(file) {
+        if (!file) return false;
+        var name = file.name || '';
+        var type = file.type || '';
+        return /\.(heic|heif)$/i.test(name) || type === 'image/heic' || type === 'image/heif';
+    }
+
+    var _heicLoadingPromise = null;
+    function loadHeicConverter() {
+        if (_heicLoadingPromise) return _heicLoadingPromise;
+        _heicLoadingPromise = new Promise(function(resolve) {
+            if (typeof window.HeicTo !== 'undefined' && typeof window.HeicTo.heicTo === 'function') {
+                resolve(window.HeicTo);
+                return;
+            }
+            if (typeof ChillUtils !== 'undefined' && typeof ChillUtils.loadHeicTo === 'function') {
+                ChillUtils.loadHeicTo().then(function(heic) {
+                    resolve(heic);
+                }).catch(function() { resolve(null); });
+                return;
+            }
+            var script = document.createElement('script');
+            script.type = 'module';
+            script.onload = function() {
+                var check = setInterval(function() {
+                    if (typeof window.HeicTo !== 'undefined' && typeof window.HeicTo.heicTo === 'function') {
+                        clearInterval(check);
+                        resolve(window.HeicTo);
+                    }
+                }, 50);
+                setTimeout(function() { clearInterval(check); resolve(null); }, 5000);
+            };
+            script.onerror = function() { resolve(null); };
+            script.src = 'libs/heic-to-loader.js';
+            document.head.appendChild(script);
+            setTimeout(function() { resolve(null); }, 6000);
+        });
+        return _heicLoadingPromise;
+    }
+
+    function convertHeicToJpeg(file) {
+        return new Promise(function(resolve) {
+            if (!isHeicFile(file)) { resolve(file); return; }
+            loadHeicConverter().then(function(heic) {
+                if (heic && typeof heic.heicTo === 'function') {
+                    heic.heicTo({ blob: file, type: 'image/jpeg', quality: 0.82 })
+                        .then(function(jpegBlob) {
+                            var newName = (file.name || 'image').replace(/\.[^.]+$/, '.jpg');
+                            resolve(new File([jpegBlob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+                        })
+                        .catch(function() { resolve(file); });
+                } else {
+                    resolve(file);
+                }
+            }).catch(function() { resolve(file); });
+        });
     }
 
     function generateId(prefix) {
@@ -86,31 +144,8 @@
         return str.length > len ? str.substring(0, len) + '...' : str;
     }
 
-    // Compress oversized image to under MAX_FILE_SIZE
-    function compressOversizedImage(file) {
-        var targetMB = MAX_FILE_SIZE / (1024 * 1024);
-        if (typeof window.imageCompression === 'function') {
-            return window.imageCompression(file, {
-                maxSizeMB: targetMB,
-                maxWidthOrHeight: 1920,
-                useWebWorker: true,
-                maxIteration: 10,
-                exifOrientation: 1,
-                fileType: 'image/jpeg',
-                initialQuality: 0.82
-            });
-        }
-        return compressImage(file, targetMB);
-    }
-
-    // File compression using browser-image-compression (preferred) or canvas fallback
-    function compressImage(file, maxMB) {
-        maxMB = maxMB || 2;
-        return new Promise(function(resolve, reject) {
-            if (!isImageFile(file)) { resolve(file); return; }
-            if (file.size <= maxMB * 1024 * 1024) { resolve(file); return; }
-
-            // Prefer browser-image-compression library if available
+    function _doCompressImage(file, maxMB) {
+        return new Promise(function(resolve) {
             if (typeof window.imageCompression === 'function') {
                 window.imageCompression(file, {
                     maxSizeMB: maxMB,
@@ -123,35 +158,66 @@
                 }).then(function(compressed) {
                     resolve(compressed);
                 }).catch(function() {
-                    resolve(file);
+                    _canvasCompress(file, maxMB).then(resolve);
                 });
                 return;
             }
+            _canvasCompress(file, maxMB).then(resolve);
+        });
+    }
 
-            // Canvas fallback
+    function _canvasCompress(file, maxMB) {
+        return new Promise(function(resolve) {
             var reader = new FileReader();
             reader.onload = function(e) {
                 var img = new Image();
                 img.onload = function() {
-                    var canvas = document.createElement('canvas');
-                    var ctx = canvas.getContext('2d');
-                    var ratio = Math.min(1, Math.sqrt((maxMB * 1024 * 1024) / file.size) * 0.8);
-                    canvas.width = Math.round(img.width * ratio);
-                    canvas.height = Math.round(img.height * ratio);
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    canvas.toBlob(function(blob) {
-                        if (blob) {
-                            resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
-                        } else {
-                            resolve(file);
-                        }
-                    }, 'image/jpeg', 0.85);
+                    try {
+                        var canvas = document.createElement('canvas');
+                        var ctx = canvas.getContext('2d');
+                        var ratio = Math.min(1, Math.sqrt((maxMB * 1024 * 1024) / file.size) * 0.8);
+                        canvas.width = Math.round(img.width * ratio);
+                        canvas.height = Math.round(img.height * ratio);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        canvas.toBlob(function(blob) {
+                            if (blob) {
+                                resolve(new File([blob], (file.name || 'image').replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() }));
+                            } else {
+                                resolve(file);
+                            }
+                        }, 'image/jpeg', 0.85);
+                    } catch(err) { resolve(file); }
                 };
                 img.onerror = function() { resolve(file); };
                 img.src = e.target.result;
             };
             reader.onerror = function() { resolve(file); };
             reader.readAsDataURL(file);
+        });
+    }
+
+    function compressOversizedImage(file) {
+        var targetMB = MAX_FILE_SIZE / (1024 * 1024);
+        return convertHeicToJpeg(file).then(function(converted) {
+            return _doCompressImage(converted, targetMB);
+        });
+    }
+
+    function compressImage(file, maxMB) {
+        maxMB = maxMB || 2;
+        return new Promise(function(resolve) {
+            if (!isImageFile(file)) { resolve(file); return; }
+            if (file.size <= maxMB * 1024 * 1024) {
+                if (isHeicFile(file)) {
+                    convertHeicToJpeg(file).then(resolve);
+                } else {
+                    resolve(file);
+                }
+                return;
+            }
+            convertHeicToJpeg(file).then(function(converted) {
+                _doCompressImage(converted, maxMB).then(resolve);
+            });
         });
     }
 
@@ -497,6 +563,8 @@
     return {
         escapeHtml: escapeHtml,
         isImageFile: isImageFile,
+        isHeicFile: isHeicFile,
+        convertHeicToJpeg: convertHeicToJpeg,
         generateId: generateId,
         formatTime: formatTime,
         formatDate: formatDate,

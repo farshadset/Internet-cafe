@@ -719,9 +719,9 @@ app.post('/api/order-attachment', requireUser, writeRateLimit, asyncHandler(asyn
     if (!decoded || decoded.buffer.length === 0) {
         return res.status(400).json({ error: 'داده فایل نامعتبر است' });
     }
-    var allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    var allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif', 'image/avif', 'application/pdf'];
     if (!allowedMimes.includes(decoded.type)) {
-        return res.status(400).json({ error: 'فقط فایل‌های تصویری (jpg, png, gif, webp) و PDF مجاز هستند' });
+        return res.status(400).json({ error: 'فقط فایل‌های تصویری (jpg, png, gif, webp, heic, heif) و PDF مجاز هستند' });
     }
     if (decoded.buffer.length > 5 * 1024 * 1024) {
         return res.status(400).json({ error: 'حجم فایل نباید بیش از ۵ مگابایت باشد' });
