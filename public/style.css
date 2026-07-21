@@ -1212,29 +1212,56 @@ input[inputmode="numeric"] {
     display: block;
 }
 .modal.active .support-sidebar .conversation-item {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 6px 8px;
-    margin: 2px 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    font-size: 12px;
-    color: #333;
+    display: block;
+    padding: .7rem .8rem;
+    margin: 0 0 .35rem 0;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid transparent;
     cursor: pointer;
-    border-radius: 6px;
+    text-align: right;
+    transition: all .2s;
+    position: relative;
+    overflow: hidden;
+}
+.modal.active .support-sidebar .conversation-item:hover {
+    border-color: #667eea;
+    background: #eef1ff;
+}
+.modal.active .support-sidebar .conversation-item.active {
+    background: #667eea;
+    color: #fff;
 }
 .modal.active .support-sidebar .conv-title {
+    font-weight: 700;
+    font-size: .85rem;
+    margin-bottom: .1rem;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+}
+.modal.active .support-sidebar .conversation-item.active .conv-title {
+    color: #fff;
 }
 .modal.active .support-sidebar .conv-date {
-    display: none;
+    font-size: .7rem;
+    color: #999;
+}
+.modal.active .support-sidebar .conversation-item.active .conv-date {
+    color: rgba(255,255,255,.7);
+}
+.modal.active .support-sidebar .conv-preview {
+    font-size: .75rem;
+    color: #888;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.modal.active .support-sidebar .conversation-item.active .conv-preview {
+    color: rgba(255,255,255,.8);
 }
 .modal.active .support-sidebar.expanded .conversation-item {
-    padding: 8px 10px;
+    padding: .7rem .8rem;
 }
 .modal.active .support-sidebar.expanded .conv-date {
     display: block;
