@@ -571,9 +571,13 @@
             .msg{display:flex;flex-direction:column;margin-bottom:0.5rem;max-width:80%}
             .msg-admin{align-self:flex-start}
             .msg-customer{align-self:flex-end;align-items:flex-end}
+            .customer-view .msg-admin{align-self:flex-end;align-items:flex-end}
+            .customer-view .msg-customer{align-self:flex-start}
             .msg-bubble{padding:0.6rem 1rem;border-radius:16px;font-size:0.9rem;line-height:1.6;word-wrap:break-word;white-space:pre-wrap}
             .msg-admin .msg-bubble{background:#667eea;color:#fff;border-bottom-right-radius:4px}
             .msg-customer .msg-bubble{background:#f3f4f6;color:#111;border-bottom-left-radius:4px}
+            .customer-view .msg-admin .msg-bubble{background:#f3f4f6;color:#111;border-bottom-left-radius:4px}
+            .customer-view .msg-customer .msg-bubble{background:#667eea;color:#fff;border-bottom-right-radius:4px}
             .msg-time{font-size:0.65rem;color:#999;margin-top:2px;padding:0 0.5rem;display:flex;align-items:center;gap:4px}
             .msg-seen{color:#667eea}
             .msg-tick{font-size:0.7rem;letter-spacing:-2px}
