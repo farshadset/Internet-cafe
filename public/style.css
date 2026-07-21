@@ -1329,6 +1329,7 @@ input[inputmode="numeric"] {
     font-size: .85rem;
     flex-shrink: 0;
     transition: background .15s;
+    margin-left: auto;
 }
 .modal.active .admin-chat-header .back-link:hover {
     background: #f3f4f6;
