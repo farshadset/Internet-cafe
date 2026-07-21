@@ -578,8 +578,8 @@
             .msg-seen{color:#667eea}
             .msg-tick{font-size:0.7rem;letter-spacing:-2px}
             .msg-pending{color:#bbb}
-            .msg-sent{color:#999}
-            .msg-seen{color:#667eea}
+            .msg-sent{color:#4caf50}
+            .msg-seen{color:#4caf50}
             .msg-attachments{display:flex;flex-wrap:wrap;gap:8px;margin-top:0.5rem}
             .typing-indicator{display:flex;gap:4px;padding:8px 16px;align-items:center}
             .typing-dot{width:6px;height:6px;background:#999;border-radius:50%;animation:typingBounce 1.4s infinite}
