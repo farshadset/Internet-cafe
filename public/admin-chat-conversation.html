@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
     function sendMessage(){
         var text=msgInput.value.trim();
-        if(text.length>CC.MAX_MESSAGE_LENGTH){U.showAlert('متن پیام بیش از حد مجاز');return}
+        if(text.length>CC.MAX_MESSAGE_LENGTH){U.showAlert('متن پیام بیش از حد مجاز','warning');return}
         if(!text&&!curAtts.length)return;
         var totalSz=0;curAtts.forEach(function(a){totalSz+=(a.dataUrl||'').length});
         if(totalSz>CC.MAX_TOTAL_SIZE){U.showAlert('حجم فایل‌ها زیاد است','error');return}
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded',function(){
         var v=CC.validateAttachment(file);
         if(!v.valid){
             if(v.compressible&&typeof U.showConfirm==='function'){
-                U.showConfirm(v.error+'\nآیا می‌خواهید حجم تصویر بصورت خودکار کاهش یابد؟',function(ok){
+                U.showConfirm(v.error+'<br>آیا حجم تصویر کاهش یابد؟',function(ok){
                     if(ok){
                         showCompressProgress();
                         CC.compressOversizedImage(file).then(function(c){compressBarFill.style.width='100%';compressText.textContent='فشرده‌سازی کامل شد';setTimeout(hideCompressProgress,300);addAtt(c)}).catch(function(){hideCompressProgress();U.showToast('خطا در فشرده‌سازی')});
