@@ -2139,6 +2139,14 @@ function emitChatEvent(io, event, data) {
 
 app.dbReady = dbReady;
 
+// 404 handler — serve custom 404 page for HTML requests, JSON for API
+app.use((req, res) => {
+    if (req.accepts('html')) {
+        return res.status(404).sendFile(path.join(rootDir, 'public', '404.html'));
+    }
+    res.status(404).json({ error: 'صفحه پیدا نشد' });
+});
+
 // Global error handler — must be after all routes
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err.message || err);
