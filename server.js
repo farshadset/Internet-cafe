@@ -8,6 +8,7 @@ const compression = require('compression');
 const zlib = require('zlib');
 const { Server } = require('socket.io');
 const db = require('./db');
+const PricingCatalog = require('./public/libs/pricing-catalog.js');
 
 // ==================== UPSTASH REDIS (optional — falls back to in-memory) ====================
 let upstashLimiter = null;
@@ -1029,7 +1030,10 @@ app.get('/api/pricing', asyncHandler(async (req, res) => {
         res.set('CDN-Cache-Control', 'max-age=300');
         return res.json(cached);
     }
-    const pricing = await db.getPricing();
+    const all = await db.getPricing();
+    var valid = {};
+    PricingCatalog.getAllKeys().forEach(function (k) { valid[k] = true; });
+    var pricing = all.filter(function (p) { return valid[p.service]; });
     setCache('pricing', pricing);
     res.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=60');
     res.set('CDN-Cache-Control', 'max-age=300');
@@ -1038,12 +1042,47 @@ app.get('/api/pricing', asyncHandler(async (req, res) => {
 
 app.post('/api/pricing', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
     const { service, price } = req.body;
-    if (!service) {
+    if (!service || typeof service !== 'string') {
         return res.status(400).json({ error: 'سرویس الزامی است' });
     }
-    await db.upsertPricing(service, price);
+    if (!PricingCatalog.isValidKey(service)) {
+        return res.status(400).json({ error: 'کلید سرویس نامعتبر است' });
+    }
+    var priceNum = Math.trunc(Number(price));
+    if (!isFinite(priceNum) || priceNum < 0) {
+        return res.status(400).json({ error: 'قیمت نامعتبر است' });
+    }
+    await db.upsertPricing(service, priceNum);
     clearCache('pricing');
     res.json({ success: true });
+}));
+
+app.post('/api/pricing/bulk', requireAdmin, writeRateLimit, asyncHandler(async (req, res) => {
+    var items = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'آیتم‌ها الزامی است' });
+    }
+    if (items.length > 500) {
+        return res.status(400).json({ error: 'حداکثر 500 آیتم مجاز است' });
+    }
+    var normalized = [];
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        if (!item.service || typeof item.service !== 'string') {
+            return res.status(400).json({ error: 'سرویس الزامی است', index: i });
+        }
+        if (!PricingCatalog.isValidKey(item.service)) {
+            return res.status(400).json({ error: 'کلید سرویس نامعتبر: ' + item.service, index: i });
+        }
+        var p = Math.trunc(Number(item.price));
+        if (!isFinite(p) || p < 0) {
+            return res.status(400).json({ error: 'قیمت نامعتبر برای: ' + item.service, index: i });
+        }
+        normalized.push({ service: item.service, price: p });
+    }
+    await db.upsertPricingBulk(normalized);
+    clearCache('pricing');
+    res.json({ success: true, count: normalized.length });
 }));
 
 function sanitizeBannerLink(link) {
