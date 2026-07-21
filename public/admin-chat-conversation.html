@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="fonts/all.css">
     <link rel="stylesheet" href="libs/notie.min.css">
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="/socket.io/socket.io.js" async onerror="window._ioMissing=true"></script>
     <script src="libs/chat-core.js"></script>
     <style>
 body{margin:0;padding:0;font-family:'Vazirmatn',system-ui,sans-serif;background:#f8f9fa;color:#111827;height:100dvh;overflow:hidden}
@@ -181,9 +181,9 @@ document.addEventListener('DOMContentLoaded',function(){
     CC.injectChatStyles();
 
     function hdr(extra){var h=extra||{};if(token)h['Authorization']='Bearer '+token;return h}
-    function aGet(u){return fetch(u,{headers:hdr({'Accept':'application/json'})}).then(function(r){if(r.status===401){localStorage.removeItem('adminData');window.location.href='login.html';return null}if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})}
-    function aPost(u,d){return fetch(u,{method:'POST',headers:hdr({'Content-Type':'application/json'}),body:JSON.stringify(d)}).then(function(r){if(r.status===401){localStorage.removeItem('adminData');window.location.href='login.html';return null}return r.json().then(function(x){return{ok:r.ok,data:x}})})}
-    function aDel(u){return fetch(u,{method:'DELETE',headers:hdr()}).then(function(r){return r.json().then(function(x){return{ok:r.ok,data:x}})})}
+    function aGet(u){return fetch(u,{headers:hdr({'Accept':'application/json'})}).then(function(r){if(r.status===401){localStorage.removeItem('adminData');window.location.href='login.html';return null}if(!r.ok)throw new Error('HTTP '+r.status);return r.text().then(function(t){try{return JSON.parse(t)}catch(e){return t}})}).catch(function(e){console.error('API Error:',u,e);throw e})}
+    function aPost(u,d){return fetch(u,{method:'POST',headers:hdr({'Content-Type':'application/json'}),body:JSON.stringify(d)}).then(function(r){if(r.status===401){localStorage.removeItem('adminData');window.location.href='login.html';return null}return r.text().then(function(t){var x;try{x=JSON.parse(t)}catch(e){x={error:t||'خطای سرور'}}return{ok:r.ok,data:x}})}).catch(function(e){return{ok:false,data:{error:'خطا در ارتباط با سرور'}}})}
+    function aDel(u){return fetch(u,{method:'DELETE',headers:hdr()}).then(function(r){return r.text().then(function(t){var x;try{x=JSON.parse(t)}catch(e){x={}}return{ok:r.ok,data:x}})}).catch(function(e){return{ok:false,data:{}}})}
 
     function initSocket(){
         if(!token)return;var socket=CC.initSocket(token);if(!socket)return;
@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }
 
     function autoScroll(){var d=messagesEl.scrollHeight-messagesEl.scrollTop-messagesEl.clientHeight;if(d<80)messagesEl.scrollTop=messagesEl.scrollHeight}
-    function markRead(){if(!currentConvId)return;aPost('/api/admin/chat/read',{conversationId:currentConvId});var c=convs.find(function(x){return x.id===currentConvId});if(c){c.unreadCount=0;renderList()}}
+    function markRead(){if(!currentConvId)return;aPost('/api/admin/chat/read',{conversationId:currentConvId}).catch(function(){});var c=convs.find(function(x){return x.id===currentConvId});if(c){c.unreadCount=0;renderList()}}
 
     function sendMessage(){
         var text=msgInput.value.trim();
@@ -285,7 +285,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if(totalSz>CC.MAX_TOTAL_SIZE){U.showAlert('حجم فایل‌ها زیاد است','error');return}
         sendBtn.disabled=true;
         aPost('/api/admin/chat',{text:text,conversationId:currentConvId,attachments:curAtts}).then(function(r){
-            if(!r||!r.ok||!r.data.text){U.showAlert(r&&r.data&&r.data.error||'خطا در ارسال','error');sendBtn.disabled=false;return}
+            if(!r||!r.ok){U.showAlert(r&&r.data&&r.data.error||'خطا در ارسال','error');sendBtn.disabled=false;return}
             var msg=r.data,empty=messagesEl.querySelector('.empty-state');
             if(empty&&!q('#loadOlder'))messagesEl.innerHTML='';
             messagesEl.appendChild(CC.renderMessage(msg,{showSeen:true}));lastMsgId=msg.id;
