@@ -1452,8 +1452,8 @@ app.post('/api/chat/conversation/:id/read', requireUser, writeRateLimit, asyncHa
 
 // --- Admin: Get all conversations (unified) ---
 app.get('/api/admin/chat/conversations', requireAdmin, asyncHandler(async (req, res) => {
-    const { assignedTo, status } = req.query;
-    var convs = await db.getAllConversationsWithLastMessage(assignedTo || null);
+    const { assignedTo, status, username } = req.query;
+    var convs = await db.getAllConversationsWithLastMessage(assignedTo || null, username || null);
     // Filter by status if provided
     if (status) {
         convs = convs.filter(function(c) { return c.status === status; });

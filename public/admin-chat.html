@@ -13,14 +13,11 @@
         .stats-bar{display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap}
         .stat-card{flex:1;min-width:80px;background:#fff;border-radius:10px;padding:.75rem;text-align:center;border:1px solid #e9ecef}
         .stat-num{font-size:1.4rem;font-weight:700;color:#667eea}.stat-lbl{font-size:.75rem;color:#888}
-        .filter-tabs{display:flex;gap:.5rem;margin-bottom:.75rem}
-        .filter-tab{flex:1;padding:.5rem;border:1px solid #e9ecef;border-radius:8px;background:#fff;text-align:center;cursor:pointer;font-size:.85rem;transition:.2s}
-        .filter-tab.active{background:#667eea;color:#fff;border-color:#667eea}
         .search-box{width:100%;padding:.6rem 1rem;border:1px solid #e9ecef;border-radius:10px;font-size:.9rem;margin-bottom:.75rem;outline:none}
         .search-box:focus{border-color:#667eea}
         .customer-list{display:flex;flex-direction:column;gap:.5rem}
         .customer-item{display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;background:#fff;border-radius:12px;border:1px solid #e9ecef;text-decoration:none;color:inherit;transition:.2s}
-        .customer-item:hover{background:#f5f7ff}
+        .customer-item:hover{background:#f5f7ff;border-color:#667eea}
         .avatar{width:42px;height:42px;border-radius:50%;background:#667eea;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0}
         .customer-info{flex:1;min-width:0}
         .customer-name{font-weight:700;font-size:.9rem;margin-bottom:.1rem}
@@ -28,8 +25,7 @@
         .customer-meta{display:flex;flex-direction:column;align-items:flex-end;gap:.3rem;flex-shrink:0}
         .customer-time{font-size:.7rem;color:#999}
         .badge{background:#e74c3c;color:#fff;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:10px;min-width:22px;text-align:center}
-        .status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-        .status-open{background:#27ae60}.status-closed{background:#95a5a6}
+        .conv-count{font-size:.7rem;color:#999;background:#f3f4f6;padding:1px 6px;border-radius:8px}
         .empty-state{text-align:center;color:#999;padding:3rem 1rem}
         .back-link{display:inline-flex;align-items:center;gap:.4rem;text-decoration:none;color:#667eea;font-size:.9rem;margin-bottom:.75rem}
     </style>
@@ -42,66 +38,77 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 بازگشت
             </a>
-            <div class="stats-bar" id="statsBar">
-                <div class="stat-card"><div class="stat-num" id="statTotal">-</div><div class="stat-lbl">کل گفتگوها</div></div>
-                <div class="stat-card"><div class="stat-num" id="statOpen">-</div><div class="stat-lbl">باز</div></div>
+            <div class="stats-bar">
+                <div class="stat-card"><div class="stat-num" id="statUsers">-</div><div class="stat-lbl">کاربر</div></div>
+                <div class="stat-card"><div class="stat-num" id="statOpen">-</div><div class="stat-lbl">گفتگوی باز</div></div>
                 <div class="stat-card"><div class="stat-num" id="statUnread">-</div><div class="stat-lbl">خوانده نشده</div></div>
             </div>
             <input type="text" class="search-box" id="searchBox" placeholder="جستجوی نام کاربری...">
-            <div class="filter-tabs">
-                <div class="filter-tab active" data-filter="all">همه</div>
-                <div class="filter-tab" data-filter="open">باز</div>
-                <div class="filter-tab" data-filter="closed">بسته</div>
-            </div>
             <div class="customer-list" id="customersList"><p class="empty-state">در حال بارگذاری...</p></div>
         </div>
     </main>
 </div>
 <script>
 (function(){
-    var allConvs=[], activeFilter='all', searchQuery='';
+    var allConvs=[], groupedUsers={}, searchQuery='';
     var listEl=document.getElementById('customersList'), searchBox=document.getElementById('searchBox');
-    var statTotal=document.getElementById('statTotal'), statOpen=document.getElementById('statOpen'), statUnread=document.getElementById('statUnread');
+    var statUsers=document.getElementById('statUsers'), statOpen=document.getElementById('statOpen'), statUnread=document.getElementById('statUnread');
+
     function getToken(){try{var d=JSON.parse(localStorage.getItem('adminData')||'null');return d&&d.token?d.token:null;}catch(e){return null;}}
-    function headers(){return{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'};}
+    function headers(){return{'Authorization':'Bearer '+getToken()};}
     function timeAgo(ts){if(!ts)return'';var s=Math.floor((Date.now()-new Date(ts).getTime())/1000);if(s<60)return'اکنون';if(s<3600)return Math.floor(s/60)+' دقیقه';if(s<86400)return Math.floor(s/3600)+' ساعت';return Math.floor(s/86400)+' روز';}
 
-    document.querySelectorAll('.filter-tab').forEach(function(tab){
-        tab.addEventListener('click',function(){
-            document.querySelector('.filter-tab.active').classList.remove('active');
-            tab.classList.add('active');activeFilter=tab.dataset.filter;render();
-        });
-    });
     searchBox.addEventListener('input',function(){searchQuery=searchBox.value.trim().toLowerCase();render();});
 
+    function groupByUsername(convs){
+        var users={};
+        convs.forEach(function(c){
+            var u=c.username||'مهمان';
+            if(!users[u]){
+                users[u]={username:u,lastMessage:c.lastMessage,lastTimestamp:c.lastTimestamp,convCount:1,openCount:0,unread:0,latestConvId:c.id,latestStatus:c.status};
+            }
+            var t=users[u];
+            t.convCount++;
+            if(c.status==='open')t.openCount++;
+            t.unread+=(c.unreadCount||0);
+            if(c.lastTimestamp && (!t.lastTimestamp || c.lastTimestamp>t.lastTimestamp)){
+                t.lastMessage=c.lastMessage;t.lastTimestamp=c.lastTimestamp;t.latestConvId=c.id;t.latestStatus=c.status;
+            }
+        });
+        return users;
+    }
+
     function render(){
-        var filtered=allConvs.filter(function(c){
-            var isOpen=c.status==='open';
-            if(activeFilter==='open'&&!isOpen)return false;
-            if(activeFilter==='closed'&&isOpen)return false;
-            if(searchQuery&&!(c.username||'').toLowerCase().includes(searchQuery))return false;
+        groupedUsers=groupByUsername(allConvs);
+        var users=Object.values(groupedUsers);
+        users.sort(function(a,b){
+            if(!a.lastTimestamp)return 1;if(!b.lastTimestamp)return -1;
+            return new Date(b.lastTimestamp)-new Date(a.lastTimestamp);
+        });
+        var filtered=users.filter(function(u){
+            if(searchQuery&&u.username.toLowerCase().indexOf(searchQuery)===-1)return false;
             return true;
         });
-        var totalOpen=0,totalUnread=0;
-        allConvs.forEach(function(c){if(c.status==='open')totalOpen++;totalUnread+=(c.unreadCount||0);});
-        statTotal.textContent=allConvs.length;statOpen.textContent=totalOpen;statUnread.textContent=totalUnread;
+        var totalUsers=users.length,totalOpen=0,totalUnread=0;
+        users.forEach(function(u){totalOpen+=u.openCount;totalUnread+=u.unread;});
+        statUsers.textContent=totalUsers;statOpen.textContent=totalOpen;statUnread.textContent=totalUnread;
 
         if(!filtered.length){
-            listEl.innerHTML='<p class="empty-state">'+(allConvs.length?'نتیجه‌ای یافت نشد':'هیچ گفتگویی وجود ندارد')+'</p>';return;
+            listEl.innerHTML='<p class="empty-state">'+(users.length?'نتیجه‌ای یافت نشد':'هیچ پیامی وجود ندارد')+'</p>';return;
         }
         var html='';
-        filtered.forEach(function(c){
-            var initial=ChatCore.escapeHtml((c.username||'?')[0]);
-            var name=ChatCore.escapeHtml(c.username||'مهمان');
-            var msg=ChatCore.escapeHtml(c.lastMessage||'');
-            var time=timeAgo(c.lastMessageAt||c.lastTimestamp);
-            var badge=(c.unreadCount>0)?'<span class="badge">'+c.unreadCount+'</span>':'';
-            var dot=c.status==='open'?'status-open':'status-closed';
-            var href='admin-chat-conversation.html?username='+encodeURIComponent(c.username)+(c.id?'&conv='+encodeURIComponent(c.id):'');
+        filtered.forEach(function(u){
+            var initial=ChatCore.escapeHtml(u.username[0]);
+            var name=ChatCore.escapeHtml(u.username);
+            var msg=ChatCore.escapeHtml(u.lastMessage||'گفتگوی جدید');
+            var time=timeAgo(u.lastTimestamp);
+            var badge=u.unread>0?'<span class="badge">'+u.unread+'</span>':'';
+            var countBadge=u.convCount>1?'<span class="conv-count">'+u.convCount+' گفتگو</span>':'';
+            var href='admin-chat-conversation.html?username='+encodeURIComponent(u.username);
             html+='<a class="customer-item" href="'+href+'">'+
                 '<div class="avatar">'+initial+'</div>'+
                 '<div class="customer-info"><div class="customer-name">'+name+'</div><div class="customer-last">'+msg+'</div></div>'+
-                '<div class="customer-meta"><span class="customer-time">'+time+'</span><span class="status-dot '+dot+'"></span>'+badge+'</div></a>';
+                '<div class="customer-meta"><span class="customer-time">'+time+'</span>'+countBadge+badge+'</div></a>';
         });
         listEl.innerHTML=html;
     }
@@ -109,7 +116,7 @@
     function load(){
         fetch('/api/admin/chat/conversations',{headers:headers()})
         .then(function(r){if(r.status===401){localStorage.removeItem('adminData');window.location.href='login.html';return;}if(!r.ok)throw new Error(r.status);return r.json();})
-        .then(function(data){allConvs=data.conversations||data||[];render();})
+        .then(function(data){allConvs=Array.isArray(data)?data:[];render();})
         .catch(function(){listEl.innerHTML='<p class="empty-state" style="color:red">خطا در بارگذاری</p><p class="empty-state"><button onclick="window._load()" style="padding:6px 18px;border:none;background:#667eea;color:#fff;border-radius:8px;cursor:pointer">تلاش مجدد</button></p>';});
     }
     window._load=load;
