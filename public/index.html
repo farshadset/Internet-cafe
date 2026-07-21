@@ -336,7 +336,13 @@
     
     <div class="modal" id="supportModal">
         <div class="modal-content">
-            <h2>پشتیبانی</h2>
+            <div class="admin-chat-header support-top-header">
+                <strong id="chatPartner">پشتیبانی</strong>
+                <a href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='/'" class="back-link">
+                    <i class="fas fa-arrow-right"></i>
+                    <span>بازگشت</span>
+                </a>
+            </div>
             <div class="support-layout">
                 <div class="support-sidebar" id="supportSidebar">
                     <div class="sidebar-header">
@@ -352,10 +358,6 @@
                         <div class="admin-chat-main">
                             <div class="admin-chat-header">
                                 <button class="sidebar-toggle-btn" id="sidebarConvToggle" title="لیست گفتگوها"><i class="fas fa-comments"></i></button>
-                                <a href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='/'" class="back-link">
-                                    <i class="fas fa-arrow-right"></i>
-                                    <span>بازگشت</span>
-                                </a>
                             </div>
                             <div class="admin-chat-messages customer-view" id="inlineChatMessages"></div>
                             <div class="attachment-preview hidden" id="inlineAttachmentPreview"></div>
