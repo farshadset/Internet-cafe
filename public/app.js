@@ -1793,7 +1793,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         messages.forEach(function(msg) {
-            var el = ChatCore.renderMessage(msg, { showSeen: true });
+            var el = ChatCore.renderMessage(msg, { showSeen: true, tickRole: 'customer' });
             inlineChatMessages.appendChild(el);
         });
         inlineChatMessages.scrollTop = inlineChatMessages.scrollHeight;
