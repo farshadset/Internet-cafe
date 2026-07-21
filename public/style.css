@@ -1327,7 +1327,21 @@ input[inputmode="numeric"] {
 }
 
 .modal.active .admin-chat-header .back-link {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .4rem .7rem;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #111827;
+    font-size: .85rem;
+    flex-shrink: 0;
+    transition: background .15s;
+}
+.modal.active .admin-chat-header .back-link:hover {
+    background: #f3f4f6;
 }
 
 .modal.active .admin-chat-messages .message {
