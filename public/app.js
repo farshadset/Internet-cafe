@@ -1478,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const confirmPassword = document.getElementById('confirmPassword').value;
 
             if (password !== confirmPassword) {
-                ChillUtils.showAlert('رمز عبور و تکرار آن مطابقت ندارند!');
+                ChillUtils.showAlert('رمز عبور و تکرار آن مطابقت ندارند!', 'warning');
                 return;
             }
 
@@ -1632,7 +1632,7 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmPaymentBtn.addEventListener('click', function() {
             const trackingCode = localStorage.getItem('lastTrackingCode');
             if (!trackingCode) {
-                ChillUtils.showAlert('کد سفارش پیدا نشد. لطفاً دوباره ثبت نام کنید.');
+                ChillUtils.showAlert('کد سفارش پیدا نشد. لطفاً دوباره ثبت نام کنید.', 'warning');
                 window.location.href = 'index.html';
                 return;
             }
@@ -1909,7 +1909,7 @@ document.addEventListener('DOMContentLoaded', () => {
             var files = Array.from(e.target.files || []);
             var remaining = (typeof ChatCore !== 'undefined' ? ChatCore.MAX_ATTACHMENTS : 4) - inlineAttachments.length - pendingReads;
             if (remaining <= 0) {
-                ChillUtils.showAlert('فقط می توان چهار فایل آپلود کرد');
+                ChillUtils.showAlert('فقط می توان چهار فایل آپلود کرد', 'warning');
                 inlineAttachmentFile.value = '';
                 return;
             }
@@ -1955,7 +1955,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 var validation = (typeof ChatCore !== 'undefined') ? ChatCore.validateAttachment(file) : { valid: true };
                 if (!validation.valid) {
                     if (validation.compressible && typeof ChillUtils.showConfirm === 'function') {
-                        ChillUtils.showConfirm(validation.error + '\nآیا می‌خواهید حجم تصویر بصورت خودکار کاهش یابد؟', function(confirmed) {
+                        ChillUtils.showConfirm(validation.error + '<br>آیا حجم تصویر کاهش یابد؟', function(confirmed) {
                             if (confirmed) {
                                 var cpEl=document.getElementById('compressProgress'),cpFill=document.getElementById('compressBarFill'),cpTxt=document.getElementById('compressText');
                                 if(cpEl)cpEl.classList.add('active');if(cpFill)cpFill.style.width='30%';if(cpTxt)cpTxt.textContent='در حال فشرده‌سازی تصویر...';

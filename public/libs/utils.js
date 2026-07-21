@@ -116,9 +116,10 @@ var ChillUtils = (function() {
         if (typeof notie !== 'undefined') {
             notie.confirm({
                 text: message,
-                submitText: 'بله',
+                submitText: 'بله، کاهش بده',
                 cancelText: 'خیر',
-                submitCallback: function() { notie.alertClose(); if (onConfirm) onConfirm(true); }
+                submitCallback: function() { notie.alertClose(); if (onConfirm) onConfirm(true); },
+                cancelCallback: function() { notie.alertClose(); }
             });
             return;
         }
