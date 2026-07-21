@@ -509,7 +509,6 @@ app.use(function cleanUrls(req, res, next) {
     // If URL has .html extension, redirect to clean URL
     if (/\.html(\?|$)/.test(url)) {
         var clean = url.replace(/\.html(\?|$)/, '$1');
-        // /index.html → / (root)
         if (clean === '/index') clean = '/';
         return res.redirect(301, clean);
     }
@@ -517,11 +516,12 @@ app.use(function cleanUrls(req, res, next) {
     if (url === '/index' || url === '/index/') {
         return res.redirect(301, '/');
     }
-    // If URL has no extension and no trailing slash, try serving the .html file
-    if (/^\/[\w-]+\/?$/.test(url) && url.indexOf('.') === -1) {
-        var filePath = path.join(rootDir, 'public', url.replace(/\/$/, '') + '.html');
+    // If URL has no extension, try serving the .html file
+    var pathname = url.split('?')[0];
+    if (!/\.\w+$/.test(pathname) && pathname !== '/') {
+        var filePath = path.join(rootDir, 'public', pathname + '.html');
         return fs.promises.access(filePath).then(function() {
-            req.url = url.replace(/\/$/, '') + '.html';
+            req.url = pathname + '.html' + (url.indexOf('?') !== -1 ? url.substring(url.indexOf('?')) : '');
             next();
         }).catch(function() { next(); });
     }
