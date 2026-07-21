@@ -67,8 +67,13 @@ body{margin:0;padding:0;font-family:'Vazirmatn',system-ui,sans-serif;background:
 .send-btn:hover{background:#5563d6}
 .send-btn:disabled{background:#d1d5db;cursor:not-allowed}
 .char-count{position:absolute;bottom:8px;left:92px;font-size:.7rem;color:#999;line-height:36px}
-.att-preview{position:absolute;bottom:8px;right:8px;left:136px;display:none;flex-wrap:wrap;gap:6px;z-index:4;max-height:100px;overflow-y:auto;padding:4px}
+.att-preview{display:none;flex-wrap:wrap;gap:6px;padding:6px 1rem;background:#fff;border-top:1px solid #e9ecef;max-height:100px;overflow-y:auto}
 .att-preview:not(.hidden){display:flex}
+.compress-progress{display:none;padding:6px 1rem;background:#fff;border-top:1px solid #e9ecef;font-size:.8rem;color:#667eea;align-items:center;gap:8px}
+.compress-progress.active{display:flex}
+.compress-bar{flex:1;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden}
+.compress-bar-fill{height:100%;background:#667eea;border-radius:2px;transition:width .2s;width:0}
+.compress-text{white-space:nowrap;font-size:.75rem}
 .typing-bar{padding:4px 16px;font-size:.75rem;color:#888;min-height:22px}
 .empty-state{display:flex;align-items:center;justify-content:center;flex:1;color:#999;font-size:.95rem}
 .notes-panel{width:0;overflow:hidden;transition:width .25s;background:#fff;border-right:1px solid #e9ecef;flex-shrink:0}
@@ -145,11 +150,12 @@ body{margin:0;padding:0;font-family:'Vazirmatn',system-ui,sans-serif;background:
         <div class="search-results" id="searchResults"></div>
         <div class="messages" id="messages"><div class="empty-state">یک گفتگو را انتخاب کنید</div></div>
         <div class="typing-bar" id="typingBar"></div>
+        <div class="att-preview hidden" id="attPreview"></div>
+        <div class="compress-progress" id="compressProgress"><div class="compress-bar"><div class="compress-bar-fill" id="compressBarFill"></div></div><span class="compress-text" id="compressText">در حال فشرده‌سازی...</span></div>
         <div class="input-area">
             <div class="input-wrap">
                 <div class="canned-dropdown" id="cannedDropdown"></div>
                 <textarea id="msgInput" rows="1" maxlength="5000" placeholder="پاسخ خود را اینجا بنویسید..."></textarea>
-                <div class="att-preview hidden" id="attPreview"></div>
                 <button class="send-btn" id="sendBtn" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>
                 <button class="attach-btn" id="attachBtn" title="افزودن فایل"><i class="fas fa-paperclip"></i></button>
                 <span class="char-count" id="charCount">0/5000</span>
@@ -167,6 +173,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var convList=q('#convList'),messagesEl=q('#messages'),msgInput=q('#msgInput');
     var sendBtn=q('#sendBtn'),charCount=q('#charCount');
     var attPreview=q('#attPreview'),fileInput=q('#fileInput'),attachBtn=q('#attachBtn');
+    var compressProgress=q('#compressProgress'),compressBarFill=q('#compressBarFill'),compressText=q('#compressText');
     var convUser=q('#convUser'),convSubject=q('#convSubject'),closeReopenBtn=q('#closeReopenBtn');
     var searchToggle=q('#searchToggle'),searchBar=q('#searchBar'),searchInput=q('#searchInput');
     var searchBtn=q('#searchBtn'),searchClose=q('#searchClose'),searchResults=q('#searchResults');
@@ -311,6 +318,9 @@ document.addEventListener('DOMContentLoaded',function(){
     function autoResize(){msgInput.style.height='auto';msgInput.style.height=Math.min(msgInput.scrollHeight,300)+'px';charCount.textContent=msgInput.value.length+'/5000';updateBtn()}
     function updateBtn(){sendBtn.disabled=(!msgInput.value.trim()&&!curAtts.length)||Object.keys(pendingReads).length>0}
 
+    function showCompressProgress(pct){compressProgress.classList.add('active');compressBarFill.style.width=Math.min(pct,100)+'%';compressText.textContent='در حال فشرده‌سازی... '+Math.round(Math.min(pct,100))+'%'}
+    function hideCompressProgress(){compressProgress.classList.remove('active');compressBarFill.style.width='0%'}
+
     function addAtt(file){
         if(curAtts.length>=CC.MAX_ATTACHMENTS){U.showToast('فقط چهار فایل مجاز');return}
         var v=CC.validateAttachment(file);
@@ -318,8 +328,16 @@ document.addEventListener('DOMContentLoaded',function(){
             if(v.compressible&&typeof U.showConfirm==='function'){
                 U.showConfirm(v.error+'\nآیا می‌خواهید حجم تصویر بصورت خودکار کاهش یابد؟',function(ok){
                     if(ok){
-                        U.showToast('در حال فشرده‌سازی تصویر...','info');
-                        CC.compressOversizedImage(file).then(function(c){addAtt(c)}).catch(function(){U.showToast('خطا در فشرده‌سازی')});
+                        showCompressProgress(10);
+                        if(typeof window.imageCompression==='function'){
+                            window.imageCompression(file,{
+                                maxSizeMB:3,maxWidthOrHeight:1920,useWebWorker:true,maxIteration:10,
+                                exifOrientation:1,fileType:'image/jpeg',initialQuality:0.82,
+                               onProgress:function(p){showCompressProgress(p)}
+                            }).then(function(c){showCompressProgress(100);setTimeout(hideCompressProgress,300);addAtt(c)}).catch(function(){hideCompressProgress();U.showToast('خطا در فشرده‌سازی')});
+                        }else{
+                            CC.compressOversizedImage(file).then(function(c){hideCompressProgress();addAtt(c)}).catch(function(){hideCompressProgress();U.showToast('خطا در فشرده‌سازی')});
+                        }
                     }
                 });
             }else{U.showToast(v.error)}

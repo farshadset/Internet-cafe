@@ -1957,10 +1957,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (validation.compressible && typeof ChillUtils.showConfirm === 'function') {
                         ChillUtils.showConfirm(validation.error + '\nآیا می‌خواهید حجم تصویر بصورت خودکار کاهش یابد؟', function(confirmed) {
                             if (confirmed) {
-                                ChillUtils.showToast('در حال فشرده‌سازی تصویر...', 'info');
-                                (typeof ChatCore !== 'undefined' ? ChatCore.compressOversizedImage(file) : Promise.resolve(file))
-                                    .then(function(compressed) { processFileAttachment(compressed); })
-                                    .catch(function() { ChillUtils.showToast('خطا در فشرده‌سازی'); processNext(); });
+                                var cpEl=document.getElementById('compressProgress'),cpFill=document.getElementById('compressBarFill'),cpTxt=document.getElementById('compressText');
+                                if(cpEl)cpEl.classList.add('active');if(cpFill)cpFill.style.width='10%';if(cpTxt)cpTxt.textContent='در حال فشرده‌سازی... 10%';
+                                var compressPromise;
+                                if(typeof window.imageCompression==='function'){
+                                    compressPromise=window.imageCompression(file,{
+                                        maxSizeMB:3,maxWidthOrHeight:1920,useWebWorker:true,maxIteration:10,
+                                        exifOrientation:1,fileType:'image/jpeg',initialQuality:0.82,
+                                        onProgress:function(p){if(cpFill)cpFill.style.width=Math.min(p,100)+'%';if(cpTxt)cpTxt.textContent='در حال فشرده‌سازی... '+Math.round(Math.min(p,100))+'%'}
+                                    });
+                                }else{
+                                    compressPromise=(typeof ChatCore!=='undefined'?ChatCore.compressOversizedImage(file):Promise.resolve(file));
+                                }
+                                compressPromise
+                                    .then(function(compressed){if(cpFill)cpFill.style.width='100%';if(cpTxt)cpTxt.textContent='فشرده‌سازی کامل شد';setTimeout(function(){if(cpEl)cpEl.classList.remove('active')},300);processFileAttachment(compressed);})
+                                    .catch(function(){if(cpEl)cpEl.classList.remove('active');ChillUtils.showToast('خطا در فشرده‌سازی');processNext();});
                             } else {
                                 processNext();
                             }
