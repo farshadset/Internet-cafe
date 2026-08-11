@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+public/node_modules/
+
+# Test files
+tests/
+playwright-report/
+test-results/
+playwright.config.js
+
+# Database files
+database.db
+database.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Git
+.git/
+.gitignore
+
+# Vercel cache
+.vercel/
+
+# Logs
+*.log
+Untitled-1.log
+
+# Build artifacts
+*.tgz
+
+# Uploads (user-generated)
+public/uploads/
+public/chat_uploads/
+
+# Development files
+.kilo/
+start.sh

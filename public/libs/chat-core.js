@@ -12,8 +12,8 @@
     var API_BASE = '';
     var PAGE_SIZE = 30;
     var MAX_ATTACHMENTS = 4;
-    var MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
-    var MAX_TOTAL_SIZE = 12 * 1024 * 1024; // 12MB total
+    var MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+    var MAX_TOTAL_SIZE = 4 * 1024 * 1024; // 4MB total (4 files x 1MB)
     var POLL_INTERVAL = 8000;
     var TYPING_TIMEOUT = 3000;
     var MAX_MESSAGE_LENGTH = 5000;
@@ -204,7 +204,7 @@
     }
 
     function compressImage(file, maxMB) {
-        maxMB = maxMB || 2;
+        maxMB = maxMB || 1;
         return new Promise(function(resolve) {
             if (!isImageFile(file)) { resolve(file); return; }
             if (file.size <= maxMB * 1024 * 1024) {
@@ -249,18 +249,20 @@
 
     // Validate attachment
     function validateAttachment(file) {
+        var allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
+        var type = (file.type || '').toLowerCase();
+        var ext = (file.name || '').split('.').pop().toLowerCase();
+        var allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'pdf'];
+        var isAllowed = allowedTypes.indexOf(type) !== -1 || allowedExts.indexOf(ext) !== -1;
+        if (!isAllowed) {
+            return { valid: false, error: 'فقط فرمت‌های JPEG، PNG، WebP، HEIC و PDF مجاز هستند.' };
+        }
         if (file.size > MAX_FILE_SIZE) {
-            var isImg = isImageFile(file);
             return {
                 valid: false,
-                compressible: isImg,
-                error: isImg
-                    ? 'حجم تصویر ' + (file.size / (1024 * 1024)).toFixed(1) + ' مگابایت است. حداکثر ' + (MAX_FILE_SIZE / (1024 * 1024)) + ' مگابایت مجاز است.'
-                    : 'حجم فایل ' + (file.size / (1024 * 1024)).toFixed(1) + ' مگابایت است. حداکثر ' + (MAX_FILE_SIZE / (1024 * 1024)) + ' مگابایت مجاز است.'
+                compressible: isImageFile(file),
+                error: 'حجم فایل ' + (file.size / (1024 * 1024)).toFixed(1) + ' مگابایت است. حداکثر ' + (MAX_FILE_SIZE / (1024 * 1024)) + ' مگابایت مجاز است.'
             };
-        }
-        if (!isImageFile(file) && file.type !== 'application/pdf') {
-            return { valid: false, error: 'فقط تصویر و PDF پشتیبانی می‌شود.' };
         }
         return { valid: true };
     }
@@ -325,12 +327,13 @@
             attContainer.className = 'msg-attachments';
             msg.attachments.forEach(function(att) {
                 var isImg = isImageFile(att);
+                var attUrl = resolveAttachmentUrl(att.dataUrl || att.url || '');
                 var thumb = document.createElement('div');
                 thumb.className = 'att-thumb';
                 thumb.style.cssText = 'width:80px;height:80px;cursor:pointer;border-radius:8px;overflow:hidden;';
-                if (isImg && (att.dataUrl || att.url)) {
+                if (isImg && attUrl) {
                     var img = document.createElement('img');
-                    img.src = att.dataUrl || att.url || '';
+                    img.src = attUrl;
                     img.alt = att.name || '';
                     img.loading = 'lazy';
                     img.decoding = 'async';
@@ -341,7 +344,7 @@
                     thumb.innerHTML = '<div class="att-thumb-file"><i class="fas fa-file"></i><span>' + escapeHtml(ext) + '</span></div>';
                 }
                 thumb.addEventListener('click', function() {
-                    downloadAttachment(att.dataUrl || att.url, att.name);
+                    downloadAttachment(attUrl, att.name);
                 });
                 attContainer.appendChild(thumb);
             });
@@ -393,12 +396,46 @@
     function downloadAttachment(dataUrl, name) {
         if (!dataUrl) return;
         var a = document.createElement('a');
-        a.href = dataUrl;
+        a.href = resolveAttachmentUrl(dataUrl);
         a.download = name || 'attachment';
         a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
         setTimeout(function() { a.remove(); }, 100);
+    }
+
+    // Attachment images are served by /api/chat/blob, which authorizes via the
+    // session cookie OR the Authorization header. An <img> tag can only send the
+    // cookie, so when the logged-in user's cookie belongs to another role (e.g.
+    // an admin browsing after a customer login in the same browser) the image
+    // request 403s and disappears after a refresh. This helper loads those
+    // images through fetch (the caller can inject its own bearer token) and swaps
+    // in an object URL so the thumbnail no longer depends on the cookie.
+    function authorizeAttachmentImages(rootEl, getHeaders) {
+        if (!rootEl || !rootEl.querySelectorAll) return;
+        rootEl.querySelectorAll('img[src^="/api/chat/blob"]').forEach(function(img) {
+            if (img.getAttribute('data-auth') === '1') return;
+            img.setAttribute('data-auth', '1');
+            var src = img.getAttribute('src');
+            if (!src) return;
+            var opts = { credentials: 'same-origin' };
+            if (getHeaders) {
+                var h = getHeaders();
+                if (h) opts.headers = h;
+            }
+            fetch(src, opts).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.blob();
+            }).then(function(b) {
+                var url = URL.createObjectURL(b);
+                img.addEventListener('load', function() { try { URL.revokeObjectURL(url); } catch (e) {} });
+                img.addEventListener('error', function() { try { URL.revokeObjectURL(url); } catch (e) {} });
+                img.setAttribute('data-auth', '2');
+                img.src = url;
+            }).catch(function() {
+                img.setAttribute('data-auth', '');
+            });
+        });
     }
 
     // Offline queue
@@ -434,51 +471,112 @@
         return _offlineQueue.slice();
     }
 
+    // sendFn receives the current queue and must resolve with an array of
+    // _offlineId values that were successfully sent. Those are removed from
+    // the queue; the rest are kept for a later retry.
+    function flushOfflineQueue(sendFn) {
+        if (!sendFn || typeof sendFn !== 'function') return Promise.resolve([]);
+        var queued = _offlineQueue.slice();
+        if (queued.length === 0) return Promise.resolve([]);
+        return Promise.resolve(sendFn(queued)).then(function(sentIds) {
+            var ok = Array.isArray(sentIds) ? sentIds : [];
+            var before = _offlineQueue.length;
+            _offlineQueue = _offlineQueue.filter(function(m) {
+                return ok.indexOf(m._offlineId) === -1;
+            });
+            if (_offlineQueue.length !== before) saveOfflineQueue();
+            return ok;
+        }).catch(function() {
+            return [];
+        });
+    }
+
     // Socket.io wrapper
     var _socket = null;
     var _socketCallbacks = {};
+    var _socketLoading = false;
+    var _socketAttempted = false;
+    var _socketClientPromise = null;
+
+    // Dynamically load the socket.io client. On hosts where the server never
+    // runs Socket.io (e.g. Vercel serverless), the script 404s and we resolve
+    // null so callers can fall back to HTTP polling.
+    function loadSocketClient() {
+        if (typeof io !== 'undefined') return Promise.resolve(io);
+        if (_socketClientPromise) return _socketClientPromise;
+        if (typeof window !== 'undefined' && window._ioMissing === true) return Promise.resolve(null);
+        _socketClientPromise = new Promise(function(resolve) {
+            var script = document.createElement('script');
+            script.src = '/socket.io/socket.io.js';
+            script.async = true;
+            var finished = false;
+            function finish(ioRef) {
+                if (finished) return;
+                finished = true;
+                resolve(ioRef || null);
+            }
+            script.onload = function() { finish(typeof io !== 'undefined' ? io : null); };
+            script.onerror = function() {
+                if (typeof window !== 'undefined') window._ioMissing = true;
+                finish(null);
+            };
+            document.head.appendChild(script);
+            setTimeout(function() { finish(typeof io !== 'undefined' ? io : null); }, 5000);
+        });
+        return _socketClientPromise;
+    }
 
     function initSocket(token) {
+        if (!token) return null;
         if (_socket && _socket.connected) return _socket;
-        if (typeof io === 'undefined') return null;
-        
-        _socket = io({ auth: { token: token } });
-        
-        _socket.on('connect', function() {
-            if (_socketCallbacks.onConnect) _socketCallbacks.onConnect();
-        });
-        _socket.on('disconnect', function() {
-            if (_socketCallbacks.onDisconnect) _socketCallbacks.onDisconnect();
-        });
-        _socket.on('new-message', function(data) {
-            if (_socketCallbacks.onNewMessage) _socketCallbacks.onNewMessage(data);
-            if (data.role !== _socketCallbacks.currentRole) {
-                playNotificationSound();
-            }
-        });
-        _socket.on('message-seen', function(data) {
-            if (_socketCallbacks.onMessageSeen) _socketCallbacks.onMessageSeen(data);
-        });
-        _socket.on('customer-typing', function(data) {
-            if (_socketCallbacks.onTyping) _socketCallbacks.onTyping(data);
-        });
-        _socket.on('customer-stop-typing', function(data) {
-            if (_socketCallbacks.onStopTyping) _socketCallbacks.onStopTyping(data);
-        });
-        _socket.on('admin-typing', function(data) {
-            if (_socketCallbacks.onTyping) _socketCallbacks.onTyping(data);
-        });
-        _socket.on('admin-stop-typing', function(data) {
-            if (_socketCallbacks.onStopTyping) _socketCallbacks.onStopTyping(data);
-        });
-        _socket.on('conversation-closed', function(data) {
-            if (_socketCallbacks.onConversationClosed) _socketCallbacks.onConversationClosed(data);
-        });
-        _socket.on('conversation-reopened', function(data) {
-            if (_socketCallbacks.onConversationReopened) _socketCallbacks.onConversationReopened(data);
-        });
+        if (_socketLoading || _socketAttempted) return null;
 
-        return _socket;
+        _socketLoading = true;
+        loadSocketClient().then(function(ioRef) {
+            _socketLoading = false;
+            _socketAttempted = true;
+            if (!ioRef) { _socket = null; return; }
+            _socket = ioRef({ auth: { token: token } });
+
+            _socket.on('connect', function() {
+                if (_socketCallbacks.onConnect) _socketCallbacks.onConnect(_socket);
+            });
+            _socket.on('disconnect', function() {
+                if (_socketCallbacks.onDisconnect) _socketCallbacks.onDisconnect();
+            });
+            _socket.on('new-message', function(data) {
+                if (_socketCallbacks.onNewMessage) _socketCallbacks.onNewMessage(data);
+                if (data.role !== _socketCallbacks.currentRole) {
+                    playNotificationSound();
+                }
+            });
+            _socket.on('message-seen', function(data) {
+                if (_socketCallbacks.onMessageSeen) _socketCallbacks.onMessageSeen(data);
+            });
+            _socket.on('customer-typing', function(data) {
+                if (_socketCallbacks.onTyping) _socketCallbacks.onTyping(data);
+            });
+            _socket.on('customer-stop-typing', function(data) {
+                if (_socketCallbacks.onStopTyping) _socketCallbacks.onStopTyping(data);
+            });
+            _socket.on('admin-typing', function(data) {
+                if (_socketCallbacks.onTyping) _socketCallbacks.onTyping(data);
+            });
+            _socket.on('admin-stop-typing', function(data) {
+                if (_socketCallbacks.onStopTyping) _socketCallbacks.onStopTyping(data);
+            });
+            _socket.on('conversation-closed', function(data) {
+                if (_socketCallbacks.onConversationClosed) _socketCallbacks.onConversationClosed(data);
+            });
+            _socket.on('conversation-reopened', function(data) {
+                if (_socketCallbacks.onConversationReopened) _socketCallbacks.onConversationReopened(data);
+            });
+        });
+        return null;
+    }
+
+    function isSocketAvailable() {
+        return !!(_socket && _socket.connected);
     }
 
     function setSocketCallbacks(callbacks) {
@@ -540,12 +638,52 @@
             body: JSON.stringify(data)
         }).then(function(r) {
             return r.json().then(function(d) { return { ok: r.ok, data: d }; });
-        });
+        }).catch(function(e) { return { ok: false, data: { error: 'خطا در ارتباط با سرور' } }; });
     }
 
     function apiDelete(url) {
         return fetch(API_BASE + url, { method: 'DELETE' })
             .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); });
+    }
+
+    // Rewrite a Vercel Blob public URL to this domain's proxy so images load
+    // from 'self' and don't depend on direct access to *.blob.vercel-storage.com.
+    function resolveAttachmentUrl(url) {
+        var normalized = normalizeBlobUrl(String(url || ''));
+        if (!normalized || normalized.indexOf('data:') === 0) return normalized;
+        var m = normalized.match(/^https?:\/\/[^/]+\.blob\.vercel-storage\.com\/(.+)$/);
+        if (m) return '/api/chat/blob?path=' + encodeURIComponent(normalized);
+        return normalized;
+    }
+
+    // Direct upload to Vercel Blob
+    function normalizeBlobUrl(url) {
+        if (!url || typeof url !== 'string') return url;
+        // Fix old URL format with store_ prefix and missing .public
+        // Old: https://store_XXX.blob.vercel-storage.com/...
+        // New: https://XXX.public.blob.vercel-storage.com/...
+        if (url.indexOf('.blob.vercel-storage.com') !== -1 && url.indexOf('.public.') === -1) {
+            return url.replace(/^(https?:\/\/)(?:store_)?([^.]+)\.blob\.vercel-storage\.com/, '$1$2.public.blob.vercel-storage.com');
+        }
+        return url;
+    }
+    function uploadToBlob(file, token) {
+        // Upload via the same-origin server (which forwards to Vercel Blob) so
+        // it works even when the browser cannot reach *.blob.vercel-storage.com directly.
+        return readFileAsDataURL(file).then(function(data) {
+            return apiPost('/api/chat/upload', {
+                file: {
+                    name: data.name,
+                    type: data.type,
+                    size: data.size,
+                    dataUrl: data.dataUrl
+                },
+                conversationId: null
+            }).then(function(r) {
+                if (!r.ok) throw new Error(r.data && (r.data.error || r.data.detail) || 'خطا در آپلود فایل');
+                return { url: r.data.url, name: r.data.name, type: r.data.type, size: r.data.size };
+            });
+        });
     }
 
     // Inject common CSS for chat
@@ -615,14 +753,20 @@
         renderMessage: renderMessage,
         updateMessageTick: updateMessageTick,
         downloadAttachment: downloadAttachment,
+        authorizeAttachmentImages: authorizeAttachmentImages,
         playNotificationSound: playNotificationSound,
+        uploadToBlob: uploadToBlob,
+        normalizeBlobUrl: normalizeBlobUrl,
+        resolveAttachmentUrl: resolveAttachmentUrl,
         enqueueOffline: enqueueOffline,
         dequeueOffline: dequeueOffline,
         getOfflineQueue: getOfflineQueue,
         loadOfflineQueue: loadOfflineQueue,
+        flushOfflineQueue: flushOfflineQueue,
         initSocket: initSocket,
         setSocketCallbacks: setSocketCallbacks,
         getSocket: getSocket,
+        isSocketAvailable: isSocketAvailable,
         emitTyping: emitTyping,
         emitStopTyping: emitStopTyping,
         joinConversation: joinConversation,

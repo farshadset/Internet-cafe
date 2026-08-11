@@ -1,6 +1,27 @@
-const express = require('express');
 const fs = require('fs');
 const path = require('path');
+
+// Load .env.local for local development
+const envLocalPath = path.join(__dirname, '.env.local');
+if (fs.existsSync(envLocalPath)) {
+    const envContent = fs.readFileSync(envLocalPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#')) {
+            const eqIndex = trimmed.indexOf('=');
+            if (eqIndex > 0) {
+                const key = trimmed.substring(0, eqIndex).trim();
+                let value = trimmed.substring(eqIndex + 1).trim();
+                if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                    value = value.slice(1, -1);
+                }
+                if (!process.env[key]) process.env[key] = value;
+            }
+        }
+    });
+}
+
+const express = require('express');
 const http = require('http');
 const crypto = require('crypto');
 const helmet = require('helmet');
@@ -9,6 +30,8 @@ const zlib = require('zlib');
 const { Server } = require('socket.io');
 const db = require('./db');
 const PricingCatalog = require('./public/libs/pricing-catalog.js');
+let _blob = null;
+function getBlob() { if (!_blob) _blob = require('@vercel/blob'); return _blob; }
 
 // ==================== UPSTASH REDIS (optional — falls back to in-memory) ====================
 let upstashLimiter = null;
@@ -30,7 +53,7 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 const isVercel = !!process.env.VERCEL;
 
 const UPLOAD_DIR = isVercel ? '/tmp/chat_uploads' : path.join(__dirname, 'public', 'chat_uploads');
-const MAX_UPLOAD_SIZE = 3 * 1024 * 1024; // 3MB
+const MAX_UPLOAD_SIZE = 1 * 1024 * 1024; // 1MB
 const PAGE_SIZE = 30;
 const MAX_MESSAGE_LENGTH = 5000;
 
@@ -228,17 +251,6 @@ function sanitizeObject(obj) {
 }
 
 function sanitizeMiddleware(req, res, next) {
-    var url = req.originalUrl || '';
-    if (url.indexOf('/api/banner') !== -1 || url.indexOf('/api/login') !== -1 || url.indexOf('/api/admin/login') !== -1 || url.indexOf('/api/register') !== -1 || url.indexOf('/api/order-attachment') !== -1 || url.indexOf('/api/change-password') !== -1) return next();
-    if (req.body && typeof req.body === 'object') {
-        req.body = sanitizeObject(req.body);
-    }
-    if (req.query && typeof req.query === 'object') {
-        req.query = sanitizeObject(req.query);
-    }
-    if (req.params && typeof req.params === 'object') {
-        req.params = sanitizeObject(req.params);
-    }
     next();
 }
 
@@ -402,18 +414,46 @@ if (!isVercel) {
 // Security headers
 app.use(securityHeaders);
 
+// ==================== ADMIN AUTH (before CSP/HTML to prevent bypass) ====================
+app.use(function(req, res, next) {
+    var p = req.path;
+    if (p === '/admin' || p === '/admin.html' || /^\/admin-[\w-]+(\.html)?$/.test(p)) {
+        var payload = verifyJWT(getToken(req));
+        if (!payload || !payload.isAdmin) return res.redirect('/login');
+    }
+    next();
+});
+
+// ==================== CLEAN URL DETECTION ====================
+function isCleanUrlPath(p) {
+    if (p === '/' || p.endsWith('.html')) return false;
+    if (p.indexOf('/api/') === 0 || p.indexOf('/uploads/') === 0 || p.indexOf('/socket.io/') === 0) return false;
+    var lastSegment = p.split('/').pop();
+    if (lastSegment.indexOf('.') !== -1) return false;
+    return true;
+}
+
+function resolveHtmlFile(reqPath) {
+    if (reqPath === '/') return 'index.html';
+    if (reqPath.endsWith('.html')) return reqPath.replace(/^\//, '');
+    if (isCleanUrlPath(reqPath)) return reqPath.replace(/^\//, '') + '.html';
+    return null;
+}
+
 // ==================== CSP WITH NONCE ====================
 app.use(function(req, res, next) {
-    if (req.path.endsWith('.html') || req.path === '/' || req.path === '/admin') {
+    var filename = resolveHtmlFile(req.path);
+    if (filename) {
         const nonce = generateNonce();
         res.locals.nonce = nonce;
+        res.locals.cspNonce = nonce;
         const csp = [
             "default-src 'self'",
             "script-src 'self' 'nonce-" + nonce + "'",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
             "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
-            "img-src 'self' data: blob:",
-            "connect-src 'self' ws: wss:",
+            "img-src 'self' data: blob: https://*.blob.vercel-storage.com",
+            "connect-src 'self' ws: wss: https://vercel.com https://*.blob.vercel-storage.com",
             "worker-src 'self' blob:",
             "frame-src 'none'",
             "object-src 'none'"
@@ -429,17 +469,30 @@ const HTML_RAW_CACHE_TTL = 30000; // 30 seconds
 app.use(function(req, res, next) {
     if (req.method !== 'GET') return next();
     if (!req.accepts('html')) return next();
-    var p = req.path;
-    if (!p.endsWith('.html') && p !== '/') return next();
-    var filename = p === '/' ? 'index.html' : p.replace(/^\//, '');
+    var filename = resolveHtmlFile(req.path);
+    if (!filename) return next();
     var filePath = path.join(rootDir, 'public', filename);
     var publicDir = path.join(rootDir, 'public');
     if (!filePath.startsWith(publicDir + path.sep) && filePath !== publicDir) {
         return next();
     }
     var cached = htmlRawCache[filePath];
+    var nonce = res.locals.nonce || generateNonce();
+    if (!res.locals.nonce) {
+        const csp = [
+            "default-src 'self'",
+            "script-src 'self' 'nonce-" + nonce + "'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
+            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
+            "img-src 'self' data: blob: https://*.blob.vercel-storage.com",
+            "connect-src 'self' ws: wss: https://vercel.com https://*.blob.vercel-storage.com",
+            "worker-src 'self' blob:",
+            "frame-src 'none'",
+            "object-src 'none'"
+        ].join('; ');
+        res.setHeader('Content-Security-Policy', csp);
+    }
     if (cached && Date.now() - cached.ts < HTML_RAW_CACHE_TTL) {
-        var nonce = generateNonce();
         var html = cached.content.replace(/<script(?=[\s>])/gi, '<script nonce="' + nonce + '"');
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.send(html);
@@ -447,7 +500,11 @@ app.use(function(req, res, next) {
     fs.readFile(filePath, 'utf8', function(err, html) {
         if (err) return next();
         htmlRawCache[filePath] = { content: html, ts: Date.now() };
-        var nonce = generateNonce();
+        var cacheKeys = Object.keys(htmlRawCache);
+        if (cacheKeys.length > 50) {
+            var oldest = cacheKeys.sort(function(a, b) { return htmlRawCache[a].ts - htmlRawCache[b].ts; }).slice(0, Math.floor(cacheKeys.length / 2));
+            oldest.forEach(function(k) { delete htmlRawCache[k]; });
+        }
         html = html.replace(/<script(?=[\s>])/gi, '<script nonce="' + nonce + '"');
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(html);
@@ -492,15 +549,6 @@ const staticOptions = {
     }
   }
 };
-app.use(function(req, res, next) {
-    var p = req.path;
-    if (p === '/admin' || p === '/admin.html' || /^\/admin-[\w-]+(\.html)?$/.test(p)) {
-        var payload = verifyJWT(getToken(req));
-        if (!payload || !payload.isAdmin) return res.redirect('/login');
-    }
-    next();
-});
-
 // Clean URLs: rewrite /login to /login.html
 app.use(function cleanUrls(req, res, next) {
     var url = req.url;
@@ -558,12 +606,53 @@ function sanitizeAttachmentName(name) {
 }
 
 function decodeDataUrl(dataUrl) {
-    const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
+    const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.*)$/);
     if (!match) return null;
     return {
         type: match[1],
         buffer: Buffer.from(match[2], 'base64')
     };
+}
+
+function chatUploadError(message, status) {
+    const err = new Error(message);
+    err.expose = true;
+    err.status = status || 400;
+    return err;
+}
+
+async function saveChatAttachment(attachment) {
+    if (!attachment) return attachment;
+    if (attachment.url && !String(attachment.url).startsWith('data:')) return attachment;
+    if (attachment.dataUrl && !attachment.url) {
+        const decoded = decodeDataUrl(attachment.dataUrl);
+        if (!decoded) throw chatUploadError('فرمت فایل نامعتبر است');
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
+        if (!allowedTypes.includes(decoded.type)) throw chatUploadError('فرمت فایل پشتیبانی نمی‌شود');
+        if (!decoded.buffer || decoded.buffer.length === 0) throw chatUploadError('فایل خالی است');
+        if (decoded.buffer.length > MAX_UPLOAD_SIZE) throw chatUploadError('حجم فایل بیش از حد مجاز است');
+        const ext = (attachment.name || '').split('.').pop() || 'jpg';
+        const baseName = (attachment.name || '').replace(/\.[^.]+$/, '') || 'attachment';
+        const safeName = sanitizeAttachmentName(baseName);
+        const pathname = 'chat/' + Date.now().toString(36) + '_' + crypto.randomBytes(4).toString('hex') + '_' + safeName + '.' + ext;
+        const result = await getBlob().put(pathname, decoded.buffer, {
+            access: 'public',
+            contentType: decoded.type,
+            // Force the read-write token so the SDK does NOT switch to OIDC auth.
+            // Inside a Vercel function VERCEL_OIDC_TOKEN is auto-injected and, when
+            // BLOB_STORE_ID is set, the SDK prefers OIDC over BLOB_READ_WRITE_TOKEN.
+            // OIDC fails against a store that the function identity isn't linked to
+            // ("Vercel Blob: Access denied"), which broke chat image uploads on live.
+            token: process.env.BLOB_READ_WRITE_TOKEN,
+        });
+        return { id: attachment.id || '', name: attachment.name || safeName, type: attachment.type || decoded.type, size: attachment.size || decoded.buffer.length, url: result.url };
+    }
+    return attachment;
+}
+
+async function saveChatAttachments(attachments) {
+    if (!Array.isArray(attachments) || !attachments.length) return [];
+    return Promise.all(attachments.map(saveChatAttachment));
 }
 
 // ==================== DATABASE INIT ====================
@@ -1304,6 +1393,167 @@ app.put('/api/banner/:id', requireAdmin, writeRateLimit, asyncHandler(async (req
 
 // ==================== CHAT v2 (Conversation-based) ====================
 
+// --- Upload Token for Vercel Blob (Client-side Direct Upload) ---
+app.post('/api/chat/upload-token', requireUser, asyncHandler(async (req, res) => {
+    try {
+        const { filename, contentType } = req.body;
+        if (!filename || !contentType) {
+            return res.status(400).json({ error: 'filename و contentType الزامی است' });
+        }
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
+        if (!allowedTypes.includes(contentType)) {
+            return res.status(400).json({ error: 'فقط فرمت‌های JPEG، PNG، WebP، HEIC و PDF مجاز هستند.' });
+        }
+        const ext = (filename.split('.').pop() || 'bin').toLowerCase();
+        const safeName = sanitizeAttachmentName(filename.replace(/\.[^.]+$/, ''));
+        const pathname = 'chat/' + Date.now().toString(36) + '_' + crypto.randomBytes(4).toString('hex') + '_' + safeName + '.' + ext;
+        const storeToken = process.env.BLOB_READ_WRITE_TOKEN;
+        if (!storeToken) {
+            return res.status(500).json({ error: 'BLOB_READ_WRITE_TOKEN تنظیم نشده' });
+        }
+        const { issueSignedToken, presignUrl } = getBlob();
+        const signedToken = await issueSignedToken({
+            token: storeToken,
+            pathname: pathname,
+            operations: ['put'],
+            validUntil: Date.now() + 3600000,
+            maximumSizeInBytes: MAX_UPLOAD_SIZE,
+            allowedContentTypes: allowedTypes,
+        });
+        const { presignedUrl } = await presignUrl(signedToken, {
+            token: storeToken,
+            pathname: pathname,
+            operation: 'put',
+        });
+        // Derive the correct public blob URL from the read-write token
+        // Token format: vercel_blob_rw_<storeId>_<rest>
+        var tokenParts = storeToken.split('_');
+        var blobStoreId = tokenParts.length >= 4 ? tokenParts[3] : '';
+        const blobUrl = blobStoreId
+            ? 'https://' + blobStoreId + '.public.blob.vercel-storage.com/' + pathname
+            : presignedUrl.split('?')[0];
+        res.json({ presignedUrl: presignedUrl, url: blobUrl, pathname: pathname });
+    } catch (e) {
+        console.error('Upload token error:', e.message || e);
+        res.status(500).json({ error: 'خطا در ایجاد توکن آپلود', detail: e.message || String(e) });
+    }
+}));
+
+// Resolve a chat attachment pathname from a blob URL or plain path.
+function parseChatBlobPath(blobPath) {
+    const fullMatch = String(blobPath).match(/^https?:\/\/[^/]+\.blob\.vercel-storage\.com\/(.+)$/);
+    if (fullMatch) {
+        const p = fullMatch[1];
+        if (p.indexOf('chat/') !== 0 || p.indexOf('..') !== -1) return null;
+        return { pathname: p, baseForRetry: p.replace(/\.[^.]+$/, '') };
+    }
+    const cleanPath = String(blobPath).replace(/^\/+/, '');
+    if (cleanPath.indexOf('chat/') !== 0 || cleanPath.indexOf('..') !== -1) return null;
+    return { pathname: cleanPath, baseForRetry: cleanPath.replace(/\.[^.]+$/, '') };
+}
+
+// Authorization cache: username|pathname -> allowed, expires after 5 minutes.
+const _blobAuthCache = new Map();
+async function canAccessChatAttachment(user, pathname) {
+    if (user && user.isAdmin) return true;
+    if (!user || !user.username) return false;
+    const key = user.username + '|' + pathname;
+    const now = Date.now();
+    const hit = _blobAuthCache.get(key);
+    if (hit && hit.exp > now) return hit.allowed;
+    let allowed = false;
+    try {
+        const owner = await db.getChatAttachmentOwner(pathname);
+        if (owner) {
+            if (owner.role === 'customer' && owner.username === user.username) {
+                allowed = true;
+            } else if (owner.role === 'admin' && owner.conversationId) {
+                const conv = await db.getConversation(owner.conversationId);
+                if (conv && conv.username === user.username) allowed = true;
+            }
+        }
+    } catch (e) {
+        console.error('Attachment auth check error:', e.message || e);
+    }
+    _blobAuthCache.set(key, { allowed, exp: now + 300000 });
+    if (_blobAuthCache.size > 10000) {
+        for (const [k, v] of _blobAuthCache) if (v.exp < now) _blobAuthCache.delete(k);
+    }
+    return allowed;
+}
+
+// Serve chat images through this domain so they don't depend on the network
+// being able to reach *.blob.vercel-storage.com directly. Authenticated and
+// authorization-checked: a customer may only fetch attachments from their own
+// conversations; an admin may fetch any chat attachment.
+app.get('/api/chat/blob', requireUser, asyncHandler(async (req, res) => {
+    const blobPath = req.query.path;
+    if (!blobPath || typeof blobPath !== 'string') {
+        return res.status(400).json({ error: 'path الزامی است' });
+    }
+    const parsed = parseChatBlobPath(blobPath);
+    if (!parsed) return res.status(403).json({ error: 'آدرس نامعتبر' });
+    const { pathname, baseForRetry } = parsed;
+
+    const allowed = await canAccessChatAttachment(req.user, pathname);
+    if (!allowed) return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+
+    const storeToken = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!storeToken) {
+        const filePath = path.join(UPLOAD_DIR, pathname);
+        try {
+            await fs.promises.access(filePath);
+            return res.sendFile(filePath);
+        } catch (e) {
+            return res.status(404).json({ error: 'فایل یافت نشد' });
+        }
+    }
+
+    try {
+        const { get, list } = getBlob();
+        let result = await get(pathname, { access: 'public', token: storeToken });
+        // Older uploads were stored with a random suffix on the pathname
+        // (e.g. chat/name-RANDOM.png) while the DB kept the URL without it.
+        // On 404, look the object up by prefix and serve the real file.
+        if ((!result || result.statusCode === 404) && baseForRetry) {
+            const lr = await list({ token: storeToken, prefix: baseForRetry, limit: 5 });
+            const found = (lr && lr.blobs || []).filter(function(b) {
+                return b.pathname.indexOf(baseForRetry) === 0;
+            }).sort(function(a, b) {
+                return (b.size || 0) - (a.size || 0);
+            })[0];
+            if (found && found.size > 0) {
+                result = await get(found.pathname, { access: 'public', token: storeToken });
+            }
+        }
+        if (!result || result.statusCode === 404) {
+            return res.status(404).json({ error: 'فایل یافت نشد' });
+        }
+        res.setHeader('Content-Type', result.blob.contentType || 'application/octet-stream');
+        res.setHeader('Cache-Control', 'private, no-store');
+        if (result.stream) {
+            const reader = result.stream.getReader();
+            const chunks = [];
+            let total = 0;
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(Buffer.from(value));
+                total += value.length;
+                if (total > MAX_UPLOAD_SIZE) {
+                    await reader.cancel();
+                    return res.status(502).json({ error: 'خطا در دریافت تصویر' });
+                }
+            }
+            return res.send(Buffer.concat(chunks));
+        }
+        return res.status(502).json({ error: 'خطا در دریافت تصویر' });
+    } catch (e) {
+        console.error('Blob proxy error:', e.message || e);
+        return res.status(502).json({ error: 'خطا در دریافت تصویر' });
+    }
+}));
+
 // --- File Upload ---
 app.post('/api/chat/upload', requireUser, writeRateLimit, asyncHandler(async (req, res) => {
     const { file, conversationId } = req.body;
@@ -1322,19 +1572,8 @@ app.post('/api/chat/upload', requireUser, writeRateLimit, asyncHandler(async (re
     if (!isImage && !isPdf) {
         return res.status(400).json({ error: 'فقط تصویر و PDF پشتیبانی می‌شود' });
     }
-    const id = crypto.randomBytes(12).toString('hex');
-    const upload = {
-        id: id,
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        dataUrl: file.dataUrl,
-        uploadedBy: req.user.username,
-        conversationId: conversationId || null,
-        createdAt: new Date().toISOString()
-    };
-    // Store metadata only (data stays in response, not duplicated in DB for Vercel)
-    res.json({ id: id, name: file.name, type: file.type, size: file.size, dataUrl: file.dataUrl });
+    const saved = await saveChatAttachment({ id: crypto.randomBytes(12).toString('hex'), name: file.name, type: file.type, size: file.size, dataUrl: file.dataUrl });
+    res.json({ id: saved.id, name: saved.name, type: saved.type, size: saved.size, url: saved.url });
 }));
 
 // --- Customer: Create conversation ---
@@ -1363,6 +1602,9 @@ app.get('/api/chat/conversations', requireUser, asyncHandler(async (req, res) =>
     var convs = await db.getUserConversations(username);
     // Get last message + count in single query per conversation
     var result = [];
+    var unreadCounts = await db.getAllUnreadCounts(username);
+    var unreadMap = {};
+    unreadCounts.forEach(function(u) { unreadMap[u.conversationId] = u.cnt; });
     for (var i = 0; i < convs.length; i++) {
         var info = await db.getLastMessageAndCount(convs[i].id);
         if (!info.lastMsg) continue;
@@ -1374,7 +1616,8 @@ app.get('/api/chat/conversations', requireUser, asyncHandler(async (req, res) =>
             subject: convs[i].subject || '',
             lastMessage: info.lastMsg.text,
             lastTimestamp: info.lastMsg.timestamp,
-            messageCount: info.count
+            messageCount: info.count,
+            unreadCount: unreadMap[convs[i].id] || 0
         });
     }
     result.sort(function(a, b) { return new Date(b.lastTimestamp) - new Date(a.lastTimestamp); });
@@ -1384,11 +1627,18 @@ app.get('/api/chat/conversations', requireUser, asyncHandler(async (req, res) =>
 // --- Customer: Get messages (paginated) ---
 app.get('/api/chat/conversation/:id', requireUser, asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { username, limit, before } = req.query;
+    const { username, limit, before, after } = req.query;
     if (!username || username !== req.user.username) {
         return res.status(403).json({ error: 'دسترسی غیرمجاز' });
     }
     const pageSize = Math.min(parseInt(limit) || PAGE_SIZE, 100);
+    if (after) {
+        const messages = await db.getChatMessagesAfter(id, after, pageSize + 1);
+        const filtered = messages.filter(function(m) {
+            return (m.role === 'customer' && m.username === username) || m.role === 'admin';
+        });
+        return res.json({ messages: filtered, hasMore: false, oldestId: null });
+    }
     const messages = await db.getChatMessagesPaginated(id, pageSize + 1, before || null);
     const hasMore = messages.length > pageSize;
     const sliced = hasMore ? messages.slice(0, pageSize) : messages;
@@ -1441,6 +1691,7 @@ app.post('/api/chat', requireUser, writeRateLimit, asyncHandler(async (req, res)
         }
     }
     
+    var savedAtts = hasAttachments ? await saveChatAttachments(attachments.slice(0, 4)) : [];
     const message = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: 'customer',
@@ -1448,7 +1699,7 @@ app.post('/api/chat', requireUser, writeRateLimit, asyncHandler(async (req, res)
         text: msgText,
         timestamp: new Date().toISOString(),
         conversationId: convId,
-        attachments: hasAttachments ? attachments.slice(0, 4) : []
+        attachments: savedAtts
     };
     await db.addChatMessage(message);
     await db.updateConversationLastMessageAt(convId);
@@ -1501,6 +1752,12 @@ app.get('/api/admin/chat/conversation/:id', requireAdmin, asyncHandler(async (re
     const { id } = req.params;
     const limit = Math.min(parseInt(req.query.limit) || PAGE_SIZE, 100);
     const before = req.query.before || null;
+    const after = req.query.after || null;
+    if (after) {
+        const messages = await db.getChatMessagesAfter(id, after, limit + 1);
+        const hasMore = messages.length > limit;
+        return res.json({ messages: messages.slice(0, limit), hasMore, oldestId: null });
+    }
     if (id === '_legacy') {
         const allMsgs = await db.getAllChatMessages(500);
         const legacy = allMsgs.filter(function(m) { return !m.conversationId || m.conversationId === '_legacy'; });
@@ -1511,6 +1768,13 @@ app.get('/api/admin/chat/conversation/:id', requireAdmin, asyncHandler(async (re
         const oldestId = messages.length > 0 ? messages[0].id : null;
         res.json({ messages: messages.slice(0, limit), hasMore, oldestId });
     }
+}));
+
+// --- Admin: Get seen message IDs for a conversation (polling fallback for Vercel) ---
+app.get('/api/admin/chat/conversation/:id/seen', requireAdmin, asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const seenIds = await db.getSeenMessageIds(id);
+    res.json({ seenMessageIds: seenIds });
 }));
 
 // --- Admin: Send message ---
@@ -1524,6 +1788,7 @@ app.post('/api/admin/chat', requireAdmin, writeRateLimit, asyncHandler(async (re
     if (msgText.length > MAX_MESSAGE_LENGTH) {
         return res.status(400).json({ error: 'متن پیام نباید بیش از ' + MAX_MESSAGE_LENGTH + ' کاراکتر باشد' });
     }
+    var savedAtts = hasAttachments ? await saveChatAttachments(attachments.slice(0, 4)) : [];
     const message = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: 'admin',
@@ -1531,7 +1796,7 @@ app.post('/api/admin/chat', requireAdmin, writeRateLimit, asyncHandler(async (re
         text: msgText,
         timestamp: new Date().toISOString(),
         conversationId: conversationId || null,
-        attachments: hasAttachments ? attachments.slice(0, 4) : []
+        attachments: savedAtts
     };
     await db.addChatMessage(message);
     if (conversationId) {
@@ -1692,7 +1957,7 @@ app.post('/api/optimize-image', requireUser, writeRateLimit, asyncHandler(async 
     try {
         const sharp = require('sharp');
         const decoded = decodeDataUrl(image.dataUrl);
-        if (!decoded) {
+        if (!decoded || decoded.buffer.length === 0) {
             return res.status(400).json({ error: 'فرمت تصویر نامعتبر است' });
         }
         let pipeline = sharp(decoded.buffer);
@@ -1713,16 +1978,15 @@ app.post('/api/optimize-image', requireUser, writeRateLimit, asyncHandler(async 
 }));
 
 // ==================== WEBAUTHN ====================
+const SITE_DOMAIN = process.env.SITE_DOMAIN || (isVercel ? 'www.chillinet.ir' : 'localhost');
+const SITE_URL = process.env.SITE_URL || (isVercel ? 'https://www.chillinet.ir' : 'http://localhost:' + (process.env.PORT || 3003));
+
 const RP_NAME = 'کافینت';
-const RP_ID = isVercel ? 'retrocafebakery.ir' : 'localhost';
-const ORIGIN = isVercel ? 'https://www.retrocafebakery.ir' : 'http://localhost:' + (process.env.PORT || 3003);
+const RP_ID = SITE_DOMAIN;
+const ORIGIN = SITE_URL;
 
 const WEBAUTHN_CHALLENGES = new Map();
 const CHALLENGE_TTL = 5 * 60 * 1000;
-
-function generateChallenge() {
-    return crypto.randomBytes(32).toString('base64url');
-}
 
 function storeChallenge(username, challenge, type) {
     WEBAUTHN_CHALLENGES.set(username, { challenge, type, ts: Date.now() });
@@ -2061,7 +2325,7 @@ if (!isVercel && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
     const io = new Server(server, {
         path: '/socket.io',
         cors: {
-            origin: isVercel ? 'https://cafenet.ir' : false,
+            origin: SITE_URL,
             methods: ['GET', 'POST']
         }
     });
@@ -2151,6 +2415,9 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err.message || err);
     if (res.headersSent) return;
+    if (err && err.expose) {
+        return res.status(err.status || 400).json({ error: err.message });
+    }
     res.status(500).json({ error: 'خطای داخلی سرور' });
 });
 

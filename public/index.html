@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="libs/notie.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&family=Markazi+Text:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all';this.onload=null">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&family=Markazi+Text:wght@500;600;700&display=swap" rel="stylesheet">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&family=Markazi+Text:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
       :root{--ink:#122A33;--deep:#0B3B4A;--deep-2:#0E4657;--firouzeh:#17A2A6;--firouzeh-dark:#0E7E82;--firouzeh-soft:#E4F3F3;--gold:#E2A93B;--paper:#F4F8F8;--card:#FFFFFF;--line:#D8E4E4;--muted:#5B7078;--radius:14px;--shadow:0 18px 40px -18px rgba(11,59,74,.25);--font-body:"Vazirmatn",Tahoma,sans-serif;--font-display:"Markazi Text","Vazirmatn",serif}
@@ -135,6 +135,13 @@
             hideSkeleton();
         });
         document.addEventListener('DOMContentLoaded', function() {
+            var backBtn = document.getElementById('backBtn');
+            if (backBtn) {
+                backBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (document.referrer) { history.back(); } else { window.location = '/'; }
+                });
+            }
             var bannerStates = {};
 
             function showBanners(banners, containerId) {
@@ -336,13 +343,7 @@
     
     <div class="modal" id="supportModal">
         <div class="modal-content">
-            <div class="admin-chat-header support-top-header">
-                <strong id="chatPartner">پشتیبانی</strong>
-                <a href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='/'" class="back-link">
-                    <i class="fas fa-arrow-right"></i>
-                    <span>بازگشت</span>
-                </a>
-            </div>
+            <div class="admin-chat-header support-top-header" style="display:none"></div>
             <div class="support-layout">
                 <div class="support-sidebar" id="supportSidebar">
                     <div class="sidebar-header">
@@ -357,6 +358,10 @@
                     <div class="support-panel" id="chatPanel">
                         <div class="admin-chat-main">
                             <div class="admin-chat-header">
+                                <a href="/" class="back-link" id="backBtn">
+                                    <i class="fas fa-arrow-right"></i>
+                                    <span>بازگشت</span>
+                                </a>
                                 <button class="sidebar-toggle-btn" id="sidebarConvToggle" title="لیست گفتگوها"><i class="fas fa-comments"></i></button>
                             </div>
                             <div class="admin-chat-messages customer-view" id="inlineChatMessages"></div>

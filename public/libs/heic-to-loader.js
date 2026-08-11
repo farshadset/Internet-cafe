@@ -1,3 +1,1 @@
-import { heicTo, isHeic } from './heic-to-csp.min.js';
-window.HeicTo = { heicTo, isHeic };
-window.dispatchEvent(new Event('heic-to-ready'));
+var s=document.createElement('script');s.src='libs/heic-to-csp.min.mjs';s.type='module';s.onload=function(){window.HeicTo={heicTo:window.heicTo,isHeic:window.isHeic};window.dispatchEvent(new Event('heic-to-ready'))};document.head.appendChild(s);

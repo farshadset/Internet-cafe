@@ -461,7 +461,7 @@ async function updateOrder(trackingCode, updates) {
             sqlUpdates.cost || null, sqlUpdates.proposedPrice || null, sqlUpdates.adminProposedPrice || null,
             sqlUpdates.priceStatus || null, sqlUpdates.paid ? 1 : 0, sqlUpdates.paymentStatus || null,
             sqlUpdates.result || null, sqlUpdates.result_at || null, sqlUpdates.confirmed_at || null,
-            sqlUpdates.created_at || null, new Date().toISOString(),
+            sqlUpdates.created_at || current.created_at || null, new Date().toISOString(),
             JSON.stringify(extras),
             trackingCode
         ]
@@ -543,7 +543,7 @@ async function getLatestCustomerMessages() {
 
 async function getCustomerOrderDetails(username) {
     const r = await client.execute({
-        sql: `SELECT trackingCode, title, created_at, result, paid, adminProposedPrice, proposedPrice, cost
+        sql: `SELECT trackingCode, created_at, result, paid, adminProposedPrice, proposedPrice, cost
               FROM orders
               WHERE status = 'completed' AND username = ?
               ORDER BY created_at DESC`,
@@ -668,6 +668,16 @@ async function getChatMessagesPaginated(conversationId, limit, beforeId) {
     }
 }
 
+async function getChatMessagesAfter(conversationId, afterId, limit) {
+    const r = await client.execute({
+        sql: `SELECT * FROM chat WHERE conversationId = ? AND timestamp > (
+                  SELECT timestamp FROM chat WHERE id = ?
+              ) ORDER BY timestamp ASC LIMIT ?`,
+        args: [conversationId, afterId, limit]
+    });
+    return r.rows.map(rowToMessage);
+}
+
 async function getTotalMessageCount(conversationId) {
     const r = await client.execute({
         sql: 'SELECT COUNT(*) as cnt FROM chat WHERE conversationId = ?',
@@ -679,6 +689,24 @@ async function getTotalMessageCount(conversationId) {
 async function getLastAdminMessagesPerUser() {
     const r = await client.execute('SELECT username, MAX(timestamp) as timestamp FROM chat WHERE role = \'admin\' AND username IS NOT NULL GROUP BY username');
     return Array.from(r.rows || []);
+}
+
+async function getChatAttachmentOwner(pathname) {
+    if (!pathname) return null;
+    const r = await client.execute({
+        sql: `SELECT id, role, username, conversationId FROM chat
+              WHERE instr(attachments, ?) > 0
+              ORDER BY timestamp DESC LIMIT 1`,
+        args: [String(pathname)]
+    });
+    if (r.rows.length === 0) return null;
+    const row = r.rows[0];
+    return {
+        id: row.id,
+        role: row.role,
+        username: row.username || null,
+        conversationId: row.conversationId || null
+    };
 }
 
 async function addChatMessage(data) {
@@ -884,6 +912,15 @@ async function markMessagesSeenByConversation(conversationId, role) {
         sql: 'UPDATE chat SET seenAt = ? WHERE conversationId = ? AND role = ? AND seenAt IS NULL',
         args: [new Date().toISOString(), conversationId, role]
     });
+}
+
+// Lightweight: get IDs of messages that have been seen in a conversation
+async function getSeenMessageIds(conversationId) {
+    const r = await client.execute({
+        sql: 'SELECT id FROM chat WHERE conversationId = ? AND seenAt IS NOT NULL',
+        args: [conversationId]
+    });
+    return Array.from((r.rows || []).map(row => row.id));
 }
 
 // ==================== CHAT CONVERSATION MANAGEMENT ====================
@@ -1208,6 +1245,8 @@ module.exports = {
     getChatMessages,
     getChatMessagesForConversation,
     getChatMessagesPaginated,
+    getChatMessagesAfter,
+    getChatAttachmentOwner,
     getTotalMessageCount,
     getLastAdminMessagesPerUser,
     addChatMessage,
@@ -1225,6 +1264,7 @@ module.exports = {
     getAllUnreadCounts,
     markMessageSeen,
     markMessagesSeenByConversation,
+    getSeenMessageIds,
     closeConversation,
     reopenConversation,
     assignConversation,
