@@ -12,7 +12,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="fonts/all.css">
     <link rel="stylesheet" href="libs/notie.min.css">
-    <script src="/socket.io/socket.io.js" async onerror="window._ioMissing=true"></script>
     <script src="libs/browser-image-compression.js"></script>
     <script src="libs/chat-core.js"></script>
     <style>
@@ -138,7 +137,7 @@ body{margin:0;padding:0;font-family:'Vazirmatn',system-ui,sans-serif;background:
     </div>
     <div class="main">
         <div class="chat-header">
-            <a href="javascript:void(0)" onclick="document.referrer ? history.back() : window.location='/admin'" class="back-link"><i class="fas fa-arrow-right"></i><span>بازگشت</span></a>
+            <a href="#" id="backBtn" class="back-link"><i class="fas fa-arrow-right"></i><span>بازگشت</span></a>
             <div class="conv-info"><span class="conv-user" id="convUser">یک گفتگو را انتخاب کنید</span><span class="conv-subject" id="convSubject" title="موضوع"></span></div>
             <div class="hactions">
                 <button id="searchToggle" title="جستجو"><i class="fas fa-search"></i></button>
@@ -165,6 +164,9 @@ body{margin:0;padding:0;font-family:'Vazirmatn',system-ui,sans-serif;background:
     </div>
 </div>
 <script>
+var _ioScript = document.querySelector('script[src="/socket.io/socket.io.js"]');
+if (_ioScript) { _ioScript.addEventListener('error', function() { window._ioMissing = true; }); }
+document.getElementById('backBtn') && document.getElementById('backBtn').addEventListener('click', function(e) { e.preventDefault(); document.referrer ? history.back() : window.location = '/admin'; });
 document.addEventListener('DOMContentLoaded',function(){
     var CC=ChatCore,U=ChillUtils,q=function(s){return document.querySelector(s)};
     var params=new URLSearchParams(window.location.search);
@@ -194,9 +196,13 @@ document.addEventListener('DOMContentLoaded',function(){
     function aDel(u){return fetch(u,{method:'DELETE',headers:hdr()}).then(function(r){return r.text().then(function(t){var x;try{x=JSON.parse(t)}catch(e){x={}}return{ok:r.ok,data:x}})}).catch(function(e){return{ok:false,data:{}}})}
 
     function initSocket(){
-        if(!token)return;var socket=CC.initSocket(token);if(!socket)return;
+        if(!token)return;
         CC.setSocketCallbacks({
             currentRole:'admin',
+            onConnect:function(socket){
+                socket.emit('join-admin-room');
+                if(currentConvId)CC.joinConversation(currentConvId);
+            },
             onNewMessage:function(d){
                 if(d.conversationId===currentConvId&&d.role==='customer'){
                     var el=CC.renderMessage(d,{showSeen:true});
@@ -212,7 +218,38 @@ document.addEventListener('DOMContentLoaded',function(){
             onConversationReopened:function(d){if(d.conversationId===currentConvId){convClosed=false;renderCRBtn()}},
             onMessageSeen:function(d){if(d.conversationId===currentConvId&&d.role==='customer'){var ticks=messagesEl.querySelectorAll('.msg-admin .msg-tick');ticks.forEach(function(t){var mid=t.getAttribute('data-msg-tick');if(mid&&t.classList.contains('msg-sent'))CC.updateMessageTick(mid,'seen')})}}
         });
-        if(currentConvId)CC.joinConversation(currentConvId);
+        CC.initSocket(token);
+    }
+
+    // Fallback polling (primary on Vercel where Socket.io is unavailable)
+    function pollOpenConversation(){
+        if(!currentConvId||loadingMore)return;
+        if(!lastMsgId){loadMsgs();return;}
+        aGet('/api/admin/chat/conversation/'+currentConvId+'?limit='+PAGE+'&after='+encodeURIComponent(lastMsgId)).then(function(data){
+            if(!data||!data.messages||!data.messages.length)return;
+            var nearBottom=messagesEl.scrollHeight-messagesEl.scrollTop-messagesEl.clientHeight<120;
+            data.messages.forEach(function(m){
+                if(m.id===lastMsgId)return;
+                messagesEl.appendChild(CC.renderMessage(m,{showSeen:true}));
+                lastMsgId=m.id;
+            });
+            if(nearBottom)autoScroll();
+            markRead();
+        }).catch(function(){});
+    }
+
+    // Poll for seen status updates (Socket.io fallback for Vercel)
+    var _seenPolling = false;
+    function pollSeenStatus(){
+        if(!currentConvId||_seenPolling)return;
+        _seenPolling = true;
+        aGet('/api/admin/chat/conversation/'+currentConvId+'/seen').then(function(data){
+            _seenPolling = false;
+            if(!data||!data.seenMessageIds)return;
+            data.seenMessageIds.forEach(function(msgId){
+                CC.updateMessageTick(msgId,'seen');
+            });
+        }).catch(function(){_seenPolling=false;});
     }
 
     function renderList(){
@@ -303,24 +340,32 @@ document.addEventListener('DOMContentLoaded',function(){
         var text=msgInput.value.trim();
         if(text.length>CC.MAX_MESSAGE_LENGTH){U.showAlert('متن پیام بیش از حد مجاز','warning');return}
         if(!text&&!curAtts.length)return;
-        var totalSz=0;curAtts.forEach(function(a){totalSz+=(a.dataUrl||'').length});
-        if(totalSz>CC.MAX_TOTAL_SIZE){U.showAlert('حجم فایل‌ها زیاد است','error');return}
-        var attsCopy=curAtts.slice();
-        var pendingMsg={id:'pending_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),role:'admin',text:text,timestamp:new Date().toISOString(),conversationId:currentConvId,attachments:attsCopy};
+        var attsToUpload=curAtts.slice();
+        var pendingMsg={id:'pending_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),role:'admin',text:text,timestamp:new Date().toISOString(),conversationId:currentConvId,attachments:attsToUpload.map(function(a){return{name:a.name,type:a.type,size:a.size,url:a.dataUrl||CC.normalizeBlobUrl(a.url)||''}})};
         var empty=messagesEl.querySelector('.empty-state');
         if(empty&&!q('#loadOlder'))messagesEl.innerHTML='';
         messagesEl.appendChild(CC.renderMessage(pendingMsg,{pending:true}));autoScroll();
         msgInput.value='';curAtts=[];attPreview.innerHTML='';attPreview.classList.add('hidden');
         autoResize();updateBtn();CC.stopTyping(currentConvId,adminName);
         sendBtn.disabled=true;
-        aPost('/api/admin/chat',{text:text,conversationId:currentConvId,attachments:attsCopy}).then(function(r){
+
+        var uploadPromises=attsToUpload.map(function(a){
+            if(a.url&&!String(a.url).startsWith('data:'))return Promise.resolve({url:CC.normalizeBlobUrl(a.url),name:a.name,type:a.type,size:a.size});
+            if(a._file)return CC.uploadToBlob(a._file);
+            if(a.dataUrl)return Promise.resolve(a);
+            return Promise.resolve(a);
+        });
+
+        Promise.all(uploadPromises).then(function(uploadedAtts){
+            return aPost('/api/admin/chat',{text:text,conversationId:currentConvId,attachments:uploadedAtts});
+        }).then(function(r){
             sendBtn.disabled=false;
             if(!r||!r.ok){U.showAlert(r&&r.data&&r.data.error||'خطا در ارسال','error');return}
             var msg=r.data;
             var pendingEl=messagesEl.querySelector('[data-msg-id="'+pendingMsg.id+'"]');
             if(pendingEl){pendingEl.setAttribute('data-msg-id',msg.id);pendingEl.querySelector('[data-msg-tick="'+pendingMsg.id+'"]').setAttribute('data-msg-tick',msg.id)}
             CC.updateMessageTick(msg.id,'sent');lastMsgId=msg.id;
-        }).catch(function(){sendBtn.disabled=false;U.showAlert('خطا در ارتباط با سرور','error')});
+        }).catch(function(e){sendBtn.disabled=false;U.showAlert((e&&e.message)?e.message:'خطا در ارتباط با سرور','error')});
     }
 
     function autoResize(){msgInput.style.height='auto';msgInput.style.height=Math.min(msgInput.scrollHeight,300)+'px';charCount.textContent=msgInput.value.length+'/5000';updateBtn()}
@@ -347,7 +392,18 @@ document.addEventListener('DOMContentLoaded',function(){
         attPreview.insertAdjacentHTML('beforeend',CC.renderAttachmentProgress(aid,file.name,isImg));
         attPreview.classList.remove('hidden');pendingReads[aid]=true;updateBtn();
         var proc=isImg?CC.compressImage(file,2):Promise.resolve(file);
-        proc.then(function(ff){CC.readFileAsDataURL(ff).then(function(att){curAtts.push(att);var t=attPreview.querySelector('[data-att-id="'+aid+'"]');if(t)t.remove();attPreview.insertAdjacentHTML('beforeend',CC.renderAttachmentThumb(att));delete pendingReads[aid];updateBtn()}).catch(function(){var t=attPreview.querySelector('[data-att-id="'+aid+'"]');if(t)t.remove();delete pendingReads[aid];updateBtn();U.showToast('خطا در خواندن فایل')})}).catch(function(){var t=attPreview.querySelector('[data-att-id="'+aid+'"]');if(t)t.remove();delete pendingReads[aid];updateBtn()});
+        proc.then(function(ff){
+            var att={id:aid,name:ff.name,type:ff.type,size:ff.size,_file:ff,dataUrl:null};
+            curAtts.push(att);
+            CC.readFileAsDataURL(ff).then(function(d){att.dataUrl=d.dataUrl}).
+            catch(function(){});
+            var t=attPreview.querySelector('[data-att-id="'+aid+'"]');
+            if(t)t.remove();
+            attPreview.insertAdjacentHTML('beforeend',CC.renderAttachmentThumb({id:aid,name:ff.name,type:ff.type,dataUrl:null}));
+            var thumbImg=attPreview.querySelector('[data-att-id="'+aid+'"] img');
+            if(thumbImg&&isImg){var url=URL.createObjectURL(ff);thumbImg.src=url}
+            delete pendingReads[aid];updateBtn()
+        }).catch(function(){var t=attPreview.querySelector('[data-att-id="'+aid+'"]');if(t)t.remove();delete pendingReads[aid];updateBtn()});
     }
     function rmAtt(id){if(activeReaders[id]){activeReaders[id].abort();delete activeReaders[id]}curAtts=curAtts.filter(function(a){return a.id!==id});var t=attPreview.querySelector('[data-att-id="'+id+'"]');if(t)t.remove();if(!attPreview.querySelector('.att-thumb'))attPreview.classList.add('hidden');updateBtn()}
     attPreview.addEventListener('click',function(e){var b=e.target.closest('.att-remove');if(b)rmAtt(b.getAttribute('data-remove')||b.getAttribute('data-cancel-read'))});
@@ -430,6 +486,14 @@ document.addEventListener('DOMContentLoaded',function(){
     updateSidebarTitle();
 
     loadConvs();loadCanned();initSocket();
+
+    // Load attachment images with the admin's bearer token so they don't depend
+    // on the (shared) session cookie — prevents images disappearing after refresh
+    // when a customer login in the same browser overwrote the token cookie.
+    function authAttach(){CC.authorizeAttachmentImages(messagesEl,function(){return token?{'Authorization':'Bearer '+token}:null})}
+    new MutationObserver(authAttach).observe(messagesEl,{childList:true,subtree:true});
+    authAttach();
+    setInterval(function(){pollOpenConversation();pollSeenStatus();},5000);
     window.addEventListener('beforeunload',function(){if(scrollObserver)scrollObserver.disconnect();var s=CC.getSocket();if(s)s.disconnect()});
 });
 </script>

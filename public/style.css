@@ -1308,6 +1308,9 @@ input[inputmode="numeric"] {
 .modal.active .admin-chat-header {
     padding: 0.7rem 0.9rem;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .modal.active .admin-chat-messages {
@@ -1336,7 +1339,8 @@ input[inputmode="numeric"] {
     font-size: .85rem;
     flex-shrink: 0;
     transition: background .15s;
-    margin-left: auto;
+    margin-left: 0;
+    margin-right: auto;
 }
 .modal.active .admin-chat-header .back-link:hover {
     background: #f3f4f6;
@@ -1638,6 +1642,8 @@ input[inputmode="numeric"] {
     display: flex;
     flex-direction: column;
     height: 400px;
+    max-height: 90vh;
+    box-sizing: border-box;
 }
 
 .chat-messages {
@@ -1906,6 +1912,13 @@ input[inputmode="numeric"] {
     .modal.active .modal-content {
         height: var(--app-height, 100dvh);
         min-height: var(--app-height, 100dvh);
+        bottom: 5px;
+        max-height: 90vh;
+    }
+
+    .modal.active .support-panel {
+        max-height: calc(90vh - 110px);
+        overflow-y: auto;
     }
 
     .modal.active .admin-chat-main {
@@ -1939,6 +1952,7 @@ input[inputmode="numeric"] {
     
     .chat-container {
         height: 300px;
+        max-height: 80vh;
         padding: 0.5rem;
     }
 }

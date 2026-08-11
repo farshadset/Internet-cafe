@@ -95,7 +95,7 @@ window.fetch = function(url, opts) {
     var apiUrl = typeof url === 'string' ? url : (url.url || '');
     if (apiUrl.indexOf('/api/') === 0) {
         if (!opts.headers['Authorization']) {
-            if (_cachedAdminToken) {
+            if (_needsAdminToken(apiUrl) && _cachedAdminToken) {
                 opts.headers['Authorization'] = 'Bearer ' + _cachedAdminToken;
             } else if (_cachedUserToken) {
                 opts.headers['Authorization'] = 'Bearer ' + _cachedUserToken;
@@ -104,6 +104,11 @@ window.fetch = function(url, opts) {
     }
     return _origFetch.call(this, url, opts);
 };
+
+var _adminEndpointRe = /^\/api\/(admin\/|orders\b|order\/(status|result|price-counter|price-accept)\b|visits\b|pricing(\/|$)|banner(\/|$)|chat\/search\b)/;
+function _needsAdminToken(apiUrl) {
+    return _adminEndpointRe.test(apiUrl.replace(/^\/(index\.html)?/, ''));
+}
 
 // ==================== WEBAUTHN CLIENT ====================
 var WebAuthnClient = {
@@ -1685,6 +1690,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (typeof ChatCore !== 'undefined') {
         ChatCore.injectChatStyles();
+        // Load attachment images with the user's token so they don't depend on a
+        // shared cookie being valid (same fix as the admin chat page).
+        function authInlineAttach() {
+            ChatCore.authorizeAttachmentImages(inlineChatMessages, function() {
+                var ud = JSON.parse(localStorage.getItem('userData') || 'null');
+                return (ud && ud.token) ? { 'Authorization': 'Bearer ' + ud.token } : null;
+            });
+        }
+        if (inlineChatMessages && typeof MutationObserver !== 'undefined') {
+            new MutationObserver(authInlineAttach).observe(inlineChatMessages, { childList: true, subtree: true });
+        }
     }
 
     // --- Conversations List ---
@@ -1700,6 +1716,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(function(convs) {
                 conversationsData = convs || [];
                 renderConversationsList();
+                updateSupportBadge();
             })
             .catch(function() {
                 conversationsList.innerHTML = '<div style="color:#e74c3c;font-size:0.85rem;text-align:center;padding:1rem;">خطا در بارگذاری گفتگوها</div>';
@@ -1720,7 +1737,11 @@ document.addEventListener('DOMContentLoaded', () => {
             div.setAttribute('data-conv-id', c.id);
             var dateStr = c.lastTimestamp ? ChatCore.formatDate(c.lastTimestamp) : '';
             var preview = ChatCore.truncate(c.lastMessage || 'گفتگوی جدید', 35);
-            div.innerHTML = '<div class="conv-title">' + ChatCore.escapeHtml(preview) + '</div><div class="conv-preview">' + ChatCore.escapeHtml(preview) + '</div><div class="conv-date">' + dateStr + '</div>';
+            var badgeHtml = (c.unreadCount || 0) > 0
+                ? '<span style="position:absolute;top:6px;left:6px;background:#e74c3c;color:#fff;font-size:0.62rem;font-weight:700;border-radius:10px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 5px;">' + ((c.unreadCount || 0) > 99 ? '99+' : c.unreadCount) + '</span>'
+                : '';
+            div.style.cssText = 'position:relative;';
+            div.innerHTML = '<div class="conv-title">' + ChatCore.escapeHtml(preview) + '</div><div class="conv-preview">' + ChatCore.escapeHtml(preview) + '</div><div class="conv-date">' + dateStr + '</div>' + badgeHtml;
             div.addEventListener('click', function() {
                 currentConversationId = c.id;
                 loadInlineMessages();
@@ -1750,21 +1771,19 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: username })
         })
-        .then(function(r) { return r.json(); })
-        .then(function(conv) {
-            if (!conv || !conv.id) throw new Error('خطا در ایجاد گفتگو');
-            currentConversationId = conv.id;
-            return conv;
-        })
-        .catch(function(err) {
-            console.error('خطا در ایجاد گفتگو:', err);
-            currentConversationId = 'conv_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-            return { id: currentConversationId };
+        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+        .then(function(result) {
+            if (!result.ok || !result.data || !result.data.id) {
+                throw new Error((result.data && result.data.error) || 'خطا در ایجاد گفتگو');
+            }
+            currentConversationId = result.data.id;
+            return result.data;
         });
     }
 
     // --- Messages ---
-    function loadInlineMessages() {
+    function loadInlineMessages(opts) {
+        opts = opts || {};
         if (!inlineChatMessages) return;
         var userData = JSON.parse(localStorage.getItem('userData') || 'null');
         var username = userData ? userData.username : 'مهمان';
@@ -1777,8 +1796,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .then(function(data) {
                     renderMessages((data && data.messages) || []);
-                    // Mark messages as read
-                    markConversationRead(currentConversationId, username);
+                    if (opts.markRead !== false) {
+                        markConversationRead(currentConversationId, username);
+                        conversationsData.forEach(function(c) { if (c.id === currentConversationId) c.unreadCount = 0; });
+                        updateSupportBadge();
+                    }
                 })
                 .catch(function() {
                     if (inlineChatMessages.children.length === 0) {
@@ -1823,7 +1845,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (inlineSendBtn && inlineSendBtn.disabled) return;
 
         var totalSize = 0;
-        inlineAttachments.forEach(function(a) { totalSize += (a.dataUrl || '').length; });
+        inlineAttachments.forEach(function(a) { totalSize += (a.size || Math.round((a.dataUrl || '').length * 3 / 4) || 0); });
         if (totalSize > ChatCore.MAX_TOTAL_SIZE) {
             ChillUtils.showAlert('حجم فایل‌های پیوست زیاد است.', 'error');
             return;
@@ -1837,47 +1859,116 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof ChatCore !== 'undefined') {
                 ChatCore.stopTyping(convId, username);
             }
-            
-            fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    text: text,
-                    conversationId: convId,
-                    attachments: inlineAttachments
-                })
+
+            var attsToUpload = inlineAttachments.slice();
+            var pendingId = 'pending_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            var pendingMsg = {
+                id: pendingId,
+                role: 'customer',
+                username: username,
+                text: text,
+                timestamp: new Date().toISOString(),
+                conversationId: convId,
+                attachments: attsToUpload.map(function(a) { return { name: a.name, type: a.type, size: a.size, url: a.dataUrl || ChatCore.normalizeBlobUrl(a.url) || '' }; })
+            };
+
+            var emptyEl = inlineChatMessages.querySelector('[style*="text-align:center"]');
+            if (emptyEl) emptyEl.remove();
+            if (typeof ChatCore !== 'undefined') {
+                var el = ChatCore.renderMessage(pendingMsg, { pending: true, tickRole: 'customer' });
+                inlineChatMessages.appendChild(el);
+                inlineChatMessages.scrollTop = inlineChatMessages.scrollHeight;
+            }
+
+            inlineMessageInput.value = '';
+            inlineAttachments = [];
+            if (inlineAttachmentPreview) {
+                inlineAttachmentPreview.innerHTML = '';
+                inlineAttachmentPreview.classList.add('hidden');
+            }
+
+            // On failure, put the message back into the input so it's never lost.
+            function restoreInput() {
+                if (inlineMessageInput) {
+                    inlineMessageInput.value = text;
+                    inlineMessageInput.style.height = 'auto';
+                    inlineMessageInput.style.height = Math.min(inlineMessageInput.scrollHeight, 300) + 'px';
+                    inlineMessageInput.focus();
+                }
+                inlineAttachments = attsToUpload.slice();
+                if (typeof ChatCore !== 'undefined') updateInlineSendButton();
+            }
+            function removePending() {
+                var failedEl = inlineChatMessages.querySelector('[data-msg-id="' + pendingId + '"]');
+                if (failedEl) failedEl.remove();
+            }
+
+            var uploadPromises = attsToUpload.map(function(a) {
+                if (a.url && !String(a.url).startsWith('data:')) return Promise.resolve({ url: ChatCore.normalizeBlobUrl(a.url), name: a.name, type: a.type, size: a.size });
+                if (a._file) return ChatCore.uploadToBlob(a._file);
+                if (a.dataUrl) return Promise.resolve(a);
+                return Promise.resolve(a);
+            });
+
+            Promise.all(uploadPromises).then(function(uploadedAtts) {
+                return fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, conversationId: convId, attachments: uploadedAtts })
+                });
             })
-            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(r) {
+                return r.text().then(function(t) {
+                    var d; try { d = JSON.parse(t); } catch(e) { d = null; }
+                    return { ok: r.ok, data: d };
+                });
+            })
             .then(function(result) {
-                if (!result.ok) {
-                    if (typeof ChatCore !== 'undefined') {
-                        ChatCore.enqueueOffline({ text: text, conversationId: convId, attachments: inlineAttachments });
-                    }
-                    ChillUtils.showAlert(result.data.error || 'خطا در ارسال پیام', 'error');
-                }
-                inlineMessageInput.value = '';
-                inlineAttachments = [];
-                if (inlineAttachmentPreview) {
-                    inlineAttachmentPreview.innerHTML = '';
-                    inlineAttachmentPreview.classList.add('hidden');
-                }
                 if (inlineSendBtn) inlineSendBtn.disabled = false;
-                loadInlineMessages();
+                if (!result.ok || !result.data) {
+                    var errMsg = (result.data && result.data.error) || 'خطا در ارسال پیام';
+                    if (/بسته شده|غیرمجاز|احراز/i.test(errMsg)) {
+                        // Conversation was closed (or invalid) — start a fresh one and retry once.
+                        removePending();
+                        currentConversationId = null;
+                        createNewConversation().then(function(conv) {
+                            doSend(conv.id);
+                        }).catch(function(e2) {
+                            restoreInput();
+                            ChillUtils.showAlert(e2 && e2.message || errMsg, 'error');
+                        });
+                        return;
+                    }
+                    removePending();
+                    restoreInput();
+                    ChillUtils.showAlert(errMsg, 'error');
+                    return;
+                }
+                var msg = result.data;
+                var pendingEl = inlineChatMessages.querySelector('[data-msg-id="' + pendingId + '"]');
+                if (pendingEl) {
+                    pendingEl.setAttribute('data-msg-id', msg.id);
+                    var tickEl = pendingEl.querySelector('[data-msg-tick="' + pendingId + '"]');
+                    if (tickEl) tickEl.setAttribute('data-msg-tick', msg.id);
+                }
+                if (typeof ChatCore !== 'undefined') {
+                    ChatCore.updateMessageTick(msg.id, 'sent');
+                }
                 loadConversations();
             })
             .catch(function(err) {
-                if (typeof ChatCore !== 'undefined') {
-                    ChatCore.enqueueOffline({ text: text, conversationId: convId, attachments: inlineAttachments });
-                    ChillUtils.showToast('پیام در صف ارسال قرار گرفت');
-                } else {
-                    ChillUtils.showAlert('خطا در ارسال پیام', 'error');
-                }
                 if (inlineSendBtn) inlineSendBtn.disabled = false;
+                removePending();
+                restoreInput();
+                ChillUtils.showAlert('خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.', 'error');
             });
         }
 
         if (!currentConversationId) {
-            createNewConversation().then(function(conv) { doSend(conv.id); });
+            createNewConversation().then(function(conv) { doSend(conv.id); })
+                .catch(function(err) {
+                    ChillUtils.showAlert(err && err.message || 'خطا در شروع گفتگو', 'error');
+                });
         } else {
             doSend(currentConversationId);
         }
@@ -1944,8 +2035,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateInlineSendButton();
 
                 if (typeof ChatCore !== 'undefined') {
+                    var originalFile = file;
                     ChatCore.readFileAsDataURL(file, function(pct) { ChatCore.updateProgress(attId, pct); })
                         .then(function(att) {
+                            att._file = originalFile;
                             inlineAttachments.push(att);
                             var thumb = inlineAttachmentPreview.querySelector('[data-att-id="' + attId + '"]');
                             if (thumb) thumb.remove();
@@ -2007,18 +2100,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Socket.io ---
     function initChatSocket() {
-        if (typeof ChatCore === 'undefined' || typeof io === 'undefined') return;
+        if (typeof ChatCore === 'undefined') return;
+        if (!supportModal || !inlineChatMessages) return;
         var userData = JSON.parse(localStorage.getItem('userData') || 'null');
         var token = userData ? userData.token : null;
         if (!token) return;
 
-        var socket = ChatCore.initSocket(token);
-        if (!socket) return;
-
         ChatCore.setSocketCallbacks({
             currentRole: 'customer',
+            onConnect: function(socket) {
+                if (currentConversationId) ChatCore.joinConversation(currentConversationId);
+                flushOfflineMessages();
+            },
             onNewMessage: function(d) {
-                if (d.conversationId === currentConversationId) {
+                if (d.conversationId === currentConversationId && d.role !== 'customer') {
                     loadInlineMessages();
                 }
                 loadConversations();
@@ -2036,9 +2131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if (currentConversationId) {
-            ChatCore.joinConversation(currentConversationId);
-        }
+        ChatCore.initSocket(token);
     }
 
     // --- Initialize ---
@@ -2066,6 +2159,74 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
     })();
+
+    // --- Retry messages that failed to send while offline ---
+    function flushOfflineMessages() {
+        if (typeof ChatCore === 'undefined') return Promise.resolve();
+        return ChatCore.flushOfflineQueue(function(queued) {
+            return Promise.all(queued.map(function(m) {
+                var atts = (m.attachments || []).map(function(a) {
+                    if (a._file) return ChatCore.uploadToBlob(a._file);
+                    if (a.url && !String(a.url).startsWith('data:')) { a.url = ChatCore.normalizeBlobUrl(a.url); return Promise.resolve(a); }
+                    return Promise.resolve(a);
+                });
+                return Promise.all(atts)
+                    .then(function(uploaded) {
+                        return fetch('/api/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text: m.text, conversationId: m.conversationId, attachments: uploaded })
+                        });
+                    })
+                    .then(function(r) { return r.ok ? m._offlineId : null; })
+                    .catch(function() { return null; });
+            })).then(function(sent) {
+                return sent.filter(Boolean);
+            });
+        }).then(function(sentIds) {
+            if (sentIds && sentIds.length) {
+                if (typeof ChillUtils !== 'undefined') {
+                    ChillUtils.showToast('' + sentIds.length + ' پیام ارسال شد');
+                }
+                loadConversations();
+                if (supportModal && supportModal.classList.contains('active')) loadInlineMessages();
+            }
+        });
+    }
+
+    // --- Unread badge on the support button ---
+    function updateSupportBadge() {
+        var total = 0;
+        (conversationsData || []).forEach(function(c) { total += (c.unreadCount || 0); });
+        var btn = document.getElementById('bottomSupportBtn') || document.getElementById('supportBtn');
+        if (!btn) return;
+        var badge = btn.querySelector('.support-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'support-badge';
+            badge.style.cssText = 'position:absolute;top:-4px;left:-4px;background:#e74c3c;color:#fff;font-size:0.6rem;font-weight:700;border-radius:10px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 4px;box-shadow:0 1px 3px rgba(0,0,0,.3);';
+            if (btn.style.position !== 'fixed' && btn.style.position !== 'absolute') btn.style.position = 'relative';
+            btn.appendChild(badge);
+        }
+        badge.style.display = total > 0 ? 'inline-block' : 'none';
+        badge.textContent = total > 99 ? '99+' : total;
+    }
+
+    // --- Background polling (works everywhere; primary on Vercel) ---
+    var backgroundPolling = null;
+    function startBackgroundPolling() {
+        if (backgroundPolling) return;
+        if (!conversationsList || !supportModal) return;
+        backgroundPolling = setInterval(function() {
+            if (typeof isAuthenticated === 'function' && !isAuthenticated()) return;
+            flushOfflineMessages();
+            loadConversations();
+            if (supportModal && !supportModal.classList.contains('active') && currentConversationId) {
+                loadInlineMessages({ markRead: false });
+            }
+            updateSupportBadge();
+        }, 10000);
+    }
 
     // --- Event Listeners ---
     if (supportBtn && supportModal) {
@@ -2113,6 +2274,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (inlineSendBtn) {
             inlineSendBtn.addEventListener('click', sendInlineMessage);
         }
+
+        window.addEventListener('online', function() {
+            flushOfflineMessages();
+            loadConversations();
+        });
         if (inlineMessageInput) {
             inlineMessageInput.addEventListener('input', function() {
                 var len = inlineMessageInput.value.length;
@@ -2140,21 +2306,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (closeBtn) {
             closeBtn.addEventListener('click', function() {
                 supportModal.classList.remove('active');
-                currentConversationId = null;
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
             });
         }
         supportModal.addEventListener('click', function(e) {
             if (e.target === supportModal) {
                 supportModal.classList.remove('active');
-                currentConversationId = null;
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
             }
         });
         supportModal.addEventListener('transitionend', function() {
             if (!supportModal.classList.contains('active')) {
                 if (inlinePolling) { clearInterval(inlinePolling); inlinePolling = null; }
-                currentConversationId = null;
             } else {
                 if (chatPanel && chatPanel.style.display !== 'none' && !inlinePolling) {
                     inlinePolling = setInterval(loadInlineMessages, ChatCore ? ChatCore.POLL_INTERVAL : 8000);
@@ -2171,6 +2334,13 @@ document.addEventListener('DOMContentLoaded', () => {
             window.visualViewport.addEventListener('scroll', updateAppHeight);
             updateAppHeight();
         }
+    }
+
+    // Start real-time socket + background polling for authenticated users
+    if (isAuthenticated()) {
+        initChatSocket();
+        startBackgroundPolling();
+        updateSupportBadge();
     }
 
     function isAuthenticated() {
@@ -2525,8 +2695,10 @@ const grid = document.getElementById('attachmentPopupGrid');
             grid.innerHTML = visibleAttachments.map(function(attachment) {
                 const isImage = isImageFile(attachment);
                 const safeName = escapeAttachmentHtml(attachment.name || 'فایل پیوست');
-                const safeUrl = escapeAttachmentHtml(attachment.url || attachment.dataUrl);
-                const jsUrl = (attachment.url || attachment.dataUrl || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const rawUrl = attachment.url || attachment.dataUrl || '';
+                const normalizedUrl = ChatCore.resolveAttachmentUrl(rawUrl);
+                const safeUrl = escapeAttachmentHtml(normalizedUrl);
+                const jsUrl = (normalizedUrl || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const jsName = (attachment.name || 'فایل پیوست').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const preview = isImage
                     ? '<div class="popup-image-wrapper"><img src="' + safeUrl + '" alt="' + safeName + '"><button type="button" class="popup-download-icon" data-url=\'' + jsUrl + '\' data-name=\'' + jsName + '\'><i class="fas fa-download"></i></button></div>'
