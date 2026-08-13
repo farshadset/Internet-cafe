@@ -1704,11 +1704,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Conversations List ---
+    // Fetch chat data using the logged-in user's token (localStorage) so an
+    // unrelated login (e.g. admin) in another tab does not clobber the shared
+    // cookie and blank out the customer's messages. Falls back to the cookie on
+    // auth errors in case the stored token is stale/expired.
+    function chatFetch(url, options) {
+        options = options || {};
+        function doFetch(withToken) {
+            var headers = Object.assign({}, options.headers || {});
+            if (withToken) {
+                var ud = JSON.parse(localStorage.getItem('userData') || 'null');
+                var token = ud && ud.token;
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+            }
+            return fetch(url, Object.assign({ credentials: 'same-origin' }, options, { headers: headers }))
+                .then(function(r) {
+                    if (withToken && (r.status === 401 || r.status === 403)) {
+                        return doFetch(false);
+                    }
+                    return r;
+                });
+        }
+        return doFetch(true);
+    }
+
     function loadConversations() {
         if (!conversationsList) return Promise.resolve();
         var userData = JSON.parse(localStorage.getItem('userData') || 'null');
         var username = userData ? userData.username : 'مهمان';
-        return fetch('/api/chat/conversations?username=' + encodeURIComponent(username))
+        return chatFetch('/api/chat/conversations?username=' + encodeURIComponent(username))
             .then(function(r) {
                 if (r.status === 404 || !r.ok) return [];
                 return r.json().catch(function() { return []; });
@@ -1789,7 +1813,7 @@ document.addEventListener('DOMContentLoaded', () => {
         var username = userData ? userData.username : 'مهمان';
 
         if (currentConversationId) {
-            fetch('/api/chat/conversation/' + currentConversationId + '?username=' + encodeURIComponent(username) + '&limit=30')
+            chatFetch('/api/chat/conversation/' + currentConversationId + '?username=' + encodeURIComponent(username) + '&limit=30')
                 .then(function(r) {
                     if (r.status === 404 || !r.ok) return { messages: [] };
                     return r.json().catch(function() { return { messages: [] }; });

@@ -414,6 +414,21 @@ if (!isVercel) {
 // Security headers
 app.use(securityHeaders);
 
+// ==================== SOCKET.IO FALLBACK ON VERCEL ====================
+// Socket.io is never attached on Vercel serverless (no sticky long-lived
+// connections), so the client falls back to HTTP polling. Serve a valid no-op
+// for the client bundle so the dynamic loader resolves cleanly to null instead
+// of a noisy 404 + "MIME type text/html is not executable" console error.
+// Self-hosted keeps the real bundle served by the attached Socket.io server.
+if (isVercel) {
+    app.get('/socket.io/socket.io.js', function(req, res) {
+        res.type('application/javascript; charset=utf-8').send('/* Socket.io not available on this serverless host; client uses HTTP polling. */');
+    });
+    app.get('/socket.io/', function(req, res) {
+        res.status(400).json({ code: 1, message: 'Socket.io not available on this host' });
+    });
+}
+
 // ==================== ADMIN AUTH (before CSP/HTML to prevent bypass) ====================
 app.use(function(req, res, next) {
     var p = req.path;
